@@ -1,0 +1,36 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - errcheck        # unchecked errors
+    - govet
+    - staticcheck     # includes `unused`, the dead-code check replacing vulture
+    - ineffassign
+    - unused
+    - gocritic
+    - goconst
+    - unconvert
+    - misspell
+    - exhaustive
+    - gocyclo
+    - gosec           # SAST, bandit's counterpart
+    - errorlint       # %w and errors.As/Is correctness
+    - nilerr          # returning nil after a non-nil error
+    - copyloopvar
+  settings:
+    gocyclo:
+      min-complexity: 10
+    exhaustive:
+      # A switch with a default is exhaustive. cairn's kind and format switches
+      # all end in a default that either errors or falls back, which is the
+      # point; without this the linter demands every case be spelled out.
+      default-signifies-exhaustive: true
+  exclusions:
+    rules:
+      # Test files legitimately repeat literals, build long table-driven cases,
+      # and write fixture files with permissive modes.
+      - linters: [gocyclo, goconst, gosec]
+        path: "_test\\.go$"

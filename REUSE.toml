@@ -1,0 +1,25 @@
+version = 1
+SPDX-PackageName = "cairn"
+SPDX-PackageSupplier = "Tim Perkins"
+SPDX-PackageDownloadLocation = "https://github.com/livingstaccato/cairn"
+
+# Files that cannot carry a comment header.
+[[annotations]]
+path = [
+  "go.mod",
+  "go.sum",
+  ".gitignore",
+  ".codespellrc",
+  ".golangci.yml",
+  ".pre-commit-config.yaml",
+  ".secrets.baseline",
+  "README.md",
+  "AGENTS.md",
+  ".actrc",
+  "commitlint.config.cjs",
+  "testdata/**",
+  ".provide/**",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Copyright (C) 2026 Tim Perkins"
+SPDX-License-Identifier = "Apache-2.0"

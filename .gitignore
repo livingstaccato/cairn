@@ -15,3 +15,10 @@ coverage.html
 # Tooling
 node_modules/
 .DS_Store
+
+# CLAUDE.md is a symlink to AGENTS.md, created locally so Claude Code picks up
+# the same instructions. AGENTS.md is the tracked source of truth.
+/CLAUDE.md
+
+# act artifacts
+/.act-actions/

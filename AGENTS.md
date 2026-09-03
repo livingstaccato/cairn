@@ -1,0 +1,138 @@
+# cairn — working agreement
+
+Static directory-index and artifact-repo generator. A Go binary and a Hugo
+module in one repo, so emitted data and the templates that render it share a
+single version pin.
+
+Design docs live in the **private** `livingstaccato/cairn-design` repo
+(`docs/superpowers/specs/`, `docs/superpowers/plans/`). This repo is public and
+general-purpose: no employer names, no internal hostnames, no internal paths —
+in code, fixtures, docs or commit messages.
+
+## Before you start
+
+```sh
+make tools    # install golangci-lint, gosec, govulncheck
+make gate     # gofmt, vet, golangci-lint, max-loc, gosec, govulncheck, tests
+```
+
+`make gate` must be green before every commit. Not "usually" — every commit.
+The gate landed before the first line of logic on purpose: a gate added late
+only tells you how much you already owe.
+
+## Layout
+
+```
+cmd/cairn/       CLI entry point, thin — logic lives in internal/
+internal/
+  model/         Entry, Listing — the JSON/YAML contract
+  config/        cairn.yaml, .cairn.yaml, rule matching, precedence
+  walk/          producers: fs, pages, manifest + kind inference
+  meta/          _meta.yaml, sidecars, directory prose
+  hash/          SHA-256 with a (path,size,mtime) cache
+  emit/          html, json, csv, sums, pep503 + the write guard
+  build/         orchestration: walk → merge → hash → emit
+layouts/         Hugo component module (no baseof, no brand)
+assets/cairn/    CSS, JS, SVG sprite — self-contained, no CDN
+themes/reference/ minimal standalone theme, own go.mod
+ci/              one script per gate; never inline YAML
+exampleSite/     end-to-end proof
+```
+
+## File splitting
+
+**Hard ceiling 777 lines per Go file**, enforced by `ci/check-max-loc.sh`.
+Target 200–300. The ceiling is a backstop, not a budget to spend.
+
+Split by **responsibility**, never by technical layer. `walk/kind.go` owns
+"what kind of thing is this filename", `walk/fs.go` owns "what is in this
+directory" — two files because they are two questions, not because one is
+types and the other is functions.
+
+Why it matters here specifically: a file you can hold in context at once is one
+you can reason about correctly, and edits to a focused file are more reliable
+than edits to a sprawling one. That applies to humans reading a diff and to
+agents editing by pattern match. A file drifting past ~400 lines is usually
+answering more than one question — split it before the ceiling forces you to.
+
+One package doc comment, in the file the package is named after. Test file
+beside its source: `fs.go` → `fs_test.go`.
+
+## Non-negotiables
+
+These come from the design and each has a test. Do not relax one to make a
+test pass.
+
+- **`Entry.Size` is exact bytes.** Formatting happens only in templates. The
+  bug this replaced rendered every sub-kilobyte file as `0KB`.
+- **Zero external runtime assets** in generated output. No CDN, no web fonts,
+  no icon font. Icons are an inline SVG sprite. It has to work airgapped.
+- **`bare` presenter emits no `<script>`** and renders in `lynx`.
+- **`emit.Write` is the only writer.** It checks path containment, `protect:`
+  globs, and conflicts. Writing around it defeats all three.
+- **`os.Lstat`, not `os.Stat`,** when testing an output path — a symlink there
+  is a conflict, not something to write through.
+- **CSV fields starting `= + - @` get an apostrophe.** Spreadsheets execute
+  them otherwise, and filenames in a mirror are attacker-influenced.
+- **`template.URL` and `safeHTML` need a justification and a hostile-input
+  test.** They suppress escaping.
+- **`SHA256SUMS` is coreutils format** and is tested against the real
+  `sha256sum -c`, not asserted.
+- **No hardcoded URLs or ports.** They go in a defaults file or at the top of
+  the file that owns them. If a port is taken, stop and ask.
+
+## Testing
+
+TDD: write the failing test, watch it fail for the right reason, then
+implement. A test that has never failed has never been verified.
+
+- Golden-file tests per emitter — fixture tree in, exact bytes out.
+- Table-driven cases for anything with boundaries (sizes, precedence, globs).
+- Hostile input is a test case, not a review note.
+- `make cover` floors coverage at 90% over `./internal/...`. A
+  declaration-only package reports "no statements" and passes — that is
+  intentional and distinguished from 0% of real statements.
+
+## CI
+
+Four jobs in `.github/workflows/ci.yml`: `test` (3 OSes), `lint`, `security`,
+`hygiene`. Every step has a comment saying what it does. **No `run:` block
+exceeds three lines** — anything longer is a script in `ci/`.
+
+Run it locally before pushing:
+
+```sh
+make act          # lint, security, hygiene + the ubuntu test leg
+make act-job JOB=security
+```
+
+`act` cannot run the Windows or macOS legs; `ci/act.sh` filters the matrix to
+ubuntu. Needs Docker running (colima is fine).
+
+## Commits
+
+Conventional Commits, enforced by `commitlint` on `commit-msg`.
+`feat:`, `fix:`, `docs:`, `build:`, `test:`, `refactor:`, `chore:`.
+
+Subject ≤ 50 chars where it reads naturally. Body explains **why**, not what —
+the diff already says what. Commits are signed (SSH). Never bypass signing with
+`--no-gpg-sign` or `--no-verify`; if signing stalls, stop and ask.
+
+No AI or assistant attribution in commit messages or PR bodies.
+
+## SPDX
+
+Every Go, shell and Make file opens with:
+
+```go
+// SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
+// SPDX-License-Identifier: Apache-2.0
+```
+
+Files that cannot carry a comment are covered by `REUSE.toml`. `reuse` runs in
+the `hygiene` job and in pre-commit.
+
+## Handoff
+
+Mid-stream state goes in `.provide/HANDOFF.md`: what was asked, what changed,
+why that approach, and a checklist for whoever picks it up.

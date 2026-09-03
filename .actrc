@@ -1,0 +1,9 @@
+# Local GitHub Actions runs via `act`. See ci/act.sh, or `make act`.
+#
+# catthehacker's images are multi-arch, so an Apple Silicon host runs them
+# natively instead of emulating amd64 — the difference is minutes per run.
+# Override with ACT_ARCH=linux/amd64 if a step needs an x86 toolchain.
+-P ubuntu-latest=catthehacker/ubuntu:act-24.04
+-P ubuntu-24.04=catthehacker/ubuntu:act-24.04
+-P ubuntu-22.04=catthehacker/ubuntu:act-22.04
+--container-architecture linux/arm64

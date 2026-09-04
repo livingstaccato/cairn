@@ -128,6 +128,12 @@ Nothing is ever copied. Builds reach a fixed point: cairn excludes its own outpu
 from the listings, records what it wrote in `.cairn-manifest.json`, and still
 refuses to touch a file it did not create.
 
+## Environment
+
+`CAIRN_ENVIRONMENT` labels the build in cairn's log output. It defaults to
+`production`, since cairn runs as a build step rather than a server. Nothing
+else reads it, and nothing about a listing changes with it.
+
 ## Documentation
 
 - [Hugo setup](docs/hugo-setup.md) — importing the module, output formats

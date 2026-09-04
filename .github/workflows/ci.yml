@@ -27,9 +27,9 @@ jobs:
         shell: bash
     steps:
       # Source
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       # Toolchain
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.26"
       # Race-enabled suite with a coverage profile over the logic packages
@@ -43,8 +43,8 @@ jobs:
   example:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.26"
       # The Hugo half of the gate needs Hugo
@@ -70,8 +70,8 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.26"
       # golangci-lint carries gocyclo, gosec, staticcheck and the rest
@@ -84,8 +84,8 @@ jobs:
   security:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.26"
       # SAST scanner
@@ -93,7 +93,7 @@ jobs:
         run: go install github.com/securego/gosec/v2/cmd/gosec@v2.29.0
       # Go vulnerability database scanner
       - name: Install govulncheck
-        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
       # gosec, govulncheck, go mod verify
       - name: Scan
         run: ci/security.sh
@@ -102,7 +102,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Full history: the check reads commit and tag messages, not just the tree.
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -117,12 +117,12 @@ jobs:
   hygiene:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       # pre-commit/action installs itself with pip and does not provide a
       # Python. Without this the job depends on whatever the runner image
       # happens to ship, which on a PEP 668 externally-managed interpreter
       # refuses the install outright.
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       # reuse, detect-secrets, codespell. The repo's Go hooks are skipped here:

@@ -408,3 +408,90 @@ func TestSavePartialKeepsPriorOwnership(t *testing.T) {
 		}
 	}
 }
+
+// underScope decides what a scoped rebuild is allowed to delete and disown, so
+// it is worth stating the boundary cases outright rather than only reaching it
+// through a build.
+func TestUnderScope(t *testing.T) {
+	for _, tc := range []struct {
+		path, scope string
+		want        bool
+	}{
+		{"/docs/index.json", "", true},           // no scope is the whole tree
+		{"/docs/index.json", ".", true},          // and so is the root
+		{"/docs/index.json", "docs", true},       // inside
+		{"/docs/a/b/index.json", "docs", true},   // deeper inside
+		{"/docs", "docs", true},                  // the scope directory itself
+		{"/docs-old/index.json", "docs", false},  // a sibling sharing a prefix
+		{"/other/index.json", "docs", false},     // unrelated
+		{"/documentation/x.json", "docs", false}, // prefix of a longer name
+	} {
+		if got := underScope(tc.path, tc.scope); got != tc.want {
+			t.Errorf("underScope(%q, %q) = %v, want %v", tc.path, tc.scope, got, tc.want)
+		}
+	}
+}
+
+// A scoped prune removes stale output inside the scope and leaves the rest of
+// the previous run's output where it is.
+func TestPruneScopedLeavesOtherSubtreesAlone(t *testing.T) {
+	out := t.TempDir()
+	c := cfg(t, config.ConflictError)
+
+	w1 := NewWriter(c, out)
+	for _, p := range []string{"docs/index.json", "docs/stale.json", "other/index.json"} {
+		if err := w1.Write(p, []byte("x")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := w1.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	// A second run that rewrites only part of docs and nothing else.
+	w2 := NewWriter(c, out)
+	if err := w2.Write("docs/index.json", []byte("y")); err != nil {
+		t.Fatal(err)
+	}
+	removed, err := w2.PruneScoped("docs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(removed) != 1 || !strings.Contains(removed[0], "stale.json") {
+		t.Errorf("pruned %v, want only docs/stale.json", removed)
+	}
+	if _, err := os.Stat(filepath.Join(out, "other", "index.json")); err != nil {
+		t.Errorf("a scoped prune deleted output in another subtree: %v", err)
+	}
+}
+
+// A scoped save has to keep claiming what it did not touch, or the next run
+// sees the rest of the tree as somebody else's files.
+func TestSaveScopedKeepsOwnershipOutsideTheScope(t *testing.T) {
+	out := t.TempDir()
+	c := cfg(t, config.ConflictError)
+
+	w1 := NewWriter(c, out)
+	for _, p := range []string{"docs/index.json", "other/index.json"} {
+		if err := w1.Write(p, []byte("x")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := w1.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	w2 := NewWriter(c, out)
+	if err := w2.Write("docs/index.json", []byte("y")); err != nil {
+		t.Fatal(err)
+	}
+	if err := w2.SaveScoped("docs"); err != nil {
+		t.Fatal(err)
+	}
+
+	// The proof: a third writer must still consider the untouched file its own.
+	w3 := NewWriter(c, out)
+	if err := w3.Write("other/index.json", []byte("z")); err != nil {
+		t.Errorf("output outside the scope was disowned: %v", err)
+	}
+}

@@ -286,3 +286,62 @@ func TestRelDirOfNamesTheContainingDirectory(t *testing.T) {
 		t.Errorf("RelDirOf at the root = %q, %v; want .", got, ok)
 	}
 }
+
+// A deleted file leaves its digest and its directory's listing behind. Pruning
+// is confined to the scope, but inside the scope it still has to happen.
+func TestScopedRebuildPrunesInsideItsScope(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	c := conf(nil)
+	if _, err := Run(c, root, out, obs.Discard()); err != nil {
+		t.Fatal(err)
+	}
+	stale := filepath.Join(out, "bootstrap", "linux", "index.json")
+	if _, err := os.Stat(stale); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+
+	if err := os.RemoveAll(filepath.Join(root, "bootstrap", "linux")); err != nil {
+		t.Fatal(err)
+	}
+	res, err := RunScoped(c, root, out, obs.Discard(), "bootstrap")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(stale); !os.IsNotExist(err) {
+		t.Errorf("the listing of a removed directory survived: %v", err)
+	}
+	if res.Pruned == 0 {
+		t.Error("the result reported nothing pruned")
+	}
+}
+
+// A scope narrower than the recursive listing above it still has to leave that
+// listing correct: refreshing an ancestor regenerates its recursive view, not
+// just its own directory's index.
+func TestScopedRebuildRegeneratesARecursiveAncestor(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	yes := true
+	c := conf([]config.Rule{{
+		Match:    "bootstrap",
+		Override: config.Override{Recursive: &yes},
+	}})
+	if _, err := Run(c, root, out, obs.Discard()); err != nil {
+		t.Fatal(err)
+	}
+	before := readListing(t, filepath.Join(out, "bootstrap", "tree.json"))
+
+	if err := os.WriteFile(filepath.Join(root, "bootstrap", "linux", "new.list"), []byte("x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Deliberately narrower than Scope() would choose, which is the case this
+	// guards: the recursive listing above must still be brought up to date.
+	if _, err := RunScoped(c, root, out, obs.Discard(), "bootstrap/linux"); err != nil {
+		t.Fatal(err)
+	}
+
+	after := readListing(t, filepath.Join(out, "bootstrap", "tree.json"))
+	if len(after.Entries) <= len(before.Entries) {
+		t.Errorf("recursive listing has %d entries, was %d: the ancestor's tree was not regenerated",
+			len(after.Entries), len(before.Entries))
+	}
+}

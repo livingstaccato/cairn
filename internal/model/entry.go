@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 
 // Package model defines the normalized record that every cairn producer fills
 // and every emitter reads. Its JSON field names are a public contract:

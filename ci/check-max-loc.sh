@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 #
 # Fail if any tracked Go file exceeds the line budget. A file past this limit is
 # doing more than one thing; split it by responsibility, not by layer.

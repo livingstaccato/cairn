@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 #
 # End-to-end gate: cairn build -> hugo -> assert the documented output paths and
 # that the Go and Hugo halves agree.

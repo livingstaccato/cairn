@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 
 // Package emit writes cairn's output formats. Every write goes through Writer,
 // which enforces path containment, the protect globs and the conflict policy.

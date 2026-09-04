@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 """Fail if any internal link in the built site does not resolve.
 
 A listing whose entries 404 is not a listing. This runs against the published

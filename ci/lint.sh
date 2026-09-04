@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 #
 # Formatting, vet, static analysis and the file-size budget.
 set -euo pipefail

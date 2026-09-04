@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 
 // Tests for what a path says and what a listing admits: where the indexed tree
 // is served, and which files are content rather than cairn's own inputs.

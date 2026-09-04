@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 
 // Package meta attaches authored context to entries. Files that cannot carry
 // frontmatter — an ISO, a package, a binary — get their metadata from beside

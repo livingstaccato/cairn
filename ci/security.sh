@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 #
 # Project-targeted security scans. gosec is the SAST pass; govulncheck compares
 # this module's dependency and stdlib versions against the Go vulnerability

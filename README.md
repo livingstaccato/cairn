@@ -135,4 +135,4 @@ refuses to touch a file it did not create.
 
 ## License
 
-Apache-2.0. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

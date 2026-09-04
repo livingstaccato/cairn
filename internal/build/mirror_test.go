@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 
 // Tests for the deployment cairn was written for: indexes written in place,
 // beside artifacts a package manager owns and verifies.

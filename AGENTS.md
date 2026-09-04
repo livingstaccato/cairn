@@ -170,7 +170,7 @@ Every Go, shell and Make file opens with:
 
 ```go
 // SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 ```
 
 Files that cannot carry a comment are covered by `REUSE.toml`. `reuse` runs in

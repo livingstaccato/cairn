@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 
 // Command csvheader prints the Go emitter's CSV column contract, so the
 // end-to-end gate can compare it against what the Hugo template produces.

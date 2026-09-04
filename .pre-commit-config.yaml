@@ -28,6 +28,13 @@ repos:
 
   - repo: local
     hooks:
+      - id: check-leaks
+        name: no emails, home paths or private IPs
+        entry: ci/check-leaks.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+
       - id: check-private
         name: no identifying strings
         entry: ci/check-private.sh

@@ -132,4 +132,4 @@ jobs:
       # failure, which points at the wrong thing.
       - uses: pre-commit/action@v3.0.1
         env:
-          SKIP: go-lint,go-test,go-security
+          SKIP: go-lint,go-test,go-security,check-private

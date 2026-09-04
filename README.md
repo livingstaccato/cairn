@@ -111,7 +111,7 @@ have a title and a summary.
 ## Try it
 
 ```sh
-go run ./cmd/cairn build -config testdata/example/cairn.yaml
+go run ./cmd/cairn build --config testdata/example/cairn.yaml
 find testdata/example/out -type f
 ```
 

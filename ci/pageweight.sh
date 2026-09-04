@@ -37,7 +37,7 @@ defaults:
   present: bare
   outputs: [html, json]
 YAML
-  (cd "$dir" && "$work/cairn" build -config cairn.yaml >/dev/null 2>&1)
+  (cd "$dir" && "$work/cairn" build --config cairn.yaml >/dev/null 2>&1)
   wc -c < "$dir/out/pool/index.html" | tr -d ' '
 }
 

@@ -21,7 +21,7 @@ trap 'rm -f "$hostile"' EXIT
 repo="$PWD"
 
 rm -rf exampleSite/content exampleSite/public
-go run ./cmd/cairn build -config exampleSite/cairn.yaml
+go run ./cmd/cairn build --config exampleSite/cairn.yaml
 (cd exampleSite && hugo --quiet)
 
 # Overlay the artifact tree onto the published site so one http.server can

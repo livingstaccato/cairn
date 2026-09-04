@@ -45,7 +45,7 @@ rsync -a --delete \
   --exclude 'index.html' --exclude 'index.json' --exclude 'index.csv' \
   --exclude 'index.txt' --exclude 'SHA256SUMS' --exclude '.cairn-*' \
   upstream::mirror/ /srv/mirror/
-cairn build -config /srv/mirror/cairn.yaml
+cairn build --config /srv/mirror/cairn.yaml
 ```
 
 Running cairn after each sync is what you want anyway: the content changed.
@@ -57,7 +57,7 @@ to its own `public/`. That is the one arrangement with a copy in it — but the
 copy goes small into big, never the reverse:
 
 ```sh
-cairn build -config /srv/site/cairn.yaml   # writes content/, ~68 KB
+cairn build --config /srv/site/cairn.yaml   # writes content/, ~68 KB
 hugo --source /srv/site                    # renders public/
 cp -R /srv/site/public/. /srv/mirror/      # deposits pages into the tree
 ```

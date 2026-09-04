@@ -57,7 +57,7 @@ YAML
 sed "s|__REPO__|$repo|g" ci/bench-site.go.mod.in > "$d/site/go.mod"
 printf 'baseURL = "/"\ntitle = "templates"\n\n[module]\n  [[module.imports]]\n    path = "github.com/livingstaccato/cairn"\n  [[module.imports]]\n    path = "github.com/livingstaccato/cairn/themes/reference"\n' > "$d/site/hugo.toml"
 
-(cd "$d/site" && "$d/cairn" build -config cairn.yaml >/dev/null 2>&1)
+(cd "$d/site" && "$d/cairn" build --config cairn.yaml >/dev/null 2>&1)
 (cd "$d/site" && hugo --quiet >/dev/null 2>&1)
 
 pub="$d/site/public"

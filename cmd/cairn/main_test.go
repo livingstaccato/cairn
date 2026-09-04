@@ -33,8 +33,8 @@ func TestRunBuildEndToEnd(t *testing.T) {
 	configPath, out := fixture(t)
 
 	var stderr strings.Builder
-	if code := runBuild(configPath, &stderr); code != 0 {
-		t.Fatalf("exit %d, stderr:\n%s", code, stderr.String())
+	if err := runBuild(configPath, &stderr); err != nil {
+		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 	if _, err := os.Stat(filepath.Join(out, "bootstrap", "index.json")); err != nil {
 		t.Errorf("expected output not written: %v", err)
@@ -44,17 +44,17 @@ func TestRunBuildEndToEnd(t *testing.T) {
 	}
 }
 
-func TestRunBuildMissingConfigExitsNonZero(t *testing.T) {
+func TestRunBuildMissingConfigFails(t *testing.T) {
 	var stderr strings.Builder
-	if code := runBuild(filepath.Join(t.TempDir(), "nope.yaml"), &stderr); code == 0 {
-		t.Fatal("missing config must exit non-zero")
+	if err := runBuild(filepath.Join(t.TempDir(), "nope.yaml"), &stderr); err == nil {
+		t.Fatal("missing config must be an error")
 	}
 	if stderr.Len() == 0 {
 		t.Error("expected an explanatory message on stderr")
 	}
 }
 
-func TestRunBuildFailedBuildExitsNonZero(t *testing.T) {
+func TestRunBuildFailedBuildFails(t *testing.T) {
 	configPath, _ := fixture(t)
 	// An output format no emitter handles fails the build.
 	if err := os.WriteFile(configPath, []byte(
@@ -62,31 +62,61 @@ func TestRunBuildFailedBuildExitsNonZero(t *testing.T) {
 		t.Fatal(err)
 	}
 	var stderr strings.Builder
-	if code := runBuild(configPath, &stderr); code == 0 {
-		t.Fatal("a failing build must exit non-zero")
+	if err := runBuild(configPath, &stderr); err == nil {
+		t.Fatal("a failing build must be an error")
 	}
 }
 
-func TestUsageExitsTwo(t *testing.T) {
-	var stderr strings.Builder
-	if code := dispatch([]string{"cairn"}, &stderr); code != 2 {
-		t.Errorf("no subcommand: exit %d, want 2", code)
+// exec runs the wired command tree the way a shell would, and reports what a
+// user would have seen.
+func exec(t *testing.T, args ...string) (*strings.Builder, error) {
+	t.Helper()
+	var out strings.Builder
+	root := newRootCmd()
+	root.SetOut(&out)
+	root.SetErr(&out)
+	root.SetArgs(args)
+	return &out, root.Execute()
+}
+
+// An unknown subcommand is a usage error, not a silent success.
+func TestUnknownSubcommandFails(t *testing.T) {
+	out, err := exec(t, "frobnicate")
+	if err == nil {
+		t.Fatal("unknown subcommand must be an error")
 	}
-	if code := dispatch([]string{"cairn", "frobnicate"}, &stderr); code != 2 {
-		t.Errorf("unknown subcommand: exit %d, want 2", code)
-	}
-	if !strings.Contains(stderr.String(), "usage") {
-		t.Errorf("expected usage text, got %q", stderr.String())
+	if !strings.Contains(out.String(), "frobnicate") {
+		t.Errorf("expected the unknown name in the message, got %q", out.String())
 	}
 }
 
-func TestDispatchBuild(t *testing.T) {
+// build takes no positional arguments; one is a mistake worth reporting rather
+// than ignoring.
+func TestBuildRejectsPositionalArgs(t *testing.T) {
+	if _, err := exec(t, "build", "somewhere"); err == nil {
+		t.Fatal("build must reject positional arguments")
+	}
+}
+
+func TestBuildCommandRunsTheBuild(t *testing.T) {
 	configPath, out := fixture(t)
-	var stderr strings.Builder
-	if code := dispatch([]string{"cairn", "build", "-config", configPath}, &stderr); code != 0 {
-		t.Fatalf("exit %d: %s", code, stderr.String())
+	if _, err := exec(t, "build", "--config", configPath); err != nil {
+		t.Fatalf("build: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(out, "bootstrap", "index.json")); err != nil {
-		t.Errorf("dispatch did not run the build: %v", err)
+		t.Errorf("the build command did not run the build: %v", err)
+	}
+}
+
+// The tree ships with the commands the tests exercise.
+func TestRootCommandHasBuild(t *testing.T) {
+	var found bool
+	for _, c := range newRootCmd().Commands() {
+		if c.Name() == "build" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("root command has no build subcommand")
 	}
 }

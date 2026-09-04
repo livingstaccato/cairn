@@ -196,11 +196,11 @@ func TestRunOverPackageRepoIsIdempotent(t *testing.T) {
 	}
 }
 
-// TestRunFailureLeavesRecoverableState covers the wedge an aborted build used to
-// create. Run wrote output, hit an error partway, and returned before saving the
-// manifest — so the files it had already written belonged to nobody, and
-// on_conflict: error refused every later run until an operator deleted them by
-// hand. A mirror that cannot be rebuilt without manual cleanup is not usable.
+// TestRunFailureLeavesRecoverableState checks that a build dying partway can be
+// retried. Without recording what it wrote before the error, that output belongs
+// to nobody and on_conflict: error refuses every later run until an operator
+// deletes the files by hand. A mirror that cannot be rebuilt without manual
+// cleanup is not usable.
 func TestRunFailureLeavesRecoverableState(t *testing.T) {
 	root := tree(t)
 	// A file cairn does not own, deep enough that the root listing is written

@@ -17,10 +17,11 @@ import (
 	"github.com/livingstaccato/cairn/internal/model"
 )
 
-// TestBasePathMakesPathsSiteAbsolute covers a trap the first real consumer hit.
-// Entry.Path is rooted at cairn's root, so a tree indexed from static/_odds and
-// served at /_odds produced /mockups/x.html where the site serves
-// /_odds/mockups/x.html — every link a fresh 404, and nothing in cairn said so.
+// TestBasePathMakesPathsSiteAbsolute checks the case where cairn's root is not
+// the web root. Entry.Path is rooted at cairn's root, so a tree indexed from
+// static/_odds and served at /_odds yields /mockups/x.html for a file the site
+// serves at /_odds/mockups/x.html: every link a 404, with internally consistent
+// JSON and nothing to signal it.
 func TestBasePathMakesPathsSiteAbsolute(t *testing.T) {
 	root, out := tree(t), t.TempDir()
 	c := conf(nil)
@@ -62,11 +63,11 @@ func TestBasePathDefaultsToUnchanged(t *testing.T) {
 	}
 }
 
-// TestMetadataSidecarsAreNeverListed covers a hole hidden: dotfiles opened.
-// _meta.yaml and <file>.meta.yaml are cairn's own inputs, not content. They were
-// excluded only as a side effect of the underscore rule, so the moment a tree
-// asked to see underscore-prefixed names the sidecars appeared as published
-// artifacts — with digests, in SHA256SUMS, on the page.
+// TestMetadataSidecarsAreNeverListed pins the rule that what describes a listing
+// is not part of it. _meta.yaml and <file>.meta.yaml are cairn's own inputs, and
+// excluding them must not depend on a hide: glob happening to cover them — a
+// tree that shows underscore-prefixed names would otherwise publish its own
+// sidecars, with digests, in SHA256SUMS, on the page.
 func TestMetadataSidecarsAreNeverListed(t *testing.T) {
 	root, out := tree(t), t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "bootstrap", "linux", "apt.list.meta.yaml"),

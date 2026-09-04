@@ -5,14 +5,13 @@
 # Render the templates against a tree built to hit their edges, and assert what
 # comes out.
 #
-# The Go emitters have golden tests; the templates had nothing but the example
-# site and a handful of greps. Three defects shipped through a green gate in one
-# day — a directory of one child reading "1 items", weight not ordering
-# anything, and a whole content section vanishing from a listing — and every one
-# was found by reading a rendered page. This is that reading, automated.
+# The Go emitters have golden tests. Templates can only be checked by rendering
+# them, so this renders them: a directory of one child, one of three, a weighted
+# file beside an unweighted one, a title beside a file without. Every defect
+# these cover is invisible to a unit test and obvious on a page.
 #
-# The fixture is generated rather than committed: it exists to be awkward, and
-# an awkward tree in the repository is one more thing to explain.
+# The fixture is generated rather than committed: it exists to be awkward, and an
+# awkward tree in the repository is one more thing to explain.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -32,9 +31,8 @@ mk "many/b.txt" "b"
 mk "many/c.txt" "c"
 # Authored metadata beside a file carrying none, so a missing title cannot be
 # mistaken for a rendered empty one.
-# The weighted file must be one that sorts last, or the assertion passes
-# whether or not weight does anything — which is how the first version of this
-# test managed to be green with the ordering removed.
+# The weighted file must be one that sorts last. Weight the first alphabetically
+# and the assertion passes whether or not weight does anything.
 mk "meta/alpha.txt" "alpha"
 mk "meta/zebra.txt" "zebra"
 mk "meta/_meta.yaml" "zebra.txt:

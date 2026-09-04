@@ -28,10 +28,11 @@ const treeBasename = "tree"
 
 // Result summarizes a run for the caller to report.
 type Result struct {
-	Dirs    int
-	Files   int
-	Written []string
-	Pruned  int
+	Dirs      int
+	Files     int
+	Written   []string
+	Pruned    int
+	Protected int
 }
 
 // runner carries the values every step of a build needs.
@@ -44,6 +45,9 @@ type runner struct {
 	writer *emit.Writer
 	now    time.Time
 	result *Result
+	// warnedStyled keeps the styled-in-direct-mode diagnostic to one line per
+	// run rather than one per directory.
+	warnedStyled bool
 }
 
 // Run walks rootDir and writes every configured output under outDir. Warnings
@@ -62,8 +66,26 @@ func Run(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Result,
 		result: &Result{},
 	}
 
+	err := r.build()
+	if err != nil {
+		// Claim what this run managed to write before it died. Without this the
+		// partial output belongs to nobody, and on_conflict: error refuses every
+		// later run until an operator deletes the files by hand — a mirror that
+		// cannot be rebuilt without manual cleanup.
+		if saveErr := r.writer.SavePartial(); saveErr != nil {
+			r.log.Warn("could not record partial output; a retry may report conflicts",
+				"path", emit.ManifestFile, "err", saveErr)
+		}
+	}
+	r.result.Written = r.writer.Written()
+	r.result.Protected = len(r.writer.Protected())
+	return r.result, err
+}
+
+// build runs the walk, the prune and the manifest save for a successful run.
+func (r *runner) build() error {
 	if err := r.visit("."); err != nil {
-		return r.result, err
+		return err
 	}
 	if err := r.cache.Save(); err != nil {
 		r.log.Warn("could not save the hash cache; the next run re-hashes",
@@ -73,7 +95,7 @@ func Run(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Result,
 	// file's digest, or a whole listing for a directory that no longer exists.
 	pruned, err := r.writer.Prune()
 	if err != nil {
-		return r.result, err
+		return err
 	}
 	for _, p := range pruned {
 		r.log.Info("removed stale output", "path", p)
@@ -83,11 +105,7 @@ func Run(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Result,
 	// The manifest records what this run owns. Without it the next run cannot
 	// tell its own output from content that was already there, and refuses to
 	// overwrite either.
-	if err := r.writer.Save(); err != nil {
-		return r.result, err
-	}
-	r.result.Written = r.writer.Written()
-	return r.result, nil
+	return r.writer.Save()
 }
 
 // visit processes one directory and recurses into its children.
@@ -131,7 +149,7 @@ func (r *runner) collect(relDir, absDir string, s config.Settings) ([]model.Entr
 	}
 	r.warn(warns)
 
-	entries = r.dropGenerated(entries, s)
+	entries = r.dropGenerated(relDir, entries, s)
 
 	m, mwarns, err := meta.Load(absDir)
 	if err != nil {
@@ -168,14 +186,18 @@ func (r *runner) produce(relDir, absDir string, s config.Settings) ([]model.Entr
 // first run's index.json, SHA256SUMS covers files that change on every run, and
 // the build never reaches a fixed point.
 //
-// Excluding unconditionally is safe. If a file cairn would generate already
-// exists and cairn did not create it, emit.Writer refuses the whole build, so
-// there is no case where this hides someone's own file from its own listing.
-func (r *runner) dropGenerated(entries []model.Entry, s config.Settings) []model.Entry {
+// Excluding is safe for a path cairn would actually write: if such a file
+// already exists and cairn did not create it, emit.Writer refuses the whole
+// build, so there is no case where this hides someone's own file from its own
+// listing. A protected path is the exception — cairn writes nothing there, so a
+// file of that name belongs to whoever put it there and must stay listed.
+func (r *runner) dropGenerated(relDir string, entries []model.Entry, s config.Settings) []model.Entry {
 	skip := r.generatedNames(s)
 	out := entries[:0:0]
 	for _, e := range entries {
-		if e.IsDir || !skip[e.Name] {
+		generated := !e.IsDir && skip[e.Name] &&
+			!r.cfg.IsProtected(path.Join(relDir, e.Name))
+		if !generated {
 			out = append(out, e)
 		}
 	}
@@ -427,7 +449,17 @@ func (r *runner) emitSums(c emitCtx) error {
 // emitHTML renders only the bare presenter. Styled HTML is Hugo's job: it needs
 // the consumer's theme, which cairn does not have.
 func (r *runner) emitHTML(c emitCtx) error {
+	// The styled presenter lives in the Hugo templates; Go renders only the bare
+	// one. Asking for styled HTML in direct mode is therefore unsatisfiable, and
+	// it used to produce a mirror with no browsable page and no diagnostic at
+	// all — the default present: is styled, so this was the default outcome.
 	if c.settings.Present != config.PresentBare {
+		if !r.warnedStyled {
+			r.warnedStyled = true
+			r.log.Warn("no HTML written: the styled presenter needs mode: hugo; "+
+				"use present: bare to render HTML directly",
+				"path", c.relDir, "present", c.settings.Present)
+		}
 		return nil
 	}
 	b, err := emit.BareHTML(c.listing, c.prose)

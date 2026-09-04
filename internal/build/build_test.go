@@ -158,15 +158,6 @@ func TestRunRecursiveRuleEmitsTree(t *testing.T) {
 	}
 }
 
-func TestRunPropagatesProtectFailure(t *testing.T) {
-	root, out := tree(t), t.TempDir()
-	c := conf(nil)
-	c.Protect = []string{"bootstrap/**"}
-	if _, err := Run(c, root, out, obs.Discard()); err == nil {
-		t.Fatal("expected the build to fail when an output lands on a protected path")
-	}
-}
-
 func TestRunUnknownOutputIsAnError(t *testing.T) {
 	root, out := tree(t), t.TempDir()
 	c := conf(nil)

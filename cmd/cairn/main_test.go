@@ -56,9 +56,9 @@ func TestRunBuildMissingConfigExitsNonZero(t *testing.T) {
 
 func TestRunBuildFailedBuildExitsNonZero(t *testing.T) {
 	configPath, _ := fixture(t)
-	// A protect glob covering the output makes every write fail.
+	// An output format no emitter handles fails the build.
 	if err := os.WriteFile(configPath, []byte(
-		"version: 1\nroot: ./tree\nout: ./out\nprotect: [\"**\"]\n"), 0o644); err != nil {
+		"version: 1\nroot: ./tree\nout: ./out\ndefaults:\n  outputs: [pdf]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	var stderr strings.Builder

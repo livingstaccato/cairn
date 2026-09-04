@@ -43,6 +43,7 @@ type Writer struct {
 	root string
 	own  map[string]bool // paths this run may overwrite, from the previous run
 	made []string        // paths written by this run
+	prot []string        // paths a protect: glob kept this run from writing
 }
 
 // NewWriter loads the previous run's manifest, if any. A missing or unreadable
@@ -67,9 +68,17 @@ func NewWriter(cfg *config.Config, outRoot string) *Writer {
 }
 
 // Write places body at root/relPath, creating parents.
+//
+// A protect: glob skips the write and reports no error. The glob is the operator
+// declaring which paths another tool owns — apt's signed dists/, dnf's repodata/
+// — so refusing to write there is exactly what was asked for, and failing the
+// build over it would make protect: unusable for its only purpose. A protected
+// path is never recorded as written: claiming it would let a later run overwrite
+// the files protect: exists to shield, and Prune would delete them.
 func (w *Writer) Write(relPath string, body []byte) error {
 	if w.cfg.IsProtected(relPath) {
-		return fmt.Errorf("refusing to write %s: path is protected by a protect: glob", relPath)
+		w.prot = append(w.prot, relPath)
+		return nil
 	}
 
 	abs, err := containedPath(w.root, relPath)
@@ -135,6 +144,12 @@ func exists(p string) bool {
 // Written returns the paths this run produced.
 func (w *Writer) Written() []string { return w.made }
 
+// Protected lists the paths this run declined to write because a protect: glob
+// covered them. The caller reports the count: a skip is silent by design, and
+// without it an operator whose glob is wider than they meant sees no listing and
+// no reason why.
+func (w *Writer) Protected() []string { return w.prot }
+
 // Prune deletes output from the previous run that this run did not write, and
 // returns the paths it removed.
 //
@@ -198,8 +213,37 @@ func (w *Writer) pruneEmptyDirs(removed []string) {
 }
 
 // Save records this run's output so the next run knows what it may replace.
-func (w *Writer) Save() error {
-	b, err := json.Marshal(w.made)
+func (w *Writer) Save() error { return w.save(w.made) }
+
+// SavePartial records this run's output together with everything the previous
+// run claimed, for a build that died partway.
+//
+// The union matters. Saving only what a failed run managed to write would
+// disown every file an earlier successful run had created but this one never
+// reached, and the next build would refuse all of them as conflicts — a worse
+// wedge than saving nothing. Stale entries are not a problem: the next run that
+// completes prunes whatever it does not rewrite.
+func (w *Writer) SavePartial() error {
+	all := make([]string, 0, len(w.own)+len(w.made))
+	seen := make(map[string]bool, len(w.own)+len(w.made))
+	for _, p := range w.made {
+		if !seen[p] {
+			seen[p] = true
+			all = append(all, p)
+		}
+	}
+	prev := make([]string, 0, len(w.own))
+	for p := range w.own {
+		if !seen[p] {
+			prev = append(prev, p)
+		}
+	}
+	sort.Strings(prev) // map order would make the manifest churn between runs
+	return w.save(append(all, prev...))
+}
+
+func (w *Writer) save(paths []string) error {
+	b, err := json.Marshal(paths)
 	if err != nil {
 		return fmt.Errorf("marshal manifest: %w", err)
 	}

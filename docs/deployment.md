@@ -72,6 +72,18 @@ If you would rather avoid the copy entirely, use `present: bare` and `direct`
 mode. The bare listing is a real autoindex — no JavaScript, readable in `lynx` —
 which is what most of a mirror should be anyway.
 
+The two settings are not independent. The styled presenter *is* a Hugo template,
+so `direct` mode can only render `bare`. Asking for `outputs: [html]` in `direct`
+mode while `present:` is `styled` — which is the default — writes no HTML at all,
+and cairn says so once per run:
+
+```
+no HTML written: the styled presenter needs mode: hugo; use present: bare to render HTML directly
+```
+
+The machine formats are unaffected; `index.json`, `index.csv`, `index.txt` and
+`SHA256SUMS` are rendered in Go and do not depend on the presenter.
+
 ## What scales with a large mirror
 
 Measured with `make bench`, which builds one directory holding N entries — the
@@ -235,3 +247,47 @@ it did not create. Two consequences worth knowing:
 - **Two configs must not share one output root.** Each would prune the other's
   files, and there is no way to tell that apart from a directory that was
   legitimately removed.
+
+- **A build that dies partway is recoverable.** cairn records what it managed to
+  write before the error, alongside everything the previous run claimed. Without
+  that the partial output would belong to nobody and `on_conflict: error` would
+  refuse every later run until someone deleted the files by hand.
+
+## Beside a package repository
+
+This is the deployment cairn was built for: an APT or YUM mirror that already
+has an owner. `dists/` is signed, `repodata/repomd.xml` is authoritative, and
+both are verified by tools that did not ask for cairn's opinion. `protect:`
+names what belongs to them:
+
+```yaml
+protect:
+  - "dists/**"
+  - "repodata/**"
+```
+
+A protected path is skipped, not an error. The glob is you declaring which paths
+another tool owns, so refusing to write there is the whole point; failing the
+build over it would make `protect:` useless for its only job. cairn reports the
+count on every run, so a glob wider than you meant shows up as a directory with
+no listing and a number that explains it:
+
+```
+build complete directories=14 files=11 outputs=39 pruned=0 protected=23
+```
+
+Protected paths are never recorded as written, so a later run cannot overwrite
+them and pruning cannot delete them.
+
+What you get is one tree. `pool/` and `Packages/` are indexed, browsable, and
+carry `SHA256SUMS` that verifies where it sits:
+
+```
+$ cd pool/main/n/nginx && sha256sum -c SHA256SUMS
+nginx_1.24.0-1_amd64.deb: OK
+```
+
+`dists/` and `repodata/` are untouched — every byte of the signed metadata is
+what apt or dnf published — but they still appear in their parent's listing, so
+a browser can walk into them and a machine reading `index.json` can discover
+them. `apt-get update` and a human with a URL bar work against the same mirror.

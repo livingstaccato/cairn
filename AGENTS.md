@@ -71,6 +71,16 @@ test pass.
 - **`emit.Writer` is the only writer.** It checks path containment, `protect:`
   globs, and conflicts, and it records what cairn generated so a re-run may
   replace its own output and nothing else. Writing around it defeats all four.
+- **`protect:` skips, it does not fail.** The glob is the operator naming paths
+  another tool owns — apt's signed `dists/`, dnf's `repodata/`. Erroring made the
+  setting useless for its only purpose: a mirror could not be indexed at all. A
+  protected path is never recorded as written, so no later run can overwrite it
+  and `Prune` cannot delete it.
+- **Every exit from `build.Run` records ownership,** including the error path
+  (`SavePartial`). A build that dies after writing some output otherwise leaves
+  files nothing claims, and `on_conflict: error` then refuses every later run.
+  The partial save unions in the previous run's claims — saving only what a
+  failed run wrote would disown files it never reached.
 - **`os.Lstat`, not `os.Stat`,** when testing an output path — a symlink there
   is a conflict, not something to write through.
 - **CSV fields starting `= + - @` get an apostrophe.** Spreadsheets execute

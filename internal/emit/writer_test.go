@@ -122,20 +122,28 @@ func TestWriteCreatesFileAndParents(t *testing.T) {
 	}
 }
 
-func TestWriteRefusesProtectedPath(t *testing.T) {
+func TestWriteSkipsProtectedPath(t *testing.T) {
 	out := t.TempDir()
+	w := NewWriter(cfg(t, config.ConflictError), out)
 	for _, p := range []string{"repodata/repomd.xml", "dists/stable/Packages", "pool/Release"} {
-		err := NewWriter(cfg(t, config.ConflictError), out).Write(p, []byte("x"))
-		if err == nil {
-			t.Errorf("Write(%q) succeeded; protected paths must fail", p)
-			continue
-		}
-		if !strings.Contains(err.Error(), "protected") {
-			t.Errorf("Write(%q) error = %v, want it to name the protection", p, err)
+		// A protect: glob is the operator declaring intent, not reporting a
+		// fault. Skipping keeps a build over a package repo running; failing
+		// made protect: unusable for the only job it has.
+		if err := w.Write(p, []byte("x")); err != nil {
+			t.Errorf("Write(%q) = %v, want a silent skip", p, err)
 		}
 		if _, statErr := os.Stat(filepath.Join(out, p)); statErr == nil {
 			t.Errorf("Write(%q) wrote the file anyway", p)
 		}
+	}
+	// Skipped paths must not be claimed: ownership would let a later run
+	// overwrite the very files protect: exists to shield, and Prune would
+	// delete them.
+	if got := w.Written(); len(got) != 0 {
+		t.Errorf("Written() = %v, want nothing claimed for skipped writes", got)
+	}
+	if got := w.Protected(); len(got) != 3 {
+		t.Errorf("Protected() = %v, want all three recorded", got)
 	}
 }
 
@@ -364,5 +372,39 @@ func TestDigestPreview(t *testing.T) {
 	// Shorter than the preview: return it whole rather than an ellipsis on air.
 	if got := DigestPreview("abc"); got != "abc" {
 		t.Errorf("got %q, want the value unchanged", got)
+	}
+}
+
+func TestSavePartialKeepsPriorOwnership(t *testing.T) {
+	out := t.TempDir()
+	c := cfg(t, config.ConflictError)
+
+	// A run that completed, owning two paths.
+	first := NewWriter(c, out)
+	for _, p := range []string{"a/index.json", "b/index.json"} {
+		if err := first.Write(p, []byte("{}")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := first.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	// A run that died after rewriting only the first of them.
+	second := NewWriter(c, out)
+	if err := second.Write("a/index.json", []byte("{}")); err != nil {
+		t.Fatal(err)
+	}
+	if err := second.SavePartial(); err != nil {
+		t.Fatal(err)
+	}
+
+	// b/index.json must still be claimed. Dropping it would make the next run
+	// refuse a file cairn itself created.
+	third := NewWriter(c, out)
+	for _, p := range []string{"a/index.json", "b/index.json"} {
+		if err := third.Write(p, []byte("{}")); err != nil {
+			t.Errorf("Write(%q) after a partial save = %v, want the path still owned", p, err)
+		}
 	}
 }

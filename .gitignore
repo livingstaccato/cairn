@@ -38,3 +38,6 @@ node_modules/
 # precedence over core.excludesFile, so these negations put the fixtures back.
 !/exampleSite/tree/**
 !/testdata/**
+
+# Handoff notes stay local.
+.provide/

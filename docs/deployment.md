@@ -377,6 +377,31 @@ install-first.sh:
 Zero means unweighted rather than "weight zero", so weighting one entry does not
 silently reorder the directory around it.
 
+## A CDN that rewrites HTML breaks HTML checksums
+
+Measured on Cloudflare Pages, on the same file at three stages:
+
+```
+source          38b11e8e   58,979 bytes
+hugo public/    38b11e8e   58,979 bytes
+production      8631d212   60,131 bytes
+```
+
+Cloudflare injects its Pages Analytics beacon and a bot-detection script before
+`</body>`, so every HTML response is 1,152 bytes longer than the file cairn
+hashed. `SHA256SUMS` is right and the served bytes are not the served file.
+
+Non-HTML is untouched. PDFs, audio, archives and disk images fetched from the
+same deployment verify normally — which is the case that matters, because those
+are the artifacts anyone checksums. A mockup page is not.
+
+Two settings cause it, and they are separate: Pages Web Analytics is a project
+setting with no path scoping, and JavaScript Detections is a zone setting that a
+Configuration Rule can disable for one path prefix. Turning off only one leaves
+the other injecting. Weigh that against what it buys: on a mirror the binaries
+already verify, and trading site-wide analytics and a bot signal to checksum
+HTML is rarely worth it.
+
 ## Beside a package repository
 
 This is the deployment cairn was built for: an APT or YUM mirror that already

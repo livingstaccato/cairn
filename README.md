@@ -4,10 +4,8 @@ Static directory-index and artifact-repo generator. A Go binary and a Hugo
 module in one repo, so the data it emits and the templates that render it share
 a single version pin.
 
-> **Status: engine complete, Hugo layer not started.** `cairn build` works and
-> emits `index.json`, `index.csv`, `tree.json` and `SHA256SUMS`. The HTML
-> presenters and the Hugo component module are next, so `outputs: [html]` is
-> accepted and currently produces nothing.
+> **Status: working, unreleased.** The engine and the Hugo module are both in
+> place and covered end to end. No version is tagged yet.
 
 ## What it does
 
@@ -115,6 +113,12 @@ cd testdata/example/tree/bootstrap && sha256sum -c ../../out/bootstrap/SHA256SUM
 Builds are repeatable: cairn records what it generated in `.cairn-manifest.json`
 and will replace its own output on a later run, while still refusing to touch a
 file it did not create.
+
+## Documentation
+
+- [Hugo setup](docs/hugo-setup.md) — importing the module, output formats
+- [Search integration](docs/search-integration.md) — folding entries into a site's existing index
+- [Deployment](docs/deployment.md) — Cloudflare Pages, nginx, checksums, machine discovery
 
 ## License
 

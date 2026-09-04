@@ -14,6 +14,7 @@ path = [
   ".pre-commit-config.yaml",
   ".secrets.baseline",
   "README.md",
+  "docs/**",
   "AGENTS.md",
   ".actrc",
   "commitlint.config.cjs",

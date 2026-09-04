@@ -22,9 +22,95 @@ func cfg(t *testing.T, onConflict string) *config.Config {
 	}
 }
 
+func TestWriteOverwritesItsOwnOutput(t *testing.T) {
+	out := t.TempDir()
+	c := cfg(t, config.ConflictError)
+
+	w1 := NewWriter(c, out)
+	if err := w1.Write("bootstrap/index.json", []byte("first")); err != nil {
+		t.Fatal(err)
+	}
+	if err := w1.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	// A generator that cannot run twice is not finished.
+	w2 := NewWriter(c, out)
+	if err := w2.Write("bootstrap/index.json", []byte("second")); err != nil {
+		t.Fatalf("re-running must overwrite cairn's own output: %v", err)
+	}
+	got, _ := os.ReadFile(filepath.Join(out, "bootstrap/index.json"))
+	if string(got) != "second" {
+		t.Errorf("body = %q, want the second run's content", got)
+	}
+}
+
+func TestWriteStillRefusesForeignFileAfterAManifestExists(t *testing.T) {
+	out := t.TempDir()
+	c := cfg(t, config.ConflictError)
+
+	w1 := NewWriter(c, out)
+	if err := w1.Write("bootstrap/index.json", []byte("ours")); err != nil {
+		t.Fatal(err)
+	}
+	if err := w1.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	foreign := filepath.Join(out, "bootstrap", "ubuntu.iso")
+	if err := os.WriteFile(foreign, []byte("mirrored artifact"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := NewWriter(c, out).Write("bootstrap/ubuntu.iso", []byte("clobber")); err == nil {
+		t.Error("owning one path must not grant permission to overwrite another")
+	}
+	got, _ := os.ReadFile(foreign)
+	if string(got) != "mirrored artifact" {
+		t.Error("a file cairn did not create was overwritten")
+	}
+}
+
+func TestWrittenAndSaveRoundTrip(t *testing.T) {
+	out := t.TempDir()
+	w := NewWriter(cfg(t, config.ConflictError), out)
+	if err := w.Write("a/index.json", []byte("x")); err != nil {
+		t.Fatal(err)
+	}
+	if len(w.Written()) != 1 || w.Written()[0] != "a/index.json" {
+		t.Errorf("Written = %v", w.Written())
+	}
+	if err := w.Save(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(out, ManifestFile)); err != nil {
+		t.Errorf("manifest not written: %v", err)
+	}
+}
+
+func TestSaveUnwritableRootErrors(t *testing.T) {
+	out := t.TempDir()
+	blocked := filepath.Join(out, "blocked")
+	if err := os.WriteFile(blocked, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := NewWriter(cfg(t, config.ConflictError), blocked).Save(); err == nil {
+		t.Fatal("expected an error saving into a path that is a file")
+	}
+}
+
+func TestCorruptManifestIsNotFatal(t *testing.T) {
+	out := t.TempDir()
+	if err := os.WriteFile(filepath.Join(out, ManifestFile), []byte("{not json"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := NewWriter(cfg(t, config.ConflictError), out).Write("index.json", []byte("x")); err != nil {
+		t.Fatalf("a corrupt manifest must be discarded, not fatal: %v", err)
+	}
+}
+
 func TestWriteCreatesFileAndParents(t *testing.T) {
 	out := t.TempDir()
-	if err := Write(cfg(t, config.ConflictError), out, "bootstrap/linux/index.json", []byte(`{}`)); err != nil {
+	if err := NewWriter(cfg(t, config.ConflictError), out).Write("bootstrap/linux/index.json", []byte(`{}`)); err != nil {
 		t.Fatal(err)
 	}
 	got, err := os.ReadFile(filepath.Join(out, "bootstrap/linux/index.json"))
@@ -39,7 +125,7 @@ func TestWriteCreatesFileAndParents(t *testing.T) {
 func TestWriteRefusesProtectedPath(t *testing.T) {
 	out := t.TempDir()
 	for _, p := range []string{"repodata/repomd.xml", "dists/stable/Packages", "pool/Release"} {
-		err := Write(cfg(t, config.ConflictError), out, p, []byte("x"))
+		err := NewWriter(cfg(t, config.ConflictError), out).Write(p, []byte("x"))
 		if err == nil {
 			t.Errorf("Write(%q) succeeded; protected paths must fail", p)
 			continue
@@ -56,7 +142,7 @@ func TestWriteRefusesProtectedPath(t *testing.T) {
 func TestWriteRefusesPathEscape(t *testing.T) {
 	out := t.TempDir()
 	for _, p := range []string{"../escaped.json", "a/../../escaped.json"} {
-		if err := Write(cfg(t, config.ConflictError), out, p, []byte("x")); err == nil {
+		if err := NewWriter(cfg(t, config.ConflictError), out).Write(p, []byte("x")); err == nil {
 			t.Errorf("Write(%q) succeeded; a path escaping the output root must fail", p)
 		}
 	}
@@ -75,7 +161,7 @@ func TestWriteTreatsSymlinkAsConflict(t *testing.T) {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
 
-	if err := Write(cfg(t, config.ConflictError), out, "index.json", []byte("generated")); err == nil {
+	if err := NewWriter(cfg(t, config.ConflictError), out).Write("index.json", []byte("generated")); err == nil {
 		t.Error("a symlink at the output path must be a conflict, not a write-through")
 	}
 	got, _ := os.ReadFile(victim)
@@ -91,7 +177,7 @@ func TestWriteDanglingSymlinkIsAConflict(t *testing.T) {
 	}
 	// os.Stat would report ENOENT here and let the write through; Lstat sees
 	// the link itself.
-	if err := Write(cfg(t, config.ConflictError), out, "index.json", []byte("generated")); err == nil {
+	if err := NewWriter(cfg(t, config.ConflictError), out).Write("index.json", []byte("generated")); err == nil {
 		t.Error("a dangling symlink at the output path must still be a conflict")
 	}
 }
@@ -106,7 +192,7 @@ func TestWriteConflictError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := Write(cfg(t, config.ConflictError), out, "bootstrap/index.html", []byte("generated")); err == nil {
+	if err := NewWriter(cfg(t, config.ConflictError), out).Write("bootstrap/index.html", []byte("generated")); err == nil {
 		t.Fatal("expected a conflict error")
 	}
 	got, _ := os.ReadFile(target)
@@ -125,7 +211,7 @@ func TestWriteConflictSkip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := Write(cfg(t, config.ConflictSkip), out, "bootstrap/index.html", []byte("generated")); err != nil {
+	if err := NewWriter(cfg(t, config.ConflictSkip), out).Write("bootstrap/index.html", []byte("generated")); err != nil {
 		t.Fatalf("on_conflict: skip must not error: %v", err)
 	}
 	got, _ := os.ReadFile(target)
@@ -140,7 +226,7 @@ func TestWriteUnwritableParentErrors(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(out, "bootstrap"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := Write(cfg(t, config.ConflictError), out, "bootstrap/index.json", []byte("x")); err == nil {
+	if err := NewWriter(cfg(t, config.ConflictError), out).Write("bootstrap/index.json", []byte("x")); err == nil {
 		t.Fatal("expected an error when a parent path is a file")
 	}
 }

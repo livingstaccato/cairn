@@ -40,6 +40,7 @@ type runner struct {
 	out    string
 	log    *slog.Logger
 	cache  *hash.Cache
+	writer *emit.Writer
 	now    time.Time
 	result *Result
 }
@@ -55,6 +56,7 @@ func Run(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Result,
 		out:    outDir,
 		log:    log,
 		cache:  hash.NewCache(filepath.Join(outDir, hash.CacheFile)),
+		writer: emit.NewWriter(cfg, outDir),
 		now:    time.Now().UTC(),
 		result: &Result{},
 	}
@@ -66,6 +68,13 @@ func Run(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Result,
 		r.log.Warn("could not save the hash cache; the next run re-hashes",
 			"path", hash.CacheFile, "err", err)
 	}
+	// The manifest records what this run owns. Without it the next run cannot
+	// tell its own output from content that was already there, and refuses to
+	// overwrite either.
+	if err := r.writer.Save(); err != nil {
+		return r.result, err
+	}
+	r.result.Written = r.writer.Written()
 	return r.result, nil
 }
 
@@ -234,11 +243,7 @@ func (r *runner) write(relDir, name string, body []byte) error {
 	if relDir != "." {
 		target = path.Join(relDir, name)
 	}
-	if err := emit.Write(r.cfg, r.out, target, body); err != nil {
-		return err
-	}
-	r.result.Written = append(r.result.Written, target)
-	return nil
+	return r.writer.Write(target, body)
 }
 
 // warn logs each walk warning.

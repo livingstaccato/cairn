@@ -68,8 +68,9 @@ test pass.
 - **Zero external runtime assets** in generated output. No CDN, no web fonts,
   no icon font. Icons are an inline SVG sprite. It has to work airgapped.
 - **`bare` presenter emits no `<script>`** and renders in `lynx`.
-- **`emit.Write` is the only writer.** It checks path containment, `protect:`
-  globs, and conflicts. Writing around it defeats all three.
+- **`emit.Writer` is the only writer.** It checks path containment, `protect:`
+  globs, and conflicts, and it records what cairn generated so a re-run may
+  replace its own output and nothing else. Writing around it defeats all four.
 - **`os.Lstat`, not `os.Stat`,** when testing an output path — a symlink there
   is a conflict, not something to write through.
 - **CSV fields starting `= + - @` get an apostrophe.** Spreadsheets execute

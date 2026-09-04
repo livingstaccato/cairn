@@ -9,8 +9,9 @@ coverage.html
 /exampleSite/resources/
 /testdata/example/out/
 
-# Hash cache
+# Per-run state written into the output tree
 .cairn-cache.json
+.cairn-manifest.json
 
 # Tooling
 node_modules/

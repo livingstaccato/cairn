@@ -1,0 +1,22 @@
+version: 1
+root: ./tree
+out: ./out
+index_basename: index
+tree_max_entries: 50000
+on_conflict: error
+
+protect:
+  - "dists/**"
+  - "repodata/**"
+  - "**/Release"
+
+defaults:
+  present: styled
+  outputs: [json, csv]
+
+rules:
+  - match: "bootstrap/**"
+    present: bare
+    checksum: sha256
+    recursive: true
+    outputs: [json, csv, sums]

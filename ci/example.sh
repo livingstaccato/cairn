@@ -10,6 +10,14 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
+
+# A filename holding < > and " cannot exist in the repository: git on Windows
+# refuses to check such a path out, which fails the whole matrix leg before any
+# test runs. It is created here instead, so the escaping assertions below still
+# have something hostile to work on.
+hostile='exampleSite/tree/bootstrap/report<&>"quoted".txt'
+printf 'quarterly numbers\n' > "$hostile"
+trap 'rm -f "$hostile"' EXIT
 repo="$PWD"
 
 rm -rf exampleSite/content exampleSite/public

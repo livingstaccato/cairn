@@ -1,23 +1,27 @@
-{{- /* This page in another shape. Takes the cairn params.
+{{- /* A format switcher, not a list of links.
 
-       Labelled, because four bare filenames sitting near a directory listing
-       read as four more files. "This page as" costs three words and removes
-       the ambiguity entirely.
+       It names the format you are reading and opens onto the others, so it
+       explains itself without a caption. The previous version was a bare row of
+       filenames beside a directory listing, which read as more files, and the
+       caption added to fix that was three words apologising for the control.
 
-       SHA256SUMS is deliberately absent: it is not a rendering of this page,
-       it is the file holding the digest column, so the column header links to
-       it instead. */ -}}
+       <details>, not <select>: a select needs JavaScript to navigate, and this
+       has to work with scripting off. */ -}}
 {{- $names := dict "json" "index.json" "csv" "index.csv" "txt" "index.txt" -}}
 {{- $blurbs := dict
-    "json" "One record per entry, for a provisioning script"
-    "csv"  "The same rows as columns"
-    "txt"  "One name per line, for xargs"
+    "json" "one record per entry"
+    "csv"  "rows as columns"
+    "txt"  "one name per line"
 -}}
 {{- $shown := slice -}}
 {{- range .formats }}{{ if ne . "sums" }}{{ $shown = $shown | append . }}{{ end }}{{ end -}}
 {{- with $shown }}
-<nav class="cairn-formats" aria-label="Other formats">
-  <span class="cairn-formats-label">This page as</span>
-  {{ range . }}<a href="{{ index $names . }}" title="{{ index $blurbs . }}">{{ . }}</a>{{ end }}
-</nav>
+<details class="cairn-formats">
+  <summary>index.html</summary>
+  <ul>
+    {{ range . }}
+    <li><a href="{{ index $names . }}"><code>{{ index $names . }}</code> <span>{{ index $blurbs . }}</span></a></li>
+    {{ end }}
+  </ul>
+</details>
 {{- end }}

@@ -16,10 +16,13 @@ rm -rf exampleSite/content exampleSite/public
 go run ./cmd/cairn build -config exampleSite/cairn.yaml
 (cd exampleSite && hugo --quiet)
 
-# Overlay the artifact tree onto the published site, which is what the web
-# server does in production: index pages and the bytes they describe share one
-# URL prefix. Without this every artifact link in the example 404s and the
-# listing looks broken.
+# Overlay the artifact tree onto the published site so one http.server can
+# serve both, and so the link check below sees what a visitor sees.
+#
+# This is a DEMO CONVENIENCE, not the deployment. Hugo never copies artifacts —
+# it only ever sees the _index.md files cairn wrote — and in production the web
+# server serves the artifact tree from its own root at the same URL prefix. See
+# docs/deployment.md. Copying a real mirror would defeat the point.
 # cp rather than rsync: rsync is absent from the CI runner image.
 cp -R exampleSite/tree/. exampleSite/public/
 

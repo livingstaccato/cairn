@@ -46,74 +46,80 @@
 /* ── Masthead ─────────────────────────────────────────────────────────────
    The path is the title. Nothing else deserves the top of the page. */
 
-.cairn-head {
+/* ── Masthead ─────────────────────────────────────────────────────────────
+   The path owns its own line. Pairing a 17px mono path with an 11px tracked
+   label on one baseline was alignment by accident — the two elements that share
+   a line now are the two that are the same size. */
+
+.cairn-head { margin-bottom: 1.75rem; }
+
+.cairn-head-sub {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.75rem 2rem;
-  margin-bottom: 1.75rem;
+  gap: 0.5rem 1.5rem;
+  margin-top: 0.5rem;
 }
 
-.cairn-head-path { min-width: 0; }
-
-.cairn-head-meta {
-  margin: 0.5rem 0 0;
+.cairn-head-count {
+  margin: 0;
   font-size: 0.6875rem;
   text-transform: uppercase;
   letter-spacing: 0.09em;
   color: var(--c-slate);
 }
 
-.cairn-head-meta .sep { color: var(--c-rule); }
+.cairn-head-count .sep { color: var(--c-rule); }
 
-/* "This page as" is doing real work: four bare filenames beside a directory
-   listing read as four more files. */
-.cairn-formats {
+/* A switcher that names the format you are reading and opens onto the others.
+   It explains itself, so it needs no caption. */
+.cairn-formats { position: relative; font-family: var(--c-mono); font-size: 0.75rem; }
+
+.cairn-formats > summary {
+  cursor: pointer;
+  padding: 0.15rem 0.5rem;
+  color: var(--c-slate);
+  background: var(--c-raise);
+  border: 1px solid var(--c-rule);
+  border-radius: 3px;
+  list-style: none;
+  white-space: nowrap;
+}
+
+.cairn-formats > summary::-webkit-details-marker { display: none; }
+.cairn-formats > summary::after { content: " \25BE"; color: var(--c-rule); }
+.cairn-formats[open] > summary::after { content: " \25B4"; }
+.cairn-formats > summary:hover { color: var(--c-ink); border-color: var(--c-slate); }
+.cairn-formats > summary:focus-visible { outline: 2px solid var(--c-signal); outline-offset: 1px; }
+
+.cairn-formats > ul {
+  position: absolute;
+  right: 0;
+  z-index: 2;
+  min-width: 16rem;
+  margin: 0.25rem 0 0;
+  padding: 0.25rem;
+  list-style: none;
+  background: var(--c-paper);
+  border: 1px solid var(--c-rule);
+  border-radius: 3px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
+}
+
+.cairn-formats > ul a {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.6rem;
-  font-family: var(--c-mono);
-  font-size: 0.75rem;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.3rem 0.5rem;
+  color: var(--c-ink);
+  text-decoration: none;
+  border-radius: 2px;
 }
 
-.cairn-formats-label {
-  font-family: var(--c-sans);
-  font-size: 0.6875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  color: var(--c-slate);
-}
-
-.cairn-formats a { color: var(--c-slate); text-decoration: none; }
-.cairn-formats a:hover { color: var(--c-signal); text-decoration: underline; }
-
-.cairn-breadcrumb {
-  font-family: var(--c-mono);
-  font-size: 1.0625rem;
-  letter-spacing: -0.01em;
-  line-height: 1.4;
-  word-break: break-all;
-}
-
-.cairn-breadcrumb a { color: var(--c-slate); text-decoration: none; }
-.cairn-breadcrumb a:hover { color: var(--c-ink); text-decoration: underline; }
-.cairn-breadcrumb .sep { color: var(--c-rule); margin: 0 0.15rem; }
-.cairn-breadcrumb .current { color: var(--c-ink); font-weight: 600; }
-
-.cairn-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.25rem;
-  margin-top: 0.6rem;
-  font-size: 0.6875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  color: var(--c-slate);
-}
-
-.cairn-meta-item { display: inline-flex; align-items: center; gap: 0.4rem; }
+.cairn-formats > ul a:hover { background: var(--c-raise); }
+.cairn-formats > ul a:focus-visible { outline: 2px solid var(--c-signal); outline-offset: -2px; }
+.cairn-formats > ul span { font-family: var(--c-sans); color: var(--c-slate); }
 
 .cairn-authored {
   margin: 0 0 1.75rem;
@@ -236,6 +242,14 @@
   font-family: var(--c-mono);
   font-size: 0.875rem;
   overflow-wrap: anywhere;
+}
+
+.cairn-item-count {
+  display: block;
+  margin-top: 0.15rem;
+  font-family: var(--c-sans);
+  font-size: 0.75rem;
+  color: var(--c-slate);
 }
 
 .cairn-item-summary {

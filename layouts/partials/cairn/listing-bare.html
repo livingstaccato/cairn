@@ -8,11 +8,11 @@
 <div class="cairn cairn--bare" data-cairn-present="bare">
 
   <header class="cairn-head">
-    <div class="cairn-head-path">
-      {{ partial "cairn/breadcrumb.html" $c.path }}
-      <p class="cairn-head-meta">{{ $c.count }} item{{ if ne $c.count 1 }}s{{ end }}</p>
+    {{ partial "cairn/breadcrumb.html" $c.path }}
+    <div class="cairn-head-sub">
+      <p class="cairn-head-count">{{ $c.count }} item{{ if ne $c.count 1 }}s{{ end }}</p>
+      {{ partial "cairn/formats.html" $c }}
     </div>
-    {{ partial "cairn/formats.html" $c }}
   </header>
 
   {{ if or .Content $c.source_text }}
@@ -35,7 +35,7 @@
         <th class="modified">Modified</th>
         <th class="sum">
           {{- if in $c.formats "sums" -}}
-          <a href="SHA256SUMS" title="Every digest below, as a file sha256sum -c can read">SHA-256</a>
+          <a href="SHA256SUMS" title="Every digest below, in one file for sha256sum -c">SHA-256</a>
           {{- else -}}SHA-256{{- end -}}
         </th>
       </tr>
@@ -45,7 +45,7 @@
       {{ range $c.entries }}
       <tr>
         <td><a href="{{ .path }}">{{ .name }}{{ if .is_dir }}/{{ end }}</a>{{ with .title }} — {{ . }}{{ end }}</td>
-        <td class="size">{{ if .is_dir }}-{{ else }}{{ partial "cairn/size.html" .size }}{{ end }}</td>
+        <td class="size">{{ if .is_dir }}—{{ else }}{{ partial "cairn/size.html" .size }}{{ end }}</td>
         <td class="modified">{{ dateFormat "2006-01-02" .modified }}</td>
         <td class="sum">{{ with .sha256 }}{{ substr . 0 12 }}…{{ end }}</td>
       </tr>

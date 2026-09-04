@@ -1,5 +1,28 @@
 # Deploying a cairn site
 
+## Hugo never copies your artifacts
+
+Worth stating plainly, because it is the first thing anyone asks. In `hugo` mode
+cairn writes one small `_index.md` per directory, plus `index.txt` and
+`SHA256SUMS`, into the site's `content/`. Hugo sees nothing else — not the
+images, not the packages. The example site's `content/` is 68 KB for a tree
+Hugo never reads.
+
+There is no post-build sync step. The web server serves the artifacts from where
+they already are.
+
+What does scale with a large mirror:
+
+| Cost | Scales with | Bounded by |
+|---|---|---|
+| Hashing | total bytes, first run only | `.cairn-cache.json`, keyed on `(path, size, mtime)` — later runs read nothing unchanged |
+| `_index.md` size | entries *per directory*, since the listing rides in frontmatter | nothing yet; a directory with tens of thousands of files produces one large YAML document for Hugo to parse |
+| `tree.json` | descendants under a `recursive: true` rule | `tree_max_entries`, which errors rather than truncating |
+| Hugo build | number of directories, not bytes | — |
+
+`direct` mode has no frontmatter ceiling at all: cairn writes `index.json`
+itself and never hands the listing to Hugo.
+
 ## Where the bytes live
 
 Artifacts stay **outside** Hugo. cairn walks a real tree, emits only index pages,

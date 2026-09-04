@@ -18,14 +18,14 @@
 <div class="cairn cairn--styled" data-cairn-present="styled">
 
   <header class="cairn-head">
-    <div class="cairn-head-path">
-      {{ partial "cairn/breadcrumb.html" $c.path }}
-      <p class="cairn-head-meta">
+    {{ partial "cairn/breadcrumb.html" $c.path }}
+    <div class="cairn-head-sub">
+      <p class="cairn-head-count">
         {{ $c.count }} item{{ if ne $c.count 1 }}s{{ end }}
-        {{ with $latest }}<span class="sep">·</span> updated {{ dateFormat "2006-01-02" . }}{{ end }}
+        {{ with $latest }}<span class="sep">·</span> newest {{ dateFormat "2006-01-02" . }}{{ end }}
       </p>
+      {{ partial "cairn/formats.html" $c }}
     </div>
-    {{ partial "cairn/formats.html" $c }}
   </header>
 
   {{ if or .Content $c.source_text }}
@@ -41,7 +41,7 @@
   {{ end }}
 
   <div class="cairn-toolbar" hidden data-cairn-toolbar>
-    <input class="cairn-filter" type="search" placeholder="Filter…" aria-label="Filter entries" data-cairn-filter>
+    <input class="cairn-filter" type="search" placeholder="Filter by name" aria-label="Filter entries by name" data-cairn-filter>
   </div>
 
   <div class="cairn-listing">
@@ -52,7 +52,7 @@
       <span class="col-date" data-sort="modified" role="columnheader" tabindex="0">Modified</span>
       <span class="col-sum" role="columnheader">
         {{- if $hasSums -}}
-        <a href="SHA256SUMS" title="Every digest below, as a file sha256sum -c can read">SHA-256</a>
+        <a href="SHA256SUMS" title="Every digest below, in one file for sha256sum -c">SHA-256</a>
         {{- else -}}SHA-256{{- end -}}
       </span>
     </div>
@@ -68,11 +68,10 @@
           {{ partial "cairn/icon.html" .kind }}
           <span class="cairn-item-name">
             {{ .name }}{{ if .is_dir }}/{{ end }}
+            {{ if .is_dir }}<small class="cairn-item-count">{{ .count }} item{{ if ne .count 1 }}s{{ end }}</small>{{ end }}
             {{ with .summary }}<small class="cairn-item-summary">{{ . }}</small>{{ end }}
           </span>
-          <span class="cairn-item-meta">
-            {{ if .is_dir }}{{ .count }} item{{ if ne .count 1 }}s{{ end }}{{ else }}{{ partial "cairn/size.html" .size }}{{ end }}
-          </span>
+          <span class="cairn-item-meta">{{ if .is_dir }}—{{ else }}{{ partial "cairn/size.html" .size }}{{ end }}</span>
           <span class="cairn-item-date">{{ dateFormat "2006-01-02" .modified }}</span>
           {{ partial "cairn/digest.html" (.sha256 | default "") }}
         </a>

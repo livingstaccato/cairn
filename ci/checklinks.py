@@ -7,10 +7,12 @@ tree *after* the artifact overlay, so it checks what a visitor actually gets
 rather than what Hugo alone produced.
 """
 
+import html as htmllib
 import os
 import pathlib
 import re
 import sys
+import urllib.parse
 
 EXTERNAL = ("http://", "https://", "#", "mailto:")
 
@@ -23,6 +25,10 @@ def main(root_arg: str) -> int:
         for href in re.findall(r'href="([^"]+)"', html):
             if href.startswith(EXTERNAL):
                 continue
+            # An href is HTML-escaped and URL-escaped; the filesystem is
+            # neither. A filename holding & or a space resolves fine in a
+            # browser and looked broken here until both were undone.
+            href = urllib.parse.unquote(htmllib.unescape(href))
             base = root / href.lstrip("/") if href.startswith("/") else page.parent / href
             target = pathlib.Path(os.path.normpath(base))
             if not (target.exists() or (target / "index.html").exists()):

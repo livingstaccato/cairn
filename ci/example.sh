@@ -101,6 +101,17 @@ if grep -q 'cairn-truncated' "$pub/bootstrap/index.html"; then
   echo "FAIL: an uncapped page carried a truncation notice"; fail=1
 fi
 
+# A filename is attacker-influenced on a mirror, and the templates interpolate
+# it into markup and into an href. Both have to escape it: the raw form
+# appearing anywhere means one of them let it through.
+raw='report<&>"quoted".txt'
+if grep -qF "$raw" "$pub/bootstrap/index.html"; then
+  echo "FAIL: a hostile filename reached the page unescaped"; fail=1
+fi
+if ! grep -qF 'report&lt;&amp;&gt;&#34;quoted&#34;.txt' "$pub/bootstrap/index.html"; then
+  echo "FAIL: the escaped filename is not on the page at all"; fail=1
+fi
+
 # Nothing may reach the network at render time.
 if grep -rniE 'fontawesome|fa-solid|cdnjs|googleapis|//cdn\.' "$pub/" >/dev/null; then
   echo "FAIL: external asset reference in output"; fail=1

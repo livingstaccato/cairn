@@ -291,6 +291,25 @@ it did not create. Two consequences worth knowing:
   that the partial output would belong to nobody and `on_conflict: error` would
   refuse every later run until someone deleted the files by hand.
 
+## When the indexed tree is not the web root
+
+`Entry.path` is rooted at cairn's `root:`. That is the site root only when the
+two coincide, and on a site that indexes a subtree they do not:
+
+```yaml
+root: ./static/_odds     # where the files sit
+base_path: /_odds        # where the site serves them
+```
+
+Without `base_path` a file the site serves at `/_odds/mockups/x.html` is
+published in `index.json` as `/mockups/x.html`, so every link a consumer renders
+from it is a 404 — and nothing says so, because the JSON is internally
+consistent. Set it whenever `root:` is not what the web server treats as `/`.
+
+It applies to every producer and to the listing's own path, so breadcrumbs and
+entries agree. An authored `manifest` path that is already a full URL is left
+alone: it names somewhere else on purpose.
+
 ## Underscore directories
 
 `hidden:` takes three values, because two different conventions look alike:

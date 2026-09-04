@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
 	"gopkg.in/yaml.v3"
@@ -46,6 +47,7 @@ type Config struct {
 	Version        int      `yaml:"version"`
 	Mode           string   `yaml:"mode"`
 	Root           string   `yaml:"root"`
+	BasePath       string   `yaml:"base_path"`
 	Out            string   `yaml:"out"`
 	IndexBasename  string   `yaml:"index_basename"`
 	TreeMaxEntries int      `yaml:"tree_max_entries"`
@@ -70,6 +72,7 @@ func Load(p string) (*Config, error) {
 		return nil, fmt.Errorf("parse config %s: %w", p, err)
 	}
 	c.applyPolicyDefaults()
+	c.normalizeBasePath()
 	if err := c.validate(p); err != nil {
 		return nil, err
 	}
@@ -77,6 +80,18 @@ func Load(p string) (*Config, error) {
 }
 
 // applyPolicyDefaults fills the top-level policy fields a config may omit.
+// normalizeBasePath makes base_path a clean prefix: leading slash, no trailing
+// one, empty when unset. Doing it once here means every path cairn emits can
+// concatenate without re-deciding what shape the value was written in.
+func (c *Config) normalizeBasePath() {
+	p := strings.Trim(c.BasePath, "/")
+	if p == "" {
+		c.BasePath = ""
+		return
+	}
+	c.BasePath = "/" + p
+}
+
 func (c *Config) applyPolicyDefaults() {
 	if c.IndexBasename == "" {
 		c.IndexBasename = DefaultIndexBasename

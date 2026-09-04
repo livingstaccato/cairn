@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -276,7 +277,38 @@ func (r *runner) listing(relDir string, entries []model.Entry) model.Listing {
 	if relDir == "." {
 		p = "/"
 	}
-	return model.Listing{Path: p, Generated: r.now, Count: len(entries), Entries: entries}
+	p = strings.TrimSuffix(r.cfg.BasePath+p, "/")
+	if p == "" {
+		p = "/"
+	}
+	return model.Listing{
+		Path: p, Generated: r.now, Count: len(entries),
+		Entries: r.rebase(entries),
+	}
+}
+
+// rebase moves every entry path under base_path.
+//
+// Entry.Path is rooted at cairn's root, which is only the site root when the
+// two happen to coincide. A tree indexed from static/_odds and served at /_odds
+// emitted /mockups/x.html for a file the site serves at /_odds/mockups/x.html,
+// so every link was a fresh 404 and nothing in cairn mentioned it. This is the
+// one funnel all three producers pass through.
+//
+// An authored manifest path that is already a full URL is left alone: it names
+// somewhere else entirely, which is what the manifest source is for.
+func (r *runner) rebase(entries []model.Entry) []model.Entry {
+	if r.cfg.BasePath == "" {
+		return entries
+	}
+	out := make([]model.Entry, len(entries))
+	copy(out, entries)
+	for i := range out {
+		if strings.HasPrefix(out[i].Path, "/") {
+			out[i].Path = r.cfg.BasePath + out[i].Path
+		}
+	}
+	return out
 }
 
 // emitCtx is one directory's rendering job, bundled so the format handlers

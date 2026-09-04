@@ -225,3 +225,21 @@ func TestValidateRejectsUnknownHidden(t *testing.T) {
 		t.Errorf("error = %v, want it to name the valid values", err)
 	}
 }
+
+func TestNormalizeBasePath(t *testing.T) {
+	cases := map[string]string{
+		"":         "",
+		"/":        "",
+		"_odds":    "/_odds",
+		"/_odds":   "/_odds",
+		"/_odds/":  "/_odds",
+		"_odds/a/": "/_odds/a",
+	}
+	for in, want := range cases {
+		c := &Config{BasePath: in}
+		c.normalizeBasePath()
+		if c.BasePath != want {
+			t.Errorf("normalizeBasePath(%q) = %q, want %q", in, c.BasePath, want)
+		}
+	}
+}

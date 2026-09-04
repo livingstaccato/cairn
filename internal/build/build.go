@@ -328,8 +328,7 @@ func (r *runner) emitFor(relDir, basename string, l model.Listing, s config.Sett
 	return nil
 }
 
-// emitHugo writes the branch bundle Hugo renders from. A recursive listing does
-// not get its own page: Hugo produces tree.json from the same frontmatter.
+// emitHugo writes the branch bundle Hugo renders from.
 //
 // Only the HTML is Hugo's. Every other output is written here, into the page's
 // own bundle, and Hugo publishes a branch-bundle resource verbatim — so
@@ -345,11 +344,28 @@ func (r *runner) emitFor(relDir, basename string, l model.Listing, s config.Sett
 // index.json is written whether or not it was requested: the page reads its
 // entries from it.
 func (r *runner) emitHugo(c emitCtx) error {
+	// A recursive listing is data, not a page: one fetch of tree.json instead of
+	// a walk. It gets resources and no _index.md, because a directory holds one
+	// page and that page is the directory's own listing.
+	//
+	// This used to return nil here, so recursive: true wrote nothing whatever in
+	// hugo mode. The comment said Hugo rendered tree.json from the frontmatter,
+	// which was true until the entries moved out of it into a resource.
 	if c.basename != r.cfg.IndexBasename {
-		return nil
+		if err := r.emitJSON(c); err != nil {
+			return err
+		}
+		return r.emitResources(c)
 	}
-	b, err := emit.HugoContent(c.listing, c.prose, c.settings.Present,
-		c.source, c.sourceText, machineFormats(c.settings, c.listing))
+	b, err := emit.HugoContent(emit.HugoPage{
+		Listing:    c.listing,
+		Prose:      c.prose,
+		Present:    c.settings.Present,
+		Source:     c.source,
+		SourceText: c.sourceText,
+		Formats:    machineFormats(c.settings, c.listing),
+		Recursive:  c.settings.Recursive,
+	})
 	if err != nil {
 		return err
 	}

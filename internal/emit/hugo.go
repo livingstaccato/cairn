@@ -50,6 +50,25 @@ type cairnParam struct {
 	Formats    []string `yaml:"formats,omitempty"`
 	Generated  string   `yaml:"generated"`
 	Count      int      `yaml:"count"`
+	Recursive  bool     `yaml:"recursive,omitempty"`
+}
+
+// HugoPage is everything a directory's page needs to know about itself.
+//
+// A struct rather than a parameter list: five of these are strings, and a call
+// site passing five positional strings is one transposition away from a bug no
+// compiler catches.
+type HugoPage struct {
+	Listing    model.Listing
+	Prose      string
+	Present    string
+	Source     string
+	SourceText string
+	Formats    []string
+	// Recursive tells the template this directory also publishes tree.json, so
+	// the format switcher can offer it. Without it the recursive listing is
+	// written and nothing ever links to it.
+	Recursive bool
 }
 
 // HugoContent renders one directory as a Hugo branch-bundle _index.md.
@@ -59,18 +78,20 @@ type cairnParam struct {
 //
 // Hugo renders this into index.html; every other output is written beside it as
 // a bundle resource and published verbatim, so nothing is produced twice.
-func HugoContent(l model.Listing, prose, present, source, sourceText string, formats []string) ([]byte, error) {
+func HugoContent(p HugoPage) ([]byte, error) {
+	l := p.Listing
 	fm := hugoFrontmatter{
 		Title:  titleFor(l.Path),
 		Layout: HugoLayout,
 		Cairn: cairnParam{
-			Present:    present,
+			Present:    p.Present,
 			Path:       l.Path,
-			Source:     source,
-			Formats:    formats,
-			SourceText: sourceText,
+			Source:     p.Source,
+			Formats:    p.Formats,
+			SourceText: p.SourceText,
 			Generated:  l.Generated.Format(time.RFC3339),
 			Count:      l.Count,
+			Recursive:  p.Recursive,
 		},
 	}
 
@@ -85,7 +106,7 @@ func HugoContent(l model.Listing, prose, present, source, sourceText string, for
 		return nil, fmt.Errorf("close frontmatter encoder for %s: %w", l.Path, err)
 	}
 	buf.WriteString("---\n")
-	buf.WriteString(prose)
+	buf.WriteString(p.Prose)
 	return buf.Bytes(), nil
 }
 

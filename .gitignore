@@ -29,3 +29,12 @@ node_modules/
 
 # act artifacts
 /.act-actions/
+
+# The example tree is a fixture, and a global gitignore excluding *.deb, *.rpm
+# and archive extensions is normal on a developer's machine — which silently
+# kept the package pool out of the repo entirely. CI then ran the end-to-end
+# example against an empty pool, so the bare presenter over a package
+# repository was proved against nothing. A repository .gitignore takes
+# precedence over core.excludesFile, so these negations put the fixtures back.
+!/exampleSite/tree/**
+!/testdata/**

@@ -3,10 +3,10 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sortRows, filterRows, applyDepth } from './cairn.js';
+import { sortRows, filterRows } from './cairn.js';
 
-function row(name, size, modified, depth = 1) {
-  return { dataset: { name, size: String(size), modified, depth: String(depth) }, hidden: false };
+function row(name, size, modified) {
+  return { dataset: { name, size: String(size), modified }, hidden: false };
 }
 
 test('sortRows by name ascending', () => {
@@ -48,10 +48,4 @@ test('empty filter shows everything', () => {
   filterRows(rows, 'zzz');
   filterRows(rows, '');
   assert.ok(rows.every((r) => r.hidden === false));
-});
-
-test('applyDepth hides rows deeper than max', () => {
-  const rows = [row('a', 1, 'x', 1), row('b', 2, 'x', 2), row('c', 3, 'x', 3)];
-  applyDepth(rows, 2);
-  assert.deepEqual(rows.map((r) => r.hidden), [false, false, true]);
 });

@@ -21,6 +21,15 @@ rules:
     checksum: sha256
     outputs: [html, json, csv, txt, sums]
 
+  # The pool's top level also publishes the whole subtree as one tree.json, so a
+  # provisioning script finds every package in one request instead of walking
+  # the directories.
+  - match: "pool"
+    present: bare
+    checksum: sha256
+    recursive: true
+    outputs: [html, json, csv, txt, sums]
+
   # A package pool, served as a plain autoindex — no JavaScript, readable in
   # lynx, which is what most of a mirror should be.
   - match: "pool/**"

@@ -1,5 +1,3 @@
 libfoo_1.2.4_amd64.deb:
   title: libfoo 1.2.4
   summary: Current; 1.2.3 is kept for rollback
-toolkit_0.9.1_all.deb:
-  title: toolkit 0.9.1

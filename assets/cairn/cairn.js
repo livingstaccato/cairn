@@ -36,13 +36,6 @@ export function filterRows(rows, query) {
   }
 }
 
-/** Hides rows deeper than maxDepth. Only meaningful on a recursive listing. */
-export function applyDepth(rows, maxDepth) {
-  for (const r of rows) {
-    r.hidden = Number(r.dataset.depth) > maxDepth;
-  }
-}
-
 /**
  * Wires the digest copy buttons.
  *

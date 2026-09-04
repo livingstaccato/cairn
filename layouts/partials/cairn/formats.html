@@ -13,6 +13,7 @@
     "csv"  "rows as columns"
     "txt"  "one name per line"
 -}}
+{{- $recursive := .recursive -}}
 {{- $shown := slice -}}
 {{- range .formats }}{{ if ne . "sums" }}{{ $shown = $shown | append . }}{{ end }}{{ end -}}
 {{- with $shown }}
@@ -21,6 +22,12 @@
   <ul>
     {{ range . }}
     <li><a href="{{ index $names . }}"><code>{{ index $names . }}</code> <span>{{ index $blurbs . }}</span></a></li>
+    {{ end }}
+    {{- /* A recursive directory also publishes the whole subtree as one file.
+           It is listed apart from the others because it answers a different
+           question: those describe this directory, this one replaces a walk. */ -}}
+    {{ if $recursive }}
+    <li><a href="tree.json"><code>tree.json</code> <span>this directory and everything under it</span></a></li>
     {{ end }}
   </ul>
 </details>

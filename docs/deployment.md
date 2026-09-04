@@ -226,6 +226,12 @@ Depth filtering is client-side. `tree.json` carries every descendant once with
 its depth, so any depth query is a `jq` expression rather than a pre-generated
 variant per level. No static host can interpret `?depth=`, on any deployment.
 
+`recursive: true` produces it in both modes, and the directory's own page links
+it from the format switcher, so it is reachable by a person reading the listing
+as well as by a script that was told the path. The recursive listing is data and
+gets no page of its own: a directory has one page, and that page is the listing
+of the directory itself.
+
 ## Re-running, and what happens when files go away
 
 Builds are repeatable. cairn records what it generated in `.cairn-manifest.json`,

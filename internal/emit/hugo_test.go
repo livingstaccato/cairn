@@ -41,7 +41,7 @@ func split(t *testing.T, b []byte) (parsedFM, string) {
 }
 
 func TestHugoContentFrontmatter(t *testing.T) {
-	b, err := HugoContent(sample(), "Some prose.\n", "styled", "_meta.yaml", "a: b\n", []string{"json", "csv"})
+	b, err := HugoContent(HugoPage{Listing: sample(), Prose: "Some prose.\n", Present: "styled", Source: "_meta.yaml", SourceText: "a: b\n", Formats: []string{"json", "csv"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestHugoContentFrontmatter(t *testing.T) {
 func TestHugoContentRootTitle(t *testing.T) {
 	l := sample()
 	l.Path = "/"
-	b, err := HugoContent(l, "", "bare", "", "", nil)
+	b, err := HugoContent(HugoPage{Listing: l, Present: "bare"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +79,7 @@ func TestHugoContentRootTitle(t *testing.T) {
 
 // Prose containing a --- line must not truncate the frontmatter.
 func TestHugoContentBodyWithFence(t *testing.T) {
-	b, err := HugoContent(sample(), "before\n---\nafter\n", "bare", "", "", nil)
+	b, err := HugoContent(HugoPage{Listing: sample(), Prose: "before\n---\nafter\n", Present: "bare"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestHugoContentBodyWithFence(t *testing.T) {
 // many YAML aliases for non-scalar nodes", a decoder limit rather than a memory
 // or time one. They travel as an index.json resource instead.
 func TestHugoContentOmitsEntries(t *testing.T) {
-	b, err := HugoContent(sample(), "", "styled", "", "", nil)
+	b, err := HugoContent(HugoPage{Listing: sample(), Present: "styled"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestHugoContentOmitsEntries(t *testing.T) {
 // Frontmatter size must not grow with the number of entries. This is the
 // property the ceiling depended on.
 func TestHugoContentSizeIsIndependentOfEntryCount(t *testing.T) {
-	small, err := HugoContent(sample(), "", "styled", "", "", nil)
+	small, err := HugoContent(HugoPage{Listing: sample(), Present: "styled"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +122,7 @@ func TestHugoContentSizeIsIndependentOfEntryCount(t *testing.T) {
 		big.Entries = append(big.Entries, model.Entry{Name: "pkg.deb", Path: "/pool/pkg.deb", Size: 1})
 	}
 	big.Count = len(big.Entries)
-	large, err := HugoContent(big, "", "styled", "", "", nil)
+	large, err := HugoContent(HugoPage{Listing: big, Present: "styled"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,14 +134,14 @@ func TestHugoContentSizeIsIndependentOfEntryCount(t *testing.T) {
 }
 
 func TestHugoContentSourceIsOmittedWhenEmpty(t *testing.T) {
-	b, err := HugoContent(sample(), "", "styled", "", "", nil)
+	b, err := HugoContent(HugoPage{Listing: sample(), Present: "styled"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(string(b), "source:") {
 		t.Error("an absent metadata file must not emit an empty source key")
 	}
-	b, err = HugoContent(sample(), "", "styled", "_meta.yaml", "a: b\n", nil)
+	b, err = HugoContent(HugoPage{Listing: sample(), Present: "styled", Source: "_meta.yaml", SourceText: "a: b\n"})
 	if err != nil {
 		t.Fatal(err)
 	}

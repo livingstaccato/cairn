@@ -726,3 +726,47 @@ func TestRunPEP503SkipsRecursivePass(t *testing.T) {
 		t.Error("a recursive pass must not emit a second simple index")
 	}
 }
+
+// TestHugoModeWritesRecursiveListing covers a silent no-op: emitHugo returned
+// early for any basename but the index one, so recursive: true produced nothing
+// at all in hugo mode. The comment claimed Hugo rendered tree.json from
+// frontmatter, which stopped being true when the entries moved out of it.
+//
+// The recursive listing is machine data — one fetch instead of a walk — so it
+// gets resources and no page of its own.
+func TestHugoModeWritesRecursiveListing(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	yes := true
+	c := conf([]config.Rule{{
+		Match:    "bootstrap/**",
+		Override: config.Override{Recursive: &yes},
+	}})
+	c.Mode = config.ModeHugo
+	run(t, c, root, out)
+
+	b, err := os.ReadFile(filepath.Join(out, "bootstrap", "tree.json"))
+	if err != nil {
+		t.Fatalf("hugo mode must write the recursive listing: %v", err)
+	}
+	var l model.Listing
+	if err := json.Unmarshal(b, &l); err != nil {
+		t.Fatal(err)
+	}
+	// One fetch has to reach past the immediate children, or it saves nobody a
+	// request.
+	deep := false
+	for _, e := range l.Entries {
+		if e.Depth > 1 {
+			deep = true
+		}
+	}
+	if !deep {
+		t.Errorf("tree.json holds only immediate children; entries = %d", len(l.Entries))
+	}
+
+	// A recursive listing is data, not a page. A second _index.md in one
+	// directory is not a thing Hugo can render.
+	if _, err := os.Stat(filepath.Join(out, "bootstrap", "tree.md")); err == nil {
+		t.Error("the recursive listing must not get a page of its own")
+	}
+}

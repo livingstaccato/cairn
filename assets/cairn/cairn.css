@@ -112,7 +112,7 @@
 
 .cairn-listing-head {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 0.75rem;
   padding: 0 0.5rem 0.5rem;
   border-bottom: 1px solid var(--c-ink);
@@ -130,12 +130,16 @@
 .cairn-listing-head [aria-sort="descending"] { color: var(--c-ink); }
 .cairn-listing-head [aria-sort="descending"]::after { content: " \2193"; }
 
-.col-icon, .cairn-icon { flex: 0 0 1rem; }
+/* Column widths are declared once and used by both the header and the rows.
+   Two sets of numbers meaning the same thing is how columns drift. */
+.cairn { --col-icon: 1rem; --col-meta: 5.5rem; --col-date: 5.5rem; --col-sum: 8.5rem; --col-arrow: 1rem; }
+
+.col-icon, .cairn-icon { flex: 0 0 var(--col-icon); }
 .col-name { flex: 1 1 auto; min-width: 0; }
-.col-meta { flex: 0 0 6rem; text-align: right; }
-.col-date { flex: 0 0 6rem; text-align: right; }
-.col-sum  { flex: 0 0 9rem; text-align: right; }
-.col-arrow { flex: 0 0 1rem; }
+.col-meta, .cairn-item-meta { flex: 0 0 var(--col-meta); text-align: right; }
+.col-date, .cairn-item-date { flex: 0 0 var(--col-date); text-align: right; }
+.col-sum, .cairn-sum { flex: 0 0 var(--col-sum); text-align: right; }
+.col-arrow, .cairn-item-arrow { flex: 0 0 var(--col-arrow); }
 
 .cairn-row { border-bottom: 1px solid var(--c-rule); }
 .cairn-row[hidden] { display: none; }
@@ -172,8 +176,6 @@
 }
 
 .cairn-item-meta, .cairn-item-date {
-  flex: 0 0 6rem;
-  text-align: right;
   font-family: var(--c-mono);
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
@@ -182,7 +184,6 @@
 }
 
 .cairn-item-arrow {
-  flex: 0 0 1rem;
   color: var(--c-slate);
   opacity: 0;
   transition: opacity 0.12s ease;
@@ -198,8 +199,6 @@
    compares by eye; the rest trails off. */
 
 .cairn-sum {
-  flex: 0 0 9rem;
-  text-align: right;
   font-family: var(--c-mono);
   font-size: 0.75rem;
   white-space: nowrap;
@@ -209,58 +208,69 @@
 .cairn-sum-tail { color: var(--c-slate); }
 .cairn-sum-none { color: var(--c-rule); }
 
+/* No padding: the button sits in a column whose header has none, and any it
+   carried showed up as the digest being a few pixels out of line. */
 .cairn-sum-copy {
   font: inherit;
-  padding: 0.1rem 0.25rem;
+  padding: 0;
   color: inherit;
   background: none;
-  border: 1px solid transparent;
-  border-radius: 3px;
+  border: 0;
   cursor: pointer;
 }
 
-.cairn-sum-copy:hover { border-color: var(--c-rule); background: var(--c-raise); }
+.cairn-sum-copy:hover .cairn-sum-tail { color: var(--c-ink); }
+.cairn-sum-copy:hover .cairn-sum-head { text-decoration: underline; }
 .cairn-sum-copy:focus-visible { outline: 2px solid var(--c-signal); outline-offset: 1px; }
 .cairn-sum-copy[data-copied="true"] .cairn-sum-head,
 .cairn-sum-copy[data-copied="true"] .cairn-sum-tail { color: var(--c-signal); }
 
-/* The authored metadata, shown rather than downloaded. Closed by default: it
-   answers a question most readers are not asking. */
-.cairn-source { margin-top: 1.5rem; }
+/* ── Also in this directory ───────────────────────────────────────────────
+   One line. A reader came here for the listing, not for a footer explaining
+   what a checksum is; the descriptions live in title attributes. */
 
-.cairn-source > summary {
-  cursor: pointer;
+.cairn-views {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin-top: 1.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--c-rule);
   font-family: var(--c-mono);
   font-size: 0.75rem;
-  color: var(--c-slate);
-  list-style-position: outside;
 }
 
-.cairn-source > summary:hover { color: var(--c-ink); }
+.cairn-views a { color: var(--c-slate); text-decoration: none; }
+.cairn-views a:hover { color: var(--c-signal); text-decoration: underline; }
+.cairn-views .sep { color: var(--c-rule); }
+
+.cairn-source { display: inline; }
+
+.cairn-source > summary {
+  display: inline;
+  cursor: pointer;
+  color: var(--c-slate);
+  list-style: none;
+}
+
+.cairn-source > summary::-webkit-details-marker { display: none; }
+.cairn-source > summary::after { content: " \2039"; }
+.cairn-source[open] > summary::after { content: " \203A"; }
+.cairn-source > summary:hover { color: var(--c-signal); }
 .cairn-source > summary:focus-visible { outline: 2px solid var(--c-signal); outline-offset: 2px; }
 
 .cairn-source pre {
+  flex-basis: 100%;
   margin: 0.6rem 0 0;
   padding: 0.75rem 1rem;
   overflow-x: auto;
   background: var(--c-raise);
   border-left: 2px solid var(--c-rule);
-  font-family: var(--c-mono);
   font-size: 0.75rem;
   line-height: 1.55;
   color: var(--c-slate);
 }
-
-.cairn-formats {
-  margin-top: 1.25rem;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  color: var(--c-slate);
-}
-
-.cairn-formats a { color: var(--c-slate); text-underline-offset: 3px; }
-.cairn-formats a:hover { color: var(--c-signal); }
 
 /* ── Bare presenter ───────────────────────────────────────────────────────
    Styled enough to read, plain enough to survive a text browser. */
@@ -280,7 +290,7 @@
 @media (max-width: 46rem) {
   .col-date, .cairn-item-date { display: none; }
   .cairn--bare .modified { display: none; }
-  .col-sum, .cairn-sum { flex-basis: 6rem; }
+  .cairn { --col-sum: 6rem; }
 }
 
 @media (max-width: 32rem) {

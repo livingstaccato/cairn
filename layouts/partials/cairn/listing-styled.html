@@ -60,13 +60,7 @@
     </div>
   </div>
 
-  {{ with $c.source_text }}
-  <details class="cairn-source">
-    <summary>{{ $c.source }}</summary>
-    <pre>{{ . }}</pre>
-  </details>
-  {{ end }}
-  <p class="cairn-formats">Also as <a href="index.json">JSON</a>, <a href="index.csv">CSV</a></p>
+  {{ partial "cairn/views.html" . }}
 
   {{ with resources.Get "cairn/cairn.js" }}
     {{ $js := . | resources.Minify | resources.Fingerprint "sha256" }}

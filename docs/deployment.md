@@ -108,6 +108,13 @@ curl -s http://mirror.internal/bootstrap/tree.json \
   | jq -r '.entries[] | select(.kind=="script" and .depth<=2) | .path'
 ```
 
+For a shell with no `jq`, `index.txt` is one name per line and nothing else:
+
+```sh
+curl -s http://mirror.internal/bootstrap/index.txt | grep -v / \
+  | xargs -n1 -I{} curl -sO "http://mirror.internal/bootstrap/{}"
+```
+
 Depth filtering is client-side. `tree.json` carries every descendant once with
 its depth, so any depth query is a `jq` expression rather than a pre-generated
 variant per level. No static host can interpret `?depth=`, on any deployment.

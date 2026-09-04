@@ -45,6 +45,16 @@ root: ./tree
 out:  ./content
 ```
 
+## What Hugo renders, and what cairn writes
+
+Hugo renders the page formats — `index.html`, `index.json`, `index.csv` — because
+those are the listing re-rendered, and belong to your theme and URL handling.
+
+cairn writes `SHA256SUMS` and `index.txt` itself, in both modes. They are fixed
+byte formats other tools consume, not renderings of anything, so routing them
+through Hugo would mean declaring output formats whose only job is to add
+nothing to them.
+
 ## What the module gives you
 
 - `layouts/_default/cairn.html` — bound to `layout: cairn`, which cairn stamps

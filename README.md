@@ -16,6 +16,7 @@ page, machine-readable indexes, and optional checksums:
 /bootstrap/linux/index.html     browsable listing
 /bootstrap/linux/index.json     this directory
 /bootstrap/linux/index.csv      this directory, as CSV
+/bootstrap/linux/index.txt      one name per line, for xargs
 /bootstrap/linux/tree.json      recursive, opt-in per rule
 /bootstrap/linux/tree.csv       recursive, flattened
 /bootstrap/linux/SHA256SUMS     coreutils format
@@ -53,7 +54,7 @@ per-directory override file. Three axes:
   `manifest` (an authored list, for contents not on disk at build time).
 - **`present`** — `styled` (themed, sortable, filterable) or `bare` (a genuine
   autoindex: no JavaScript, no icon font, renders in `lynx`).
-- **`outputs`** — `html`, `json`, `csv`, `sums`, `pep503`.
+- **`outputs`** — `html`, `json`, `csv`, `txt`, `sums`, `pep503`.
 
 ```yaml
 version: 1

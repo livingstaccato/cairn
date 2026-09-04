@@ -221,6 +221,7 @@ type emitCtx struct {
 var emitters = map[string]func(*runner, emitCtx) error{
 	config.OutputJSON:   (*runner).emitJSON,
 	config.OutputCSV:    (*runner).emitCSV,
+	config.OutputText:   (*runner).emitText,
 	config.OutputSums:   (*runner).emitSums,
 	config.OutputHTML:   (*runner).emitHTML,
 	config.OutputPEP503: (*runner).emitPEP503,
@@ -253,15 +254,69 @@ func (r *runner) emitFor(relDir, basename string, l model.Listing, s config.Sett
 
 // emitHugo writes the branch bundle Hugo renders from. A recursive listing does
 // not get its own page: Hugo produces tree.json from the same frontmatter.
+//
+// The split: Hugo renders the page formats, and cairn writes the flat text
+// artifacts itself. index.json and index.csv are the listing re-rendered, so
+// they belong to whatever theme and URL handling the site has. SHA256SUMS and
+// index.txt are not renderings of anything — they are fixed byte formats other
+// tools consume — so routing them through Hugo would mean declaring output
+// formats whose only job is to add nothing, and every consumer would have to
+// copy those declarations into their config.
 func (r *runner) emitHugo(c emitCtx) error {
 	if c.basename != r.cfg.IndexBasename {
 		return nil
 	}
-	b, err := emit.HugoContent(c.listing, c.prose, c.settings.Present, c.source, c.sourceText)
+	b, err := emit.HugoContent(c.listing, c.prose, c.settings.Present,
+		c.source, c.sourceText, machineFormats(c.settings, c.listing))
 	if err != nil {
 		return err
 	}
-	return r.write(c.relDir, emit.HugoContentFile, b)
+	if err := r.write(c.relDir, emit.HugoContentFile, b); err != nil {
+		return err
+	}
+	return r.emitFlat(c)
+}
+
+// flatOutputs are written by cairn in either mode: fixed byte formats with no
+// rendering to do.
+var flatOutputs = map[string]func(*runner, emitCtx) error{
+	config.OutputSums: (*runner).emitSums,
+	config.OutputText: (*runner).emitText,
+}
+
+// emitFlat writes the outputs Hugo has no part in.
+func (r *runner) emitFlat(c emitCtx) error {
+	for _, f := range c.settings.Outputs {
+		fn, ok := flatOutputs[f]
+		if !ok {
+			continue
+		}
+		if err := fn(r, c); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// machineFormats lists the non-HTML outputs this directory actually publishes.
+//
+// The footer links to these, so guessing would produce a link to a file that
+// was never written. html and pep503 are excluded because they are the page
+// doing the linking, and sums is dropped when nothing in the directory was
+// hashed — SHA256SUMS is not written in that case either.
+func machineFormats(s config.Settings, l model.Listing) []string {
+	var out []string
+	for _, f := range s.Outputs {
+		switch f {
+		case config.OutputJSON, config.OutputCSV, config.OutputText:
+			out = append(out, f)
+		case config.OutputSums:
+			if len(emit.Sums(l)) > 0 {
+				out = append(out, f)
+			}
+		}
+	}
+	return out
 }
 
 func (r *runner) emitJSON(c emitCtx) error {
@@ -283,6 +338,10 @@ func (r *runner) emitCSV(c emitCtx) error {
 // emitSums writes SHA256SUMS. A recursive listing gets none: the digests are
 // already in the per-directory files, and a second copy is a second thing that
 // can disagree.
+func (r *runner) emitText(c emitCtx) error {
+	return r.write(c.relDir, c.basename+".txt", emit.Text(c.listing))
+}
+
 func (r *runner) emitSums(c emitCtx) error {
 	if c.basename != r.cfg.IndexBasename {
 		return nil

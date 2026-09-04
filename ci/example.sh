@@ -20,7 +20,8 @@ go run ./cmd/cairn build -config exampleSite/cairn.yaml
 # server does in production: index pages and the bytes they describe share one
 # URL prefix. Without this every artifact link in the example 404s and the
 # listing looks broken.
-rsync -a exampleSite/tree/ exampleSite/public/
+# cp rather than rsync: rsync is absent from the CI runner image.
+cp -R exampleSite/tree/. exampleSite/public/
 
 pub="exampleSite/public"
 fail=0
@@ -31,6 +32,7 @@ for d in bootstrap bootstrap/linux pool docs external; do
   check "$d/index.html"
   check "$d/index.json"
   check "$d/index.csv"
+  check "$d/index.txt"
 done
 
 # The CSV column contract is shared between the Go emitter and the Hugo

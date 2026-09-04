@@ -40,6 +40,7 @@ type cairnParam struct {
 	Path       string        `yaml:"path"`
 	Source     string        `yaml:"source,omitempty"`
 	SourceText string        `yaml:"source_text,omitempty"`
+	Formats    []string      `yaml:"formats,omitempty"`
 	Generated  string        `yaml:"generated"`
 	Count      int           `yaml:"count"`
 	Entries    []model.Entry `yaml:"entries"`
@@ -51,7 +52,7 @@ type cairnParam struct {
 // Hugo's output formats then produce HTML, JSON and CSV from this single
 // source, so the three cannot drift from each other. cairn writes one file per
 // directory in this mode and lets Hugo publish the rest.
-func HugoContent(l model.Listing, prose, present, source, sourceText string) ([]byte, error) {
+func HugoContent(l model.Listing, prose, present, source, sourceText string, formats []string) ([]byte, error) {
 	fm := hugoFrontmatter{
 		Title:  titleFor(l.Path),
 		Layout: HugoLayout,
@@ -59,6 +60,7 @@ func HugoContent(l model.Listing, prose, present, source, sourceText string) ([]
 			Present:    present,
 			Path:       l.Path,
 			Source:     source,
+			Formats:    formats,
 			SourceText: sourceText,
 			Generated:  l.Generated.Format(time.RFC3339),
 			Count:      l.Count,

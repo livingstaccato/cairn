@@ -45,7 +45,7 @@ func split(t *testing.T, b []byte) (parsedFM, string) {
 }
 
 func TestHugoContentFrontmatter(t *testing.T) {
-	b, err := HugoContent(sample(), "Some prose.\n", "styled", "_meta.yaml", "a: b\n")
+	b, err := HugoContent(sample(), "Some prose.\n", "styled", "_meta.yaml", "a: b\n", []string{"json", "csv"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestHugoContentFrontmatter(t *testing.T) {
 func TestHugoContentRootTitle(t *testing.T) {
 	l := sample()
 	l.Path = "/"
-	b, err := HugoContent(l, "", "bare", "", "")
+	b, err := HugoContent(l, "", "bare", "", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func TestHugoContentRootTitle(t *testing.T) {
 
 // Prose containing a --- line must not truncate the frontmatter.
 func TestHugoContentBodyWithFence(t *testing.T) {
-	b, err := HugoContent(sample(), "before\n---\nafter\n", "bare", "", "")
+	b, err := HugoContent(sample(), "before\n---\nafter\n", "bare", "", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func TestHugoContentBodyWithFence(t *testing.T) {
 // YAML keys must match the JSON contract, since a Hugo template reads
 // .Params.cairn.entries with the same names a jq consumer uses.
 func TestHugoContentKeysMatchJSONContract(t *testing.T) {
-	b, err := HugoContent(sample(), "", "styled", "", "")
+	b, err := HugoContent(sample(), "", "styled", "", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,14 +118,14 @@ func TestHugoContentKeysMatchJSONContract(t *testing.T) {
 }
 
 func TestHugoContentSourceIsOmittedWhenEmpty(t *testing.T) {
-	b, err := HugoContent(sample(), "", "styled", "", "")
+	b, err := HugoContent(sample(), "", "styled", "", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(string(b), "source:") {
 		t.Error("an absent metadata file must not emit an empty source key")
 	}
-	b, err = HugoContent(sample(), "", "styled", "_meta.yaml", "a: b\n")
+	b, err = HugoContent(sample(), "", "styled", "_meta.yaml", "a: b\n", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

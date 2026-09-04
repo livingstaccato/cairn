@@ -34,6 +34,7 @@ const (
 	OutputHTML   = "html"
 	OutputJSON   = "json"
 	OutputCSV    = "csv"
+	OutputText   = "txt"
 	OutputSums   = "sums"
 	OutputPEP503 = "pep503"
 )

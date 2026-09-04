@@ -201,3 +201,39 @@ func TestRunCountsFiles(t *testing.T) {
 		t.Error("Written should list every emitted path")
 	}
 }
+
+func TestRunBareHTMLWritten(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	bare := config.PresentBare
+	rules := []config.Rule{{
+		Match:    "bootstrap/**",
+		Override: config.Override{Present: &bare, Outputs: &[]string{config.OutputHTML}},
+	}}
+	run(t, conf(rules), root, out)
+
+	b, err := os.ReadFile(filepath.Join(out, "bootstrap/index.html"))
+	if err != nil {
+		t.Fatalf("index.html not written: %v", err)
+	}
+	if strings.Contains(string(b), "<script") {
+		t.Error("bare HTML must contain no script tag")
+	}
+	if !strings.Contains(string(b), "bootstrap.sh") {
+		t.Error("listing entry missing from HTML")
+	}
+}
+
+// The styled presenter is Hugo's job; the direct path must not half-render it.
+func TestRunStyledHTMLIsNotWrittenDirectly(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	styled := config.PresentStyled
+	rules := []config.Rule{{
+		Match:    "bootstrap/**",
+		Override: config.Override{Present: &styled, Outputs: &[]string{config.OutputHTML}},
+	}}
+	run(t, conf(rules), root, out)
+
+	if _, err := os.Stat(filepath.Join(out, "bootstrap/index.html")); err == nil {
+		t.Error("styled HTML must be left to the Hugo layer")
+	}
+}

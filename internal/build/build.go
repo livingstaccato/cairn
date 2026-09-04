@@ -185,57 +185,87 @@ func (r *runner) listing(relDir string, entries []model.Entry) model.Listing {
 	return model.Listing{Path: p, Generated: r.now, Count: len(entries), Entries: entries}
 }
 
+// emitCtx is one directory's rendering job, bundled so the format handlers
+// take a receiver and one argument rather than six.
+type emitCtx struct {
+	relDir   string
+	basename string
+	listing  model.Listing
+	settings config.Settings
+	prose    string
+}
+
+// emitters maps an output format to its handler. A map rather than a switch
+// because a switch arm per format is a branch per format, and the complexity
+// budget is there to stop exactly this function sprawling.
+var emitters = map[string]func(*runner, emitCtx) error{
+	config.OutputJSON:   (*runner).emitJSON,
+	config.OutputCSV:    (*runner).emitCSV,
+	config.OutputSums:   (*runner).emitSums,
+	config.OutputHTML:   (*runner).emitHTML,
+	config.OutputPEP503: (*runner).emitPEP503,
+}
+
 // emitFor writes the formats named by s.Outputs under basename.
 func (r *runner) emitFor(relDir, basename string, l model.Listing, s config.Settings, prose string) error {
+	c := emitCtx{relDir: relDir, basename: basename, listing: l, settings: s, prose: prose}
 	for _, format := range s.Outputs {
-		if err := r.emitOne(format, relDir, basename, l, s, prose); err != nil {
+		fn, ok := emitters[format]
+		if !ok {
+			return fmt.Errorf("unknown output format %q for %s", format, relDir)
+		}
+		if err := fn(r, c); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// emitOne writes a single output format.
-func (r *runner) emitOne(format, relDir, basename string, l model.Listing,
-	s config.Settings, prose string) error {
-
-	switch format {
-	case config.OutputJSON:
-		b, err := emit.JSON(l)
-		if err != nil {
-			return err
-		}
-		return r.write(relDir, basename+".json", b)
-
-	case config.OutputCSV:
-		b, err := emit.CSV(l)
-		if err != nil {
-			return err
-		}
-		return r.write(relDir, basename+".csv", b)
-
-	case config.OutputSums:
-		// SHA256SUMS describes one directory, so a recursive listing does not
-		// get its own: the digests are already in the per-directory files, and
-		// a second copy could disagree with them.
-		if basename != r.cfg.IndexBasename {
-			return nil
-		}
-		b := emit.Sums(l)
-		if len(b) == 0 {
-			return nil
-		}
-		return r.write(relDir, emit.SumsFile, b)
-
-	case config.OutputHTML, config.OutputPEP503:
-		// Rendered by the Hugo layer; see the second plan.
-		_ = prose
-		return nil
-
-	default:
-		return fmt.Errorf("unknown output format %q for %s", format, relDir)
+func (r *runner) emitJSON(c emitCtx) error {
+	b, err := emit.JSON(c.listing)
+	if err != nil {
+		return err
 	}
+	return r.write(c.relDir, c.basename+".json", b)
 }
+
+func (r *runner) emitCSV(c emitCtx) error {
+	b, err := emit.CSV(c.listing)
+	if err != nil {
+		return err
+	}
+	return r.write(c.relDir, c.basename+".csv", b)
+}
+
+// emitSums writes SHA256SUMS. A recursive listing gets none: the digests are
+// already in the per-directory files, and a second copy is a second thing that
+// can disagree.
+func (r *runner) emitSums(c emitCtx) error {
+	if c.basename != r.cfg.IndexBasename {
+		return nil
+	}
+	b := emit.Sums(c.listing)
+	if len(b) == 0 {
+		return nil
+	}
+	return r.write(c.relDir, emit.SumsFile, b)
+}
+
+// emitHTML renders only the bare presenter. Styled HTML is Hugo's job: it needs
+// the consumer's theme, which cairn does not have.
+func (r *runner) emitHTML(c emitCtx) error {
+	if c.settings.Present != config.PresentBare {
+		return nil
+	}
+	b, err := emit.BareHTML(c.listing, c.prose)
+	if err != nil {
+		return err
+	}
+	return r.write(c.relDir, c.basename+".html", b)
+}
+
+// emitPEP503 is wired by the Hugo-layer plan.
+func (r *runner) emitPEP503(_ emitCtx) error { return nil }
 
 // write places one output file and records it.
 func (r *runner) write(relDir, name string, body []byte) error {

@@ -18,6 +18,10 @@ path = [
   ".actrc",
   "commitlint.config.cjs",
   "testdata/**",
+  # Templates carry no header of their own: an HTML comment would be copied into
+  # every page cairn generates, licensing a user's output as though it were this
+  # project's source.
+  "internal/emit/templates/**",
   ".provide/**",
 ]
 precedence = "aggregate"

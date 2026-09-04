@@ -4,8 +4,10 @@ Static directory-index and artifact-repo generator. A Go binary and a Hugo
 module in one repo, so the data it emits and the templates that render it share
 a single version pin.
 
-> **Status: design complete, implementation not started.** Nothing here works
-> yet. This README describes the intended behaviour.
+> **Status: engine complete, Hugo layer not started.** `cairn build` works and
+> emits `index.json`, `index.csv`, `tree.json` and `SHA256SUMS`. The HTML
+> presenters and the Hugo component module are next, so `outputs: [html]` is
+> accepted and currently produces nothing.
 
 ## What it does
 
@@ -94,6 +96,25 @@ have a title and a summary.
 - **Never dictates a search record shape.** It exposes entries; your site maps
   them into whatever index it already has. Pagefind needs no integration at
   all, since the output is real HTML.
+
+## Try it
+
+```sh
+go run ./cmd/cairn build -config testdata/example/cairn.yaml
+find testdata/example/out -type f
+```
+
+Checksums are written relative to the served root, which is the artifact tree —
+the index files and the artifacts are overlaid at the same URL prefix by the web
+server, so verify from the tree side:
+
+```sh
+cd testdata/example/tree/bootstrap && sha256sum -c ../../out/bootstrap/SHA256SUMS
+```
+
+Builds are repeatable: cairn records what it generated in `.cairn-manifest.json`
+and will replace its own output on a later run, while still refusing to touch a
+file it did not create.
 
 ## License
 

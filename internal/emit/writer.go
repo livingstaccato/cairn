@@ -165,7 +165,32 @@ func (w *Writer) Protected() []string { return w.prot }
 // Two configs sharing one output root would each prune the other's files. That
 // is unsupported rather than guarded against — there is no way to tell that case
 // apart from a directory that was legitimately removed.
-func (w *Writer) Prune() ([]string, error) {
+// underScope reports whether a manifest path belongs to a scoped rebuild.
+//
+// An empty scope is the whole tree. Comparison is on path segments so that
+// "docs" does not claim "docs-old": a prefix test on the raw string would
+// prune a sibling directory's entire output.
+func underScope(p, scope string) bool {
+	if scope == "" || scope == "." {
+		return true
+	}
+	rel := strings.TrimPrefix(p, "/")
+	return rel == scope || strings.HasPrefix(rel, scope+"/")
+}
+
+// PruneScoped removes stale output from one subtree, leaving the rest of the
+// manifest's claims alone.
+//
+// A scoped rebuild writes only part of the tree, so the unscoped Prune — which
+// deletes everything the previous run owned and this one did not rewrite —
+// would delete every listing outside the scope on the first watch event.
+func (w *Writer) PruneScoped(scope string) ([]string, error) {
+	return w.prune(scope)
+}
+
+func (w *Writer) Prune() ([]string, error) { return w.prune("") }
+
+func (w *Writer) prune(scope string) ([]string, error) {
 	wrote := make(map[string]bool, len(w.made))
 	for _, p := range w.made {
 		wrote[p] = true
@@ -173,7 +198,7 @@ func (w *Writer) Prune() ([]string, error) {
 
 	var removed []string
 	for p := range w.own {
-		if wrote[p] {
+		if wrote[p] || !underScope(p, scope) {
 			continue
 		}
 		abs, err := containedPath(w.root, p)
@@ -214,6 +239,29 @@ func (w *Writer) pruneEmptyDirs(removed []string) {
 
 // Save records this run's output so the next run knows what it may replace.
 func (w *Writer) Save() error { return w.save(w.made) }
+
+// SaveScoped records a scoped rebuild: what it wrote, plus everything the
+// previous run owned outside the scope. Saving only what a scoped run wrote
+// would disown the rest of the tree, and the next run would refuse all of it
+// as somebody else's files.
+func (w *Writer) SaveScoped(scope string) error {
+	seen := make(map[string]bool, len(w.made))
+	all := make([]string, 0, len(w.own)+len(w.made))
+	for _, p := range w.made {
+		if !seen[p] {
+			seen[p] = true
+			all = append(all, p)
+		}
+	}
+	outside := make([]string, 0, len(w.own))
+	for p := range w.own {
+		if !seen[p] && !underScope(p, scope) {
+			outside = append(outside, p)
+		}
+	}
+	sort.Strings(outside) // map order would churn the manifest between runs
+	return w.save(append(all, outside...))
+}
 
 // SavePartial records this run's output together with everything the previous
 // run claimed, for a build that died partway.

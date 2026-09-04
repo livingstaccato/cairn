@@ -1,0 +1,213 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
+// SPDX-License-Identifier: MIT
+
+// Tests for rebuilding one subtree: what has to be rebuilt with it, and what
+// must survive untouched.
+
+package build
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/livingstaccato/cairn/internal/config"
+	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairn/internal/obs"
+)
+
+func readListing(t *testing.T, path string) model.Listing {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("no listing at %s: %v", path, err)
+	}
+	var l model.Listing
+	if err := json.Unmarshal(b, &l); err != nil {
+		t.Fatal(err)
+	}
+	return l
+}
+
+// The whole point: a scoped rebuild must not delete the listings it did not
+// write. The unscoped Prune deletes everything the previous run owned and this
+// one did not rewrite, which on a watch event is most of the tree.
+func TestScopedRebuildKeepsTheRestOfTheTree(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	c := conf(nil)
+	if _, err := Run(c, root, out, obs.Discard()); err != nil {
+		t.Fatal(err)
+	}
+	elsewhere := filepath.Join(out, "docs", "index.json")
+	if _, err := os.Stat(elsewhere); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+
+	if _, err := RunScoped(c, root, out, obs.Discard(), "bootstrap"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(elsewhere); err != nil {
+		t.Errorf("a scoped rebuild pruned an unrelated listing: %v", err)
+	}
+}
+
+// A parent's entry for a directory carries that directory's child count and
+// modification time, so a file added below has to reach the listings above it.
+func TestScopedRebuildRefreshesAncestors(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	c := conf(nil)
+	if _, err := Run(c, root, out, obs.Discard()); err != nil {
+		t.Fatal(err)
+	}
+
+	before := readListing(t, filepath.Join(out, "index.json"))
+	var wantCount int
+	for _, e := range before.Entries {
+		if e.Name == "bootstrap" {
+			wantCount = e.Count
+		}
+	}
+
+	if err := os.WriteFile(filepath.Join(root, "bootstrap", "extra.sh"), []byte("#!/bin/sh\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RunScoped(c, root, out, obs.Discard(), "bootstrap"); err != nil {
+		t.Fatal(err)
+	}
+
+	after := readListing(t, filepath.Join(out, "index.json"))
+	for _, e := range after.Entries {
+		if e.Name == "bootstrap" && e.Count == wantCount {
+			t.Errorf("root listing still reports %d children of bootstrap; the ancestor was not refreshed", e.Count)
+		}
+	}
+}
+
+// Refreshing an ancestor must not rebuild its other children: that is the
+// saving a scoped rebuild exists for.
+func TestScopedRebuildDoesNotDescendIntoSiblings(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	c := conf(nil)
+	if _, err := Run(c, root, out, obs.Discard()); err != nil {
+		t.Fatal(err)
+	}
+	sibling := filepath.Join(out, "docs", "index.json")
+	stamp := time.Now().Add(-time.Hour)
+	if err := os.Chtimes(sibling, stamp, stamp); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := RunScoped(c, root, out, obs.Discard(), "bootstrap"); err != nil {
+		t.Fatal(err)
+	}
+	fi, err := os.Stat(sibling)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fi.ModTime().After(stamp.Add(time.Minute)) {
+		t.Error("a scoped rebuild rewrote a sibling subtree it had no reason to touch")
+	}
+}
+
+// A change below a recursive listing invalidates that listing, so the rebuild
+// has to start at the directory that owns it, not at the file's own directory.
+func TestScopeClimbsToTheRecursiveOwner(t *testing.T) {
+	root := tree(t)
+	yes := true
+	c := conf([]config.Rule{{
+		Match:    "bootstrap/**",
+		Override: config.Override{Recursive: &yes},
+	}})
+	if got := Scope(c, root, "bootstrap/linux"); got != "bootstrap" {
+		t.Errorf("scope = %q, want bootstrap: the recursive listing above it is stale", got)
+	}
+}
+
+// With nothing recursive above it, the changed directory is the whole scope.
+func TestScopeStopsAtTheChangedDirectory(t *testing.T) {
+	root := tree(t)
+	if got := Scope(conf(nil), root, "bootstrap/linux"); got != "bootstrap/linux" {
+		t.Errorf("scope = %q, want the changed directory", got)
+	}
+}
+
+func TestRelDirOfRejectsPathsOutsideTheRoot(t *testing.T) {
+	root := t.TempDir()
+	if _, ok := RelDirOf(root, filepath.Join(root, "a", "b.txt")); !ok {
+		t.Error("a path inside the root was rejected")
+	}
+	if _, ok := RelDirOf(root, filepath.Join(filepath.Dir(root), "elsewhere", "b.txt")); ok {
+		t.Error("a path outside the root was accepted")
+	}
+}
+
+// The manifest is how the next run tells its own output from somebody else's.
+// A scoped rebuild that recorded only what it wrote would disown the rest of
+// the tree, and the next run would refuse all of it as a conflict.
+func TestScopedRebuildKeepsOwnershipOfTheRestOfTheTree(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	c := conf(nil)
+	if _, err := Run(c, root, out, obs.Discard()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RunScoped(c, root, out, obs.Discard(), "bootstrap"); err != nil {
+		t.Fatal(err)
+	}
+
+	b, err := os.ReadFile(filepath.Join(out, ".cairn-manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var owned []string
+	if err := json.Unmarshal(b, &owned); err != nil {
+		t.Fatal(err)
+	}
+	var found bool
+	for _, p := range owned {
+		if strings.Contains(p, "docs/index.json") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("manifest no longer claims the unscoped output: %v", owned)
+	}
+
+	// The proof it matters: a following full run must not refuse those files.
+	if _, err := Run(c, root, out, obs.Discard()); err != nil {
+		t.Errorf("a run after a scoped rebuild refused its own earlier output: %v", err)
+	}
+}
+
+// A scope of "docs" must not claim "docs-old". A prefix test on the raw string
+// would prune a sibling directory's entire output on the first watch event.
+func TestScopedRebuildDoesNotClaimSiblingsBySharedPrefix(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "docs-old"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "docs-old", "note.md"), []byte("old\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c := conf(nil)
+	if _, err := Run(c, root, out, obs.Discard()); err != nil {
+		t.Fatal(err)
+	}
+	sibling := filepath.Join(out, "docs-old", "index.json")
+	if _, err := os.Stat(sibling); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+
+	// Remove the file so a rebuild of "docs" would prune anything it claims.
+	if err := os.Remove(filepath.Join(root, "docs-old", "note.md")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RunScoped(c, root, out, obs.Discard(), "docs"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(sibling); err != nil {
+		t.Errorf("rebuilding docs pruned docs-old: %v", err)
+	}
+}

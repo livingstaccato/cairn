@@ -104,9 +104,38 @@ func (c *Config) validate(p string) error {
 		return fmt.Errorf("config %s: on_conflict must be %s or %s, got %q",
 			p, ConflictError, ConflictSkip, c.OnConflict)
 	}
+	if err := validateSources(p, c.Defaults, c.Rules); err != nil {
+		return err
+	}
 	if c.Mode != ModeDirect && c.Mode != ModeHugo {
 		return fmt.Errorf("config %s: mode must be %s or %s, got %q",
 			p, ModeDirect, ModeHugo, c.Mode)
+	}
+	return nil
+}
+
+// validateSources rejects an unknown source anywhere in the config. Without
+// this a typo falls through to the fs default and silently indexes the wrong
+// thing, which is worse than refusing to start.
+func validateSources(p string, defaults Override, rules []Rule) error {
+	check := func(o Override) error {
+		if o.Source == nil {
+			return nil
+		}
+		switch *o.Source {
+		case SourceFS, SourcePages, SourceManifest:
+			return nil
+		}
+		return fmt.Errorf("config %s: source must be %s, %s or %s, got %q",
+			p, SourceFS, SourcePages, SourceManifest, *o.Source)
+	}
+	if err := check(defaults); err != nil {
+		return err
+	}
+	for _, r := range rules {
+		if err := check(r.Override); err != nil {
+			return err
+		}
 	}
 	return nil
 }

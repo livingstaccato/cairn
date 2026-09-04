@@ -109,7 +109,7 @@ func (r *runner) visit(relDir string) error {
 // collect walks one directory, merges its authored metadata, and hashes what
 // the settings ask for.
 func (r *runner) collect(relDir, absDir string, s config.Settings) ([]model.Entry, error) {
-	entries, warns, err := walk.Dir(r.root, relDir, s)
+	entries, warns, err := r.produce(relDir, absDir, s)
 	if err != nil {
 		return nil, err
 	}
@@ -126,6 +126,20 @@ func (r *runner) collect(relDir, absDir string, s config.Settings) ([]model.Entr
 		r.hashEntries(absDir, entries)
 	}
 	return entries, nil
+}
+
+// produce lists a directory using the configured source. fs walks the disk,
+// pages reads an existing Hugo content section, and manifest reads an authored
+// list for contents that are not on disk at build time.
+func (r *runner) produce(relDir, absDir string, s config.Settings) ([]model.Entry, []walk.Warning, error) {
+	switch s.Source {
+	case config.SourcePages:
+		return walk.Pages(r.root, relDir, s)
+	case config.SourceManifest:
+		return walk.Manifest(absDir, s)
+	default:
+		return walk.Dir(r.root, relDir, s)
+	}
 }
 
 // hashEntries fills SHA256 for every file in the listing. A file that cannot be

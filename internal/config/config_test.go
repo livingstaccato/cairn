@@ -193,3 +193,21 @@ func TestModeDefaultsAndValidation(t *testing.T) {
 		t.Fatal("expected an error for an unknown mode")
 	}
 }
+
+func TestUnknownSourceIsRejected(t *testing.T) {
+	// A typo must not fall through to the fs default and silently index the
+	// wrong thing.
+	if _, err := Load(writeConfig(t, "version: 1\ndefaults:\n  source: filesystem\n")); err == nil {
+		t.Fatal("expected an error for an unknown default source")
+	}
+	if _, err := Load(writeConfig(t,
+		"version: 1\nrules:\n  - match: \"x/**\"\n    source: pagez\n")); err == nil {
+		t.Fatal("expected an error for an unknown source in a rule")
+	}
+	for _, src := range []string{SourceFS, SourcePages, SourceManifest} {
+		body := "version: 1\ndefaults:\n  source: " + src + "\n"
+		if _, err := Load(writeConfig(t, body)); err != nil {
+			t.Errorf("source %q rejected: %v", src, err)
+		}
+	}
+}

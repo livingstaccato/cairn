@@ -44,7 +44,7 @@ bench: ## Measure one directory at 1k, 10k and 50k entries
 
 tools: ## Install the gate's binaries
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
-	go install github.com/securego/gosec/v2/cmd/gosec@latest
+	go install github.com/securego/gosec/v2/cmd/gosec@v2.29.0
 	go install golang.org/x/vuln/cmd/govulncheck@latest
 
 clean:

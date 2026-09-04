@@ -15,7 +15,15 @@ defaults:
   outputs: [html, json, csv]
 
 rules:
+  # The page a human browses: checksums shown, sortable, filterable.
   - match: "bootstrap/**"
+    present: styled
+    checksum: sha256
+    outputs: [html, json, csv, sums]
+
+  # A package pool, served as a plain autoindex — no JavaScript, readable in
+  # lynx, which is what most of a mirror should be.
+  - match: "pool/**"
     present: bare
     checksum: sha256
     outputs: [html, json, csv, sums]

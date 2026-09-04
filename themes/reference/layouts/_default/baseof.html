@@ -5,6 +5,7 @@
 {{- /* The sprite is inlined once per page: a <use> reference cannot reach into
        an external file without a fetch, which is the thing being avoided. */ -}}
 {{ with resources.Get "cairn/icons.svg" }}{{ .Content | safeHTML }}{{ end }}
+<header class="site-head"><a href="/">{{ site.Title }}</a></header>
 <main>{{ block "main" . }}{{ end }}</main>
 </body>
 </html>

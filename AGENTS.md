@@ -92,6 +92,14 @@ stack in behind it, and swapping backends touches one file.
 Never `fmt.Println` for diagnostics. `obs.Discard()` is the logger for tests and
 for callers that have not set telemetry up, so no call site needs a nil check.
 
+## A recurring false positive
+
+`detect-secrets` flags SHA-256 digests as high-entropy strings. In a project
+whose whole point is publishing checksums, that will happen often. Mark them
+with an inline `# pragma: allowlist secret` and a note saying why — a published
+checksum exists to be compared against in public. Never widen the baseline to
+silence the class.
+
 ## Testing
 
 TDD: write the failing test, watch it fail for the right reason, then

@@ -1,7 +1,8 @@
 ---
-title: Getting started
-summary: What this mirror is for
+title: Using this mirror
+summary: Discover artifacts from JSON instead of hardcoding paths
 tags: [guide]
 ---
 
-Point a provisioning script at the JSON index rather than hardcoding paths.
+Every directory publishes `index.json` beside its `index.html`. Point a
+provisioning script at that rather than at a path you typed by hand.

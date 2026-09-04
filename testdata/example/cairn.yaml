@@ -1,4 +1,5 @@
 version: 1
+mode: direct
 root: ./tree
 out: ./out
 index_basename: index
@@ -10,13 +11,14 @@ protect:
   - "repodata/**"
   - "**/Release"
 
+# direct mode never invokes Hugo, so only the bare presenter renders: styled
+# HTML needs a theme, and there is no site here to take one from.
 defaults:
-  present: styled
-  outputs: [json, csv]
+  present: bare
+  outputs: [html, json, csv]
 
 rules:
   - match: "bootstrap/**"
-    present: bare
     checksum: sha256
     recursive: true
-    outputs: [json, csv, sums]
+    outputs: [html, json, csv, sums]

@@ -16,5 +16,5 @@
 name,path,type,size,modified,sha256,kind,title
 {{ range .Params.cairn.entries -}}
 {{ $type := cond .is_dir "dir" "file" -}}
-{{ template "csvField" .name }},{{ template "csvField" .path }},{{ $type }},{{ .size }},{{ .modified }},{{ .sha256 }},{{ .kind }},{{ template "csvField" (.title | default "") }}
+{{ template "csvField" .name }},{{ template "csvField" .path }},{{ $type }},{{ .size }},{{ .modified }},{{ .sha256 | default "" }},{{ .kind }},{{ template "csvField" (.title | default "") }}
 {{ end -}}

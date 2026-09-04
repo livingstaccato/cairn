@@ -1,4 +1,5 @@
 apt.list:
   title: APT sources
-  summary: Package sources used during provisioning
-  tags: [apt, sources]
+  summary: Points every host at the internal mirror
+preferences:
+  title: APT pinning

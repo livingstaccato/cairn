@@ -1,2 +1,2 @@
-Bootstrap artifacts. Machines fetch these during provisioning; verify them
-against the SHA256SUMS beside them.
+Artifacts fetched during provisioning. Every file here is listed in
+`SHA256SUMS`; verify before you execute anything.

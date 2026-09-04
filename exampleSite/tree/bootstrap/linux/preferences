@@ -1,0 +1,3 @@
+Package: *
+Pin: origin mirror.internal
+Pin-Priority: 900

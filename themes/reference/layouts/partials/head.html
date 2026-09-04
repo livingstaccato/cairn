@@ -1,9 +1,14 @@
-{{- /* Loads only the cairn module's stylesheet. No fonts, no CDN, nothing this
-       theme did not ship — the module has to render airgapped. */ -}}
+{{- /* Loads only what this repo ships. No fonts, no CDN, nothing that needs a
+       network at render time — the module has to work airgapped, and a theme
+       that quietly fetches a typeface breaks that for every consumer. */ -}}
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ if .Title }}{{ .Title }} · {{ end }}{{ site.Title }}</title>
-{{ with resources.Get "cairn/cairn.css" }}
-  {{ $css := . | resources.Minify | resources.Fingerprint "sha256" }}
+{{ with .Params.cairn }}<meta name="description" content="Index of {{ .path }}">{{ end }}
+{{ $sheets := slice }}
+{{ with resources.Get "reference/theme.css" }}{{ $sheets = $sheets | append . }}{{ end }}
+{{ with resources.Get "cairn/cairn.css" }}{{ $sheets = $sheets | append . }}{{ end }}
+{{ with $sheets }}
+  {{ $css := . | resources.Concat "css/site.css" | resources.Minify | resources.Fingerprint "sha256" }}
   <link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}">
 {{ end }}

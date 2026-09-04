@@ -1,0 +1,75 @@
+{{- /* The browsable listing. Rows are flex anchors rather than table cells so
+       the name can truncate while size and date hold their columns, and so the
+       whole row is one hit target.
+
+       Everything here is present before any script runs. The toolbar ships
+       hidden and cairn.js reveals it, so a visitor without JavaScript sees a
+       complete listing and no dead controls. */ -}}
+{{- $c := .Params.cairn -}}
+{{- $latest := "" -}}
+{{- range $c.entries }}{{ if gt (string .modified) $latest }}{{ $latest = string .modified }}{{ end }}{{ end -}}
+<div class="cairn cairn--styled" data-cairn-present="styled">
+
+  <header class="cairn-terminal">
+    {{ partial "cairn/breadcrumb.html" $c.path }}
+    <div class="cairn-meta">
+      <span class="cairn-meta-item">{{ $c.count }} item{{ if ne $c.count 1 }}s{{ end }}</span>
+      {{ with $latest }}<span class="cairn-meta-item">updated {{ dateFormat "2006-01-02" . }}</span>{{ end }}
+
+    </div>
+  </header>
+
+  {{ with .Content }}<div class="cairn-prose">{{ . }}</div>{{ end }}
+
+  <div class="cairn-toolbar" hidden data-cairn-toolbar>
+    <input class="cairn-filter" type="search" placeholder="Filter…" aria-label="Filter entries" data-cairn-filter>
+  </div>
+
+  <div class="cairn-listing">
+    <div class="cairn-listing-head" role="row">
+      <span class="col-icon" aria-hidden="true"></span>
+      <span class="col-name" data-sort="name" aria-sort="ascending" role="columnheader" tabindex="0">Name</span>
+      <span class="col-meta" data-sort="size" role="columnheader" tabindex="0">Size</span>
+      <span class="col-date" data-sort="modified" role="columnheader" tabindex="0">Modified</span>
+      <span class="col-sum" role="columnheader">SHA-256</span>
+      <span class="col-arrow" aria-hidden="true"></span>
+    </div>
+
+    <div class="cairn-rows" data-cairn-body>
+      {{ range $c.entries }}
+      <div class="cairn-row"
+           data-name="{{ .name }}"
+           data-size="{{ .size }}"
+           data-modified="{{ .modified }}"
+           data-depth="{{ .depth }}">
+        <a href="{{ .path }}">
+          {{ partial "cairn/icon.html" .kind }}
+          <span class="cairn-item-name">
+            {{ .name }}{{ if .is_dir }}/{{ end }}
+            {{ with .summary }}<small class="cairn-item-summary">{{ . }}</small>{{ end }}
+          </span>
+          <span class="cairn-item-meta">
+            {{ if .is_dir }}{{ .count }} item{{ if ne .count 1 }}s{{ end }}{{ else }}{{ partial "cairn/size.html" .size }}{{ end }}
+          </span>
+          <span class="cairn-item-date">{{ dateFormat "2006-01-02" .modified }}</span>
+          {{ partial "cairn/digest.html" (.sha256 | default "") }}
+          <span class="cairn-item-arrow" aria-hidden="true">→</span>
+        </a>
+      </div>
+      {{ end }}
+    </div>
+  </div>
+
+  {{ with $c.source_text }}
+  <details class="cairn-source">
+    <summary>{{ $c.source }}</summary>
+    <pre>{{ . }}</pre>
+  </details>
+  {{ end }}
+  <p class="cairn-formats">Also as <a href="index.json">JSON</a>, <a href="index.csv">CSV</a></p>
+
+  {{ with resources.Get "cairn/cairn.js" }}
+    {{ $js := . | resources.Minify | resources.Fingerprint "sha256" }}
+    <script type="module" src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}" defer></script>
+  {{ end }}
+</div>

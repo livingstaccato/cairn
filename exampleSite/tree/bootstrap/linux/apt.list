@@ -1,1 +1,1 @@
-deb http://mirror.example.invalid/ubuntu stable main
+deb http://mirror.internal/ubuntu noble main restricted

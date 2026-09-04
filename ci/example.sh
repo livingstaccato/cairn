@@ -16,12 +16,18 @@ rm -rf exampleSite/content exampleSite/public
 go run ./cmd/cairn build -config exampleSite/cairn.yaml
 (cd exampleSite && hugo --quiet)
 
+# Overlay the artifact tree onto the published site, which is what the web
+# server does in production: index pages and the bytes they describe share one
+# URL prefix. Without this every artifact link in the example 404s and the
+# listing looks broken.
+rsync -a exampleSite/tree/ exampleSite/public/
+
 pub="exampleSite/public"
 fail=0
 check() { [ -e "$pub/$1" ] || { echo "MISSING $pub/$1"; fail=1; }; }
 
 # Every covered directory publishes all three formats at the same URL.
-for d in bootstrap bootstrap/linux docs external; do
+for d in bootstrap bootstrap/linux pool docs external; do
   check "$d/index.html"
   check "$d/index.json"
   check "$d/index.csv"
@@ -40,11 +46,17 @@ fi
 
 # bare is JS-free by contract; styled is progressive enhancement over a listing
 # that is already complete.
-if grep -qi '<script' "$pub/bootstrap/index.html"; then
+if grep -qi '<script' "$pub/pool/index.html"; then
   echo "FAIL: the bare presenter emitted a script tag"; fail=1
 fi
-if ! grep -qi '<script' "$pub/docs/index.html"; then
+if ! grep -qi '<script' "$pub/bootstrap/index.html"; then
   echo "FAIL: the styled presenter did not emit its enhancement script"; fail=1
+fi
+
+# The digest is the one element this design is built around; a styled listing
+# with checksums on must actually render it.
+if ! grep -q 'cairn-sum-head' "$pub/bootstrap/index.html"; then
+  echo "FAIL: the styled listing rendered no digest"; fail=1
 fi
 
 # Nothing may reach the network at render time.
@@ -57,6 +69,10 @@ fi
 if grep -qE '>0 ?KB<|>0\.0 KiB<' "$pub"/*/index.html; then
   echo "FAIL: a sub-kilobyte size rendered as zero"; fail=1
 fi
+
+# Every internal link must resolve. A listing whose entries 404 is not a
+# listing, and the overlay above is what makes them resolve.
+python3 ci/checklinks.py "$pub" || fail=1
 
 # Emitted JSON is valid, non-empty, and uses the contract's key names.
 python3 - "$pub/bootstrap/index.json" <<'PY'

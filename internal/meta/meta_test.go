@@ -6,6 +6,7 @@ package meta
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/livingstaccato/cairn/internal/model"
@@ -172,5 +173,51 @@ func TestProse(t *testing.T) {
 	write(t, dir, "README.md", "from readme")
 	if got, _ := Prose(dir); got != "from readme" {
 		t.Errorf("prose = %q, want README.md to win", got)
+	}
+}
+
+func TestSourceFile(t *testing.T) {
+	dir := t.TempDir()
+	if got := SourceFile(dir); got != "" {
+		t.Errorf("empty dir = %q, want empty", got)
+	}
+	write(t, dir, DirConfigFile, "outputs: [json]\n")
+	if got := SourceFile(dir); got != DirConfigFile {
+		t.Errorf("got %q, want %q", got, DirConfigFile)
+	}
+	// _meta.yaml wins: it is the file describing the entries, which is what a
+	// reader following the link is looking for.
+	write(t, dir, DirFile, "x:\n  title: y\n")
+	if got := SourceFile(dir); got != DirFile {
+		t.Errorf("got %q, want %q", got, DirFile)
+	}
+}
+
+func TestSourceReadsContents(t *testing.T) {
+	dir := t.TempDir()
+	if got, err := Source(dir); err != nil || got.Name != "" || got.Text != "" {
+		t.Errorf("empty dir = %+v, err %v", got, err)
+	}
+	write(t, dir, DirFile, "x:\n  title: y\n")
+	got, err := Source(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Name != DirFile || got.Text != "x:\n  title: y\n" {
+		t.Errorf("got %+v", got)
+	}
+}
+
+// A directory description running past the cap is a file to fetch, not
+// something to inline into every page that mentions it.
+func TestSourceIsCapped(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, DirFile, strings.Repeat("# filler\n", SourceMaxBytes))
+	got, err := Source(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Text) != SourceMaxBytes {
+		t.Errorf("len = %d, want %d", len(got.Text), SourceMaxBytes)
 	}
 }

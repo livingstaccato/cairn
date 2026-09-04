@@ -10,6 +10,16 @@ title = "cairn example"
   [[module.imports]]
     path = "github.com/livingstaccato/cairn/themes/reference"
 
+  # source: pages lists content Hugo already renders, so the markdown it points
+  # at has to be mounted as content. Without this the listing links to
+  # /docs/intro/ and Hugo publishes nothing there.
+  [[module.mounts]]
+    source = "content"
+    target = "content"
+  [[module.mounts]]
+    source = "tree/docs"
+    target = "content/docs"
+
 # index.json and index.csv beside index.html, from one source.
 [outputFormats]
   [outputFormats.cairnjson]

@@ -1,0 +1,30 @@
+{{- /* The autoindex. A table, no JavaScript, no interactive affordance —
+       everything here survives lynx, w3m and a browser with scripting off. */ -}}
+{{- $c := .Params.cairn -}}
+<div class="cairn cairn--bare" data-cairn-present="bare">
+  {{ partial "cairn/breadcrumb.html" $c.path }}
+  {{ with .Content }}<div class="cairn-prose">{{ . }}</div>{{ end }}
+  <table class="cairn-table">
+    <thead>
+      <tr><th>Name</th><th class="size">Size</th><th class="modified">Modified</th><th class="sum">SHA-256</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><a href="../">../</a></td><td></td><td></td><td></td></tr>
+      {{ range $c.entries }}
+      <tr>
+        <td><a href="{{ .path }}">{{ .name }}{{ if .is_dir }}/{{ end }}</a>{{ with .title }} — {{ . }}{{ end }}</td>
+        <td class="size">{{ if .is_dir }}-{{ else }}{{ partial "cairn/size.html" .size }}{{ end }}</td>
+        <td class="modified">{{ dateFormat "2006-01-02 15:04" .modified }}</td>
+        <td class="sum">{{ with .sha256 }}{{ substr . 0 12 }}…{{ end }}</td>
+      </tr>
+      {{ end }}
+    </tbody>
+  </table>
+  {{ with $c.source_text }}
+  <details class="cairn-source">
+    <summary>{{ $c.source }}</summary>
+    <pre>{{ . }}</pre>
+  </details>
+  {{ end }}
+  <p class="cairn-formats">Also as <a href="index.json">JSON</a>, <a href="index.csv">CSV</a></p>
+</div>

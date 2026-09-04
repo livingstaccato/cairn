@@ -23,6 +23,9 @@ const (
 	SidecarSuffix = ".meta.yaml"
 	// DirFile holds a whole directory's metadata, keyed by filename.
 	DirFile = "_meta.yaml"
+	// DirConfigFile holds per-directory settings, and a manifest source's
+	// entry list.
+	DirConfigFile = ".cairn.yaml"
 )
 
 // FileMeta is authored metadata for one file.
@@ -183,6 +186,51 @@ func applyOne(e *model.Entry, fm FileMeta) {
 	if fm.Extra != nil {
 		e.Extra = fm.Extra
 	}
+}
+
+// SourceMaxBytes caps how much authored metadata is inlined into a page. A
+// directory description that runs past this is a file to fetch, not something
+// to read inline.
+const SourceMaxBytes = 8 << 10
+
+// SourceFile returns the name of the authored file describing this directory,
+// or "" when there is none.
+func SourceFile(absDir string) string {
+	for _, name := range []string{DirFile, DirConfigFile} {
+		if _, err := os.Lstat(filepath.Join(absDir, name)); err == nil {
+			return name
+		}
+	}
+	return ""
+}
+
+// Source returns the name and contents of the authored file describing this
+// directory, for the listing to show inline.
+//
+// Inline rather than linked: a link to a .yaml downloads it on any host that
+// does not declare a MIME type for the extension, which includes the default
+// nginx config and every static host where you cannot set one. A reader asking
+// why an entry is titled the way it is should see the answer, not a file in
+// their downloads folder.
+func Source(absDir string) (FileSource, error) {
+	name := SourceFile(absDir)
+	if name == "" {
+		return FileSource{}, nil
+	}
+	b, err := readIfPresent(filepath.Join(absDir, name))
+	if err != nil {
+		return FileSource{}, err
+	}
+	if len(b) > SourceMaxBytes {
+		b = b[:SourceMaxBytes]
+	}
+	return FileSource{Name: name, Text: string(b)}, nil
+}
+
+// FileSource is the authored file describing a directory, shown inline.
+type FileSource struct {
+	Name string
+	Text string
 }
 
 // proseFiles are the directory-introduction filenames, in precedence order.

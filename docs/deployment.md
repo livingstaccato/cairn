@@ -67,6 +67,18 @@ server {
 }
 ```
 
+### Serving metadata as text
+
+Each listing links to the `_meta.yaml` or `.cairn.yaml` that describes it, so a
+reader can see why an entry is titled the way it is. Without a MIME type those
+download instead of opening:
+
+```nginx
+types {
+    text/plain  yaml yml cfg list ipxe;
+}
+```
+
 ### Optional: `?format=` on a server you own
 
 Pure file selection, not computation — which is why it works on a static tree,

@@ -43,6 +43,36 @@ export function applyDepth(rows, maxDepth) {
   }
 }
 
+/**
+ * Wires the digest copy buttons.
+ *
+ * The listing shows eight characters because that is what a person compares by
+ * eye; this is how they get the other fifty-six. Falls back to a text selection
+ * where the clipboard API is unavailable, which includes every plain-HTTP
+ * origin — the deployment this project targets — so it cannot be the only path.
+ */
+export function bindCopy(root, clipboard) {
+  for (const button of root.querySelectorAll('[data-cairn-copy]')) {
+    button.addEventListener('click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const value = button.dataset.cairnCopy;
+      try {
+        if (!clipboard) throw new Error('no clipboard');
+        await clipboard.writeText(value);
+      } catch {
+        const range = document.createRange();
+        range.selectNodeContents(button);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+      button.dataset.copied = 'true';
+      setTimeout(() => delete button.dataset.copied, 1200);
+    });
+  }
+}
+
 function init(root) {
   const body = root.querySelector('[data-cairn-body]');
   if (!body) return;
@@ -56,11 +86,13 @@ function init(root) {
     filter.addEventListener('input', () => filterRows(rows(), filter.value));
   }
 
-  for (const th of root.querySelectorAll('th[data-sort]')) {
+  bindCopy(root, navigator.clipboard);
+
+  for (const th of root.querySelectorAll('[data-sort]')) {
     th.addEventListener('click', () => {
       const key = th.dataset.sort;
       const order = th.getAttribute('aria-sort') === 'ascending' ? 'desc' : 'asc';
-      for (const other of root.querySelectorAll('th[data-sort]')) {
+      for (const other of root.querySelectorAll('[data-sort]')) {
         other.removeAttribute('aria-sort');
       }
       th.setAttribute('aria-sort', order === 'asc' ? 'ascending' : 'descending');

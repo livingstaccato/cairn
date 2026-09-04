@@ -75,7 +75,7 @@ func pageEntry(absDir, relDir string, de os.DirEntry, s config.Settings) (model.
 		return model.Entry{
 			Name: name, Path: "/" + path.Join(relDir, name) + "/",
 			IsDir: true, Kind: KindDir, MIME: MIMEDirectory,
-			ModTime: info.ModTime().UTC(), Depth: 1,
+			ModTime: modTime(info.ModTime()), Depth: 1,
 		}, nil, true
 	}
 	if !strings.HasSuffix(name, markdownExt) || sectionPages[name] {
@@ -97,7 +97,7 @@ func pageEntry(absDir, relDir string, de os.DirEntry, s config.Settings) (model.
 	}
 	return model.Entry{
 		Name: slug, Path: "/" + path.Join(relDir, slug) + "/",
-		Size: info.Size(), ModTime: info.ModTime().UTC(),
+		Size: info.Size(), ModTime: modTime(info.ModTime()),
 		Kind: KindPage, MIME: pageMIME,
 		Title: title, Summary: fm.Summary, Tags: fm.Tags, Depth: 1,
 	}, nil, true

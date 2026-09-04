@@ -86,7 +86,7 @@ func (me ManifestEntry) entry() model.Entry {
 	}
 	return model.Entry{
 		Name: me.Name, Path: me.Path, IsDir: kind == KindDir,
-		Size: me.Size, ModTime: me.Modified.UTC(),
+		Size: me.Size, ModTime: modTime(me.Modified),
 		Kind: kind, MIME: mimeType, SHA256: me.SHA256,
 		Title: me.Title, Summary: me.Summary, Tags: me.Tags, Depth: 1,
 	}

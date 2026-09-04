@@ -93,11 +93,15 @@ func (r *runner) visit(relDir string) error {
 		return err
 	}
 
-	if err := r.emitFor(relDir, r.cfg.IndexBasename, r.listing(relDir, entries), s, prose); err != nil {
+	src, err := meta.Source(absDir)
+	if err != nil {
+		return err
+	}
+	if err := r.emitFor(relDir, r.cfg.IndexBasename, r.listing(relDir, entries), s, prose, src); err != nil {
 		return err
 	}
 	if s.Recursive {
-		if err := r.emitTree(relDir, s, prose); err != nil {
+		if err := r.emitTree(relDir, s, prose, src); err != nil {
 			return err
 		}
 	}
@@ -163,13 +167,13 @@ func (r *runner) hashEntries(absDir string, entries []model.Entry) {
 }
 
 // emitTree renders the recursive listing for a directory.
-func (r *runner) emitTree(relDir string, s config.Settings, prose string) error {
+func (r *runner) emitTree(relDir string, s config.Settings, prose string, src meta.FileSource) error {
 	all, warns, err := walk.Tree(r.root, relDir, s, r.cfg.TreeMaxEntries)
 	if err != nil {
 		return err
 	}
 	r.warn(warns)
-	return r.emitFor(relDir, treeBasename, r.listing(relDir, all), s, prose)
+	return r.emitFor(relDir, treeBasename, r.listing(relDir, all), s, prose, src)
 }
 
 // recurse descends into each subdirectory of a completed listing.
@@ -202,11 +206,13 @@ func (r *runner) listing(relDir string, entries []model.Entry) model.Listing {
 // emitCtx is one directory's rendering job, bundled so the format handlers
 // take a receiver and one argument rather than six.
 type emitCtx struct {
-	relDir   string
-	basename string
-	listing  model.Listing
-	settings config.Settings
-	prose    string
+	relDir     string
+	basename   string
+	listing    model.Listing
+	settings   config.Settings
+	prose      string
+	source     string
+	sourceText string
 }
 
 // emitters maps an output format to its handler. A map rather than a switch
@@ -225,8 +231,11 @@ var emitters = map[string]func(*runner, emitCtx) error{
 // In hugo mode it writes one _index.md instead and returns: Hugo renders every
 // format from that page, so emitting them here as well would produce two
 // sources for the same URL that could disagree.
-func (r *runner) emitFor(relDir, basename string, l model.Listing, s config.Settings, prose string) error {
-	c := emitCtx{relDir: relDir, basename: basename, listing: l, settings: s, prose: prose}
+func (r *runner) emitFor(relDir, basename string, l model.Listing, s config.Settings, prose string, src meta.FileSource) error {
+	c := emitCtx{
+		relDir: relDir, basename: basename, listing: l, settings: s,
+		prose: prose, source: src.Name, sourceText: src.Text,
+	}
 	if r.cfg.Mode == config.ModeHugo {
 		return r.emitHugo(c)
 	}
@@ -248,7 +257,7 @@ func (r *runner) emitHugo(c emitCtx) error {
 	if c.basename != r.cfg.IndexBasename {
 		return nil
 	}
-	b, err := emit.HugoContent(c.listing, c.prose, c.settings.Present)
+	b, err := emit.HugoContent(c.listing, c.prose, c.settings.Present, c.source, c.sourceText)
 	if err != nil {
 		return err
 	}

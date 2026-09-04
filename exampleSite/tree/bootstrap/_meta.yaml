@@ -1,0 +1,15 @@
+bootstrap.sh:
+  title: Entry point
+  summary: Curl this first; everything else follows from it
+cloud-init.yaml:
+  title: Cloud-init user data
+preseed.cfg:
+  title: Debian preseed
+  summary: Unattended install answers
+boot.ipxe:
+  title: iPXE chain script
+netboot.tar.gz:
+  title: Netboot bundle
+  summary: Kernel and initrd for network installs
+vmlinuz:
+  title: Kernel image

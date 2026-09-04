@@ -36,11 +36,13 @@ type hugoFrontmatter struct {
 // cairnParam is the listing as a template sees it. The keys match the JSON
 // contract exactly: a Hugo template and a jq pipeline read the same names.
 type cairnParam struct {
-	Present   string        `yaml:"present"`
-	Path      string        `yaml:"path"`
-	Generated string        `yaml:"generated"`
-	Count     int           `yaml:"count"`
-	Entries   []model.Entry `yaml:"entries"`
+	Present    string        `yaml:"present"`
+	Path       string        `yaml:"path"`
+	Source     string        `yaml:"source,omitempty"`
+	SourceText string        `yaml:"source_text,omitempty"`
+	Generated  string        `yaml:"generated"`
+	Count      int           `yaml:"count"`
+	Entries    []model.Entry `yaml:"entries"`
 }
 
 // HugoContent renders one directory as a Hugo branch-bundle _index.md carrying
@@ -49,16 +51,18 @@ type cairnParam struct {
 // Hugo's output formats then produce HTML, JSON and CSV from this single
 // source, so the three cannot drift from each other. cairn writes one file per
 // directory in this mode and lets Hugo publish the rest.
-func HugoContent(l model.Listing, prose, present string) ([]byte, error) {
+func HugoContent(l model.Listing, prose, present, source, sourceText string) ([]byte, error) {
 	fm := hugoFrontmatter{
 		Title:  titleFor(l.Path),
 		Layout: HugoLayout,
 		Cairn: cairnParam{
-			Present:   present,
-			Path:      l.Path,
-			Generated: l.Generated.Format(time.RFC3339),
-			Count:     l.Count,
-			Entries:   l.Entries,
+			Present:    present,
+			Path:       l.Path,
+			Source:     source,
+			SourceText: sourceText,
+			Generated:  l.Generated.Format(time.RFC3339),
+			Count:      l.Count,
+			Entries:    l.Entries,
 		},
 	}
 

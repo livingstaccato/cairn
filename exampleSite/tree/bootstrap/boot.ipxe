@@ -1,0 +1,2 @@
+set mirror http://mirror.internal
+kernel ${mirror}/bootstrap/vmlinuz

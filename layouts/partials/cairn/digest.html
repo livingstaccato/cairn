@@ -1,0 +1,19 @@
+{{- /* The digest cell. Takes a hex string, possibly empty.
+
+       Split rather than truncated: the first eight characters are what anyone
+       actually compares against a SHA256SUMS line by eye, so they carry the
+       weight and the accent, and the rest trails off in the muted tone. The
+       full value stays in a data attribute for click-to-copy — a listing that
+       shows you a shortened digest and gives you no way to get the real one is
+       decoration. */ -}}
+{{- $sum := . -}}
+{{- if $sum -}}
+<span class="cairn-sum">
+  <button type="button" class="cairn-sum-copy" data-cairn-copy="{{ $sum }}"
+          title="Copy the full SHA-256" aria-label="Copy SHA-256 {{ substr $sum 0 8 }}">
+    <span class="cairn-sum-head">{{ substr $sum 0 8 }}</span><span class="cairn-sum-tail">{{ substr $sum 8 12 }}</span>
+  </button>
+</span>
+{{- else -}}
+<span class="cairn-sum cairn-sum-none" aria-hidden="true">—</span>
+{{- end -}}

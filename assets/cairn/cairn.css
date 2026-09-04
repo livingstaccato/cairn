@@ -1,74 +1,293 @@
 /* SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
    SPDX-License-Identifier: Apache-2.0 */
 
-/* cairn listing styles.
-   Colors come from the host theme's custom properties, with fallbacks, so this
-   module drops into any Hugo theme without importing a design system. */
-.cairn {
-  --c-fg: var(--text-1, #1a1a1a);
-  --c-muted: var(--text-2, #6a6a6a);
-  --c-bg: var(--bg-2, #f6f6f6);
-  --c-border: var(--bg-3, #d8d8d8);
-  --c-accent: var(--accent, #3a6ea5);
+/* cairn listing.
+ *
+ * Two rules shape everything here:
+ *
+ * No webfonts. This renders on airgapped mirrors, so the type decision is
+ * treatment rather than family — the sans stack is chrome (labels, uppercase,
+ * tracked) and the mono stack is data (names, sizes, dates, digests). A
+ * filesystem's vernacular is monospace; the split marks what is content.
+ *
+ * One accent. Verdigris is reserved for verification state and nothing else,
+ * so a digest is the only colored thing on the page. On a plain-HTTP mirror it
+ * is the only thing standing between a reader and a bad artifact, and every
+ * other directory listing renders it as grey filler.
+ *
+ * Colors defer to the host theme's custom properties where it defines them. */
 
-  color: var(--c-fg);
+.cairn {
+  --c-ink: var(--text-1, #16181d);
+  --c-slate: var(--text-2, #5b6270);
+  --c-paper: var(--bg-1, #fbfbfa);
+  --c-raise: var(--bg-2, #f3f3f1);
+  --c-rule: var(--bg-3, #e2e2de);
+  --c-signal: var(--accent, #2f7d5d);
+
+  --c-mono: ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Mono", Menlo, Consolas, monospace;
+  --c-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+
+  color: var(--c-ink);
+  font-family: var(--c-sans);
 }
 
-.cairn-breadcrumb { font-size: 0.85rem; margin-bottom: 1rem; color: var(--c-muted); }
-.cairn-breadcrumb a { color: var(--c-muted); text-decoration: none; }
-.cairn-breadcrumb a:hover { color: var(--c-accent); }
-.cairn-breadcrumb .sep { margin: 0 0.35rem; }
-.cairn-breadcrumb .current { color: var(--c-accent); }
+@media (prefers-color-scheme: dark) {
+  .cairn {
+    --c-ink: var(--text-1, #e6e7e9);
+    --c-slate: var(--text-2, #8b93a1);
+    --c-paper: var(--bg-1, #16181d);
+    --c-raise: var(--bg-2, #1d2026);
+    --c-rule: var(--bg-3, #2b2f37);
+    --c-signal: var(--accent, #5fbf92);
+  }
+}
+
+/* ── Masthead ─────────────────────────────────────────────────────────────
+   The path is the title. Nothing else deserves the top of the page. */
+
+.cairn-terminal { margin-bottom: 1.75rem; }
+
+.cairn-breadcrumb {
+  font-family: var(--c-mono);
+  font-size: 1.0625rem;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.cairn-breadcrumb a { color: var(--c-slate); text-decoration: none; }
+.cairn-breadcrumb a:hover { color: var(--c-ink); text-decoration: underline; }
+.cairn-breadcrumb .sep { color: var(--c-rule); margin: 0 0.15rem; }
+.cairn-breadcrumb .current { color: var(--c-ink); font-weight: 600; }
+
+.cairn-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin-top: 0.6rem;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--c-slate);
+}
+
+.cairn-meta-item { display: inline-flex; align-items: center; gap: 0.4rem; }
 
 .cairn-prose {
-  margin: 1rem 0 1.5rem;
-  padding: 1rem;
-  background: var(--c-bg);
-  border-left: 3px solid var(--c-accent);
-  border-radius: 0 4px 4px 0;
+  margin: 0 0 1.75rem;
+  padding-left: 1rem;
+  border-left: 2px solid var(--c-rule);
+  color: var(--c-slate);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  max-width: 62ch;
 }
 
-.cairn-toolbar { display: flex; gap: 0.75rem; margin-bottom: 0.75rem; }
+.cairn-prose p { margin: 0 0 0.5rem; }
+.cairn-prose p:last-child { margin-bottom: 0; }
+
+/* ── Toolbar ──────────────────────────────────────────────────────────── */
+
+.cairn-toolbar { margin-bottom: 0.75rem; }
 .cairn-toolbar[hidden] { display: none; }
-.cairn-filter { flex: 1; padding: 0.4rem 0.6rem; border: 1px solid var(--c-border); border-radius: 4px; }
 
-.cairn-listing {
+.cairn-filter {
   width: 100%;
-  border-collapse: collapse;
-  background: var(--c-bg);
-  border: 1px solid var(--c-border);
-  border-radius: 8px;
+  max-width: 22rem;
+  padding: 0.4rem 0.6rem;
+  font-family: var(--c-mono);
+  font-size: 0.8125rem;
+  color: var(--c-ink);
+  background: var(--c-raise);
+  border: 1px solid var(--c-rule);
+  border-radius: 3px;
 }
 
-.cairn-listing th {
-  text-align: left;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.8rem;
+.cairn-filter:focus-visible { outline: 2px solid var(--c-signal); outline-offset: 1px; }
+
+/* ── Listing ──────────────────────────────────────────────────────────────
+   Hairlines, no card. The rows are the object; a container around them would
+   just be a box drawn around a box. */
+
+.cairn-listing-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 0.5rem 0.5rem;
+  border-bottom: 1px solid var(--c-ink);
+  font-size: 0.6875rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--c-border);
+  letter-spacing: 0.09em;
+  color: var(--c-slate);
 }
 
-.cairn-listing th[data-sort] { cursor: pointer; user-select: none; }
-.cairn-listing th[data-sort]:hover { color: var(--c-accent); }
-.cairn-listing th[aria-sort="ascending"]::after { content: " \25B2"; }
-.cairn-listing th[aria-sort="descending"]::after { content: " \25BC"; }
+.cairn-listing-head [data-sort] { cursor: pointer; user-select: none; }
+.cairn-listing-head [data-sort]:hover { color: var(--c-ink); }
+.cairn-listing-head [data-sort]:focus-visible { outline: 2px solid var(--c-signal); outline-offset: 2px; }
+.cairn-listing-head [aria-sort="ascending"] { color: var(--c-ink); }
+.cairn-listing-head [aria-sort="ascending"]::after { content: " \2191"; }
+.cairn-listing-head [aria-sort="descending"] { color: var(--c-ink); }
+.cairn-listing-head [aria-sort="descending"]::after { content: " \2193"; }
 
-.cairn-listing td { padding: 0.4rem 0.75rem; border-bottom: 1px solid var(--c-border); }
-.cairn-listing tr:last-child td { border-bottom: 0; }
-.cairn-listing td.size, .cairn-listing th.size { text-align: right; font-variant-numeric: tabular-nums; }
-.cairn-listing td.sum { font-family: monospace; font-size: 0.8rem; color: var(--c-muted); }
+.col-icon, .cairn-icon { flex: 0 0 1rem; }
+.col-name { flex: 1 1 auto; min-width: 0; }
+.col-meta { flex: 0 0 6rem; text-align: right; }
+.col-date { flex: 0 0 6rem; text-align: right; }
+.col-sum  { flex: 0 0 9rem; text-align: right; }
+.col-arrow { flex: 0 0 1rem; }
 
-.cairn-name { display: flex; align-items: center; gap: 0.5rem; }
-.cairn-name a { color: var(--c-fg); text-decoration: none; }
-.cairn-name a:hover { color: var(--c-accent); text-decoration: underline; }
-.cairn-summary { color: var(--c-muted); font-size: 0.85rem; }
-.cairn-icon { flex: 0 0 auto; }
+.cairn-row { border-bottom: 1px solid var(--c-rule); }
 .cairn-row[hidden] { display: none; }
 
-.cairn-formats { margin-top: 0.75rem; font-size: 0.85rem; color: var(--c-muted); }
-.cairn-formats a { color: var(--c-accent); }
+.cairn-row > a {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  color: var(--c-ink);
+  text-decoration: none;
+}
 
-@media (max-width: 40rem) {
-  .cairn-listing .modified, .cairn-listing .sum { display: none; }
+.cairn-row > a:hover { background: var(--c-raise); }
+.cairn-row > a:focus-visible { outline: 2px solid var(--c-signal); outline-offset: -2px; }
+
+.cairn-icon { align-self: center; color: var(--c-slate); }
+.cairn-row > a:hover .cairn-icon { color: var(--c-ink); }
+
+.cairn-item-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--c-mono);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.cairn-item-summary {
+  display: block;
+  margin-top: 0.15rem;
+  font-family: var(--c-sans);
+  font-size: 0.75rem;
+  color: var(--c-slate);
+}
+
+.cairn-item-meta, .cairn-item-date {
+  flex: 0 0 6rem;
+  text-align: right;
+  font-family: var(--c-mono);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-slate);
+  white-space: nowrap;
+}
+
+.cairn-item-arrow {
+  flex: 0 0 1rem;
+  color: var(--c-slate);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.cairn-row > a:hover .cairn-item-arrow,
+.cairn-row > a:focus-visible .cairn-item-arrow { opacity: 1; }
+
+/* ── The digest ───────────────────────────────────────────────────────────
+   The one loud thing. Without TLS this is the only guarantee a reader gets,
+   so it is the only element on the page allowed to use the accent. The first
+   eight characters carry the weight because that is what anyone actually
+   compares by eye; the rest trails off. */
+
+.cairn-sum {
+  flex: 0 0 9rem;
+  text-align: right;
+  font-family: var(--c-mono);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.cairn-sum-head { color: var(--c-signal); font-weight: 600; }
+.cairn-sum-tail { color: var(--c-slate); }
+.cairn-sum-none { color: var(--c-rule); }
+
+.cairn-sum-copy {
+  font: inherit;
+  padding: 0.1rem 0.25rem;
+  color: inherit;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.cairn-sum-copy:hover { border-color: var(--c-rule); background: var(--c-raise); }
+.cairn-sum-copy:focus-visible { outline: 2px solid var(--c-signal); outline-offset: 1px; }
+.cairn-sum-copy[data-copied="true"] .cairn-sum-head,
+.cairn-sum-copy[data-copied="true"] .cairn-sum-tail { color: var(--c-signal); }
+
+/* The authored metadata, shown rather than downloaded. Closed by default: it
+   answers a question most readers are not asking. */
+.cairn-source { margin-top: 1.5rem; }
+
+.cairn-source > summary {
+  cursor: pointer;
+  font-family: var(--c-mono);
+  font-size: 0.75rem;
+  color: var(--c-slate);
+  list-style-position: outside;
+}
+
+.cairn-source > summary:hover { color: var(--c-ink); }
+.cairn-source > summary:focus-visible { outline: 2px solid var(--c-signal); outline-offset: 2px; }
+
+.cairn-source pre {
+  margin: 0.6rem 0 0;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  background: var(--c-raise);
+  border-left: 2px solid var(--c-rule);
+  font-family: var(--c-mono);
+  font-size: 0.75rem;
+  line-height: 1.55;
+  color: var(--c-slate);
+}
+
+.cairn-formats {
+  margin-top: 1.25rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--c-slate);
+}
+
+.cairn-formats a { color: var(--c-slate); text-underline-offset: 3px; }
+.cairn-formats a:hover { color: var(--c-signal); }
+
+/* ── Bare presenter ───────────────────────────────────────────────────────
+   Styled enough to read, plain enough to survive a text browser. */
+
+.cairn--bare .cairn-table { width: 100%; border-collapse: collapse; font-family: var(--c-mono); font-size: 0.8125rem; }
+.cairn--bare th {
+  text-align: left; padding: 0 0.75rem 0.4rem 0;
+  border-bottom: 1px solid var(--c-ink);
+  font-family: var(--c-sans); font-size: 0.6875rem;
+  text-transform: uppercase; letter-spacing: 0.09em; color: var(--c-slate);
+}
+.cairn--bare td { padding: 0.35rem 0.75rem 0.35rem 0; border-bottom: 1px solid var(--c-rule); }
+.cairn--bare td.size, .cairn--bare th.size { text-align: right; font-variant-numeric: tabular-nums; }
+.cairn--bare td.sum { color: var(--c-signal); }
+.cairn--bare a { color: var(--c-ink); text-underline-offset: 3px; }
+
+@media (max-width: 46rem) {
+  .col-date, .cairn-item-date { display: none; }
+  .cairn--bare .modified { display: none; }
+  .col-sum, .cairn-sum { flex-basis: 6rem; }
+}
+
+@media (max-width: 32rem) {
+  .col-sum, .cairn-sum { display: none; }
+  .cairn--bare .sum { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cairn-item-arrow { transition: none; }
 }

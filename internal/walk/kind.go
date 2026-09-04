@@ -8,6 +8,7 @@ import (
 	"mime"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // Entry kinds. These are the values Entry.Kind takes, and they drive icon
@@ -82,4 +83,15 @@ func KindOf(name string, isDir bool) (kind, mimeType string) {
 		mimeType = MIMEFallback
 	}
 	return kind, mimeType
+}
+
+// modTime normalizes a modification time for output.
+//
+// Whole seconds in UTC, because the same timestamp is rendered by three paths —
+// JSON from Go, CSV from Go, and YAML that Hugo re-renders verbatim — and
+// sub-second precision survives some of them and not others. A file listing has
+// no use for nanoseconds, and a value that differs by path is worse than a
+// coarse one.
+func modTime(t time.Time) time.Time {
+	return t.UTC().Truncate(time.Second)
 }

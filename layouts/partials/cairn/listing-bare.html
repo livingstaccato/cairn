@@ -1,12 +1,44 @@
 {{- /* The autoindex. A table, no JavaScript, no interactive affordance —
-       everything here survives lynx, w3m and a browser with scripting off. */ -}}
+       everything here survives lynx, w3m and a browser with scripting off.
+
+       Same information architecture as the styled presenter: formats beside the
+       path, the digest column header linking to the file that holds it, and the
+       authored prose carrying its own provenance. Nothing under the listing. */ -}}
 {{- $c := .Params.cairn -}}
 <div class="cairn cairn--bare" data-cairn-present="bare">
-  {{ partial "cairn/breadcrumb.html" $c.path }}
-  {{ with .Content }}<div class="cairn-prose">{{ . }}</div>{{ end }}
+
+  <header class="cairn-head">
+    <div class="cairn-head-path">
+      {{ partial "cairn/breadcrumb.html" $c.path }}
+      <p class="cairn-head-meta">{{ $c.count }} item{{ if ne $c.count 1 }}s{{ end }}</p>
+    </div>
+    {{ partial "cairn/formats.html" $c }}
+  </header>
+
+  {{ if or .Content $c.source_text }}
+  <section class="cairn-authored">
+    {{ with .Content }}{{ . }}{{ end }}
+    {{ with $c.source_text }}
+    <details class="cairn-provenance">
+      <summary>Titles from <code>{{ $c.source }}</code></summary>
+      <pre>{{ . }}</pre>
+    </details>
+    {{ end }}
+  </section>
+  {{ end }}
+
   <table class="cairn-table">
     <thead>
-      <tr><th>Name</th><th class="size">Size</th><th class="modified">Modified</th><th class="sum">SHA-256</th></tr>
+      <tr>
+        <th>Name</th>
+        <th class="size">Size</th>
+        <th class="modified">Modified</th>
+        <th class="sum">
+          {{- if in $c.formats "sums" -}}
+          <a href="SHA256SUMS" title="Every digest below, as a file sha256sum -c can read">SHA-256</a>
+          {{- else -}}SHA-256{{- end -}}
+        </th>
+      </tr>
     </thead>
     <tbody>
       <tr><td><a href="../">../</a></td><td></td><td></td><td></td></tr>
@@ -14,11 +46,10 @@
       <tr>
         <td><a href="{{ .path }}">{{ .name }}{{ if .is_dir }}/{{ end }}</a>{{ with .title }} — {{ . }}{{ end }}</td>
         <td class="size">{{ if .is_dir }}-{{ else }}{{ partial "cairn/size.html" .size }}{{ end }}</td>
-        <td class="modified">{{ dateFormat "2006-01-02 15:04" .modified }}</td>
+        <td class="modified">{{ dateFormat "2006-01-02" .modified }}</td>
         <td class="sum">{{ with .sha256 }}{{ substr . 0 12 }}…{{ end }}</td>
       </tr>
       {{ end }}
     </tbody>
   </table>
-  {{ partial "cairn/views.html" . }}
 </div>

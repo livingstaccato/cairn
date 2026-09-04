@@ -1,25 +1,44 @@
-{{- /* The browsable listing. Rows are flex anchors rather than table cells so
-       the name can truncate while size and date hold their columns, and so the
-       whole row is one hit target.
+{{- /* The browsable listing.
 
-       Everything here is present before any script runs. The toolbar ships
+       There is no footer. Everything that was in one has moved to where its
+       meaning puts it: the alternate formats are a property of this page, so
+       they sit beside the path; SHA256SUMS is the file holding the digest
+       column, so the column header links to it; and _meta.yaml explains the
+       authored titles, so it hangs off the authored prose. A row of filenames
+       under the listing read as more files in the directory, which is the
+       opposite of what they were.
+
+       Everything here is present before any script runs. The filter ships
        hidden and cairn.js reveals it, so a visitor without JavaScript sees a
        complete listing and no dead controls. */ -}}
 {{- $c := .Params.cairn -}}
 {{- $latest := "" -}}
 {{- range $c.entries }}{{ if gt (string .modified) $latest }}{{ $latest = string .modified }}{{ end }}{{ end -}}
+{{- $hasSums := in $c.formats "sums" -}}
 <div class="cairn cairn--styled" data-cairn-present="styled">
 
-  <header class="cairn-terminal">
-    {{ partial "cairn/breadcrumb.html" $c.path }}
-    <div class="cairn-meta">
-      <span class="cairn-meta-item">{{ $c.count }} item{{ if ne $c.count 1 }}s{{ end }}</span>
-      {{ with $latest }}<span class="cairn-meta-item">updated {{ dateFormat "2006-01-02" . }}</span>{{ end }}
-
+  <header class="cairn-head">
+    <div class="cairn-head-path">
+      {{ partial "cairn/breadcrumb.html" $c.path }}
+      <p class="cairn-head-meta">
+        {{ $c.count }} item{{ if ne $c.count 1 }}s{{ end }}
+        {{ with $latest }}<span class="sep">·</span> updated {{ dateFormat "2006-01-02" . }}{{ end }}
+      </p>
     </div>
+    {{ partial "cairn/formats.html" $c }}
   </header>
 
-  {{ with .Content }}<div class="cairn-prose">{{ . }}</div>{{ end }}
+  {{ if or .Content $c.source_text }}
+  <section class="cairn-authored">
+    {{ with .Content }}{{ . }}{{ end }}
+    {{ with $c.source_text }}
+    <details class="cairn-provenance">
+      <summary>Titles from <code>{{ $c.source }}</code></summary>
+      <pre>{{ . }}</pre>
+    </details>
+    {{ end }}
+  </section>
+  {{ end }}
 
   <div class="cairn-toolbar" hidden data-cairn-toolbar>
     <input class="cairn-filter" type="search" placeholder="Filter…" aria-label="Filter entries" data-cairn-filter>
@@ -31,8 +50,11 @@
       <span class="col-name" data-sort="name" aria-sort="ascending" role="columnheader" tabindex="0">Name</span>
       <span class="col-meta" data-sort="size" role="columnheader" tabindex="0">Size</span>
       <span class="col-date" data-sort="modified" role="columnheader" tabindex="0">Modified</span>
-      <span class="col-sum" role="columnheader">SHA-256</span>
-      <span class="col-arrow" aria-hidden="true"></span>
+      <span class="col-sum" role="columnheader">
+        {{- if $hasSums -}}
+        <a href="SHA256SUMS" title="Every digest below, as a file sha256sum -c can read">SHA-256</a>
+        {{- else -}}SHA-256{{- end -}}
+      </span>
     </div>
 
     <div class="cairn-rows" data-cairn-body>
@@ -53,14 +75,11 @@
           </span>
           <span class="cairn-item-date">{{ dateFormat "2006-01-02" .modified }}</span>
           {{ partial "cairn/digest.html" (.sha256 | default "") }}
-          <span class="cairn-item-arrow" aria-hidden="true">→</span>
         </a>
       </div>
       {{ end }}
     </div>
   </div>
-
-  {{ partial "cairn/views.html" . }}
 
   {{ with resources.Get "cairn/cairn.js" }}
     {{ $js := . | resources.Minify | resources.Fingerprint "sha256" }}

@@ -1,0 +1,23 @@
+{{- /* This page in another shape. Takes the cairn params.
+
+       Labelled, because four bare filenames sitting near a directory listing
+       read as four more files. "This page as" costs three words and removes
+       the ambiguity entirely.
+
+       SHA256SUMS is deliberately absent: it is not a rendering of this page,
+       it is the file holding the digest column, so the column header links to
+       it instead. */ -}}
+{{- $names := dict "json" "index.json" "csv" "index.csv" "txt" "index.txt" -}}
+{{- $blurbs := dict
+    "json" "One record per entry, for a provisioning script"
+    "csv"  "The same rows as columns"
+    "txt"  "One name per line, for xargs"
+-}}
+{{- $shown := slice -}}
+{{- range .formats }}{{ if ne . "sums" }}{{ $shown = $shown | append . }}{{ end }}{{ end -}}
+{{- with $shown }}
+<nav class="cairn-formats" aria-label="Other formats">
+  <span class="cairn-formats-label">This page as</span>
+  {{ range . }}<a href="{{ index $names . }}" title="{{ index $blurbs . }}">{{ . }}</a>{{ end }}
+</nav>
+{{- end }}

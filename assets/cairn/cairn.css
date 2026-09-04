@@ -46,7 +46,48 @@
 /* ── Masthead ─────────────────────────────────────────────────────────────
    The path is the title. Nothing else deserves the top of the page. */
 
-.cairn-terminal { margin-bottom: 1.75rem; }
+.cairn-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem 2rem;
+  margin-bottom: 1.75rem;
+}
+
+.cairn-head-path { min-width: 0; }
+
+.cairn-head-meta {
+  margin: 0.5rem 0 0;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--c-slate);
+}
+
+.cairn-head-meta .sep { color: var(--c-rule); }
+
+/* "This page as" is doing real work: four bare filenames beside a directory
+   listing read as four more files. */
+.cairn-formats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-family: var(--c-mono);
+  font-size: 0.75rem;
+}
+
+.cairn-formats-label {
+  font-family: var(--c-sans);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--c-slate);
+}
+
+.cairn-formats a { color: var(--c-slate); text-decoration: none; }
+.cairn-formats a:hover { color: var(--c-signal); text-decoration: underline; }
 
 .cairn-breadcrumb {
   font-family: var(--c-mono);
@@ -74,7 +115,7 @@
 
 .cairn-meta-item { display: inline-flex; align-items: center; gap: 0.4rem; }
 
-.cairn-prose {
+.cairn-authored {
   margin: 0 0 1.75rem;
   padding-left: 1rem;
   border-left: 2px solid var(--c-rule);
@@ -84,8 +125,36 @@
   max-width: 62ch;
 }
 
-.cairn-prose p { margin: 0 0 0.5rem; }
-.cairn-prose p:last-child { margin-bottom: 0; }
+.cairn-authored p { margin: 0 0 0.5rem; }
+.cairn-authored p:last-child { margin-bottom: 0; }
+.cairn-authored code { font-family: var(--c-mono); font-size: 0.8125rem; }
+
+/* Provenance for the authored strings, next to the other authored thing. */
+.cairn-provenance { margin-top: 0.75rem; }
+
+.cairn-provenance > summary {
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--c-slate);
+  list-style: none;
+}
+
+.cairn-provenance > summary::-webkit-details-marker { display: none; }
+.cairn-provenance > summary::after { content: " \203A"; }
+.cairn-provenance[open] > summary::after { content: " \2039"; }
+.cairn-provenance > summary:hover { color: var(--c-signal); }
+.cairn-provenance > summary:focus-visible { outline: 2px solid var(--c-signal); outline-offset: 2px; }
+
+.cairn-provenance pre {
+  margin: 0.6rem 0 0;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  background: var(--c-raise);
+  font-family: var(--c-mono);
+  font-size: 0.75rem;
+  line-height: 1.55;
+  color: var(--c-slate);
+}
 
 /* ── Toolbar ──────────────────────────────────────────────────────────── */
 
@@ -122,6 +191,8 @@
   color: var(--c-slate);
 }
 
+.cairn-listing-head a { color: inherit; text-decoration: none; }
+.cairn-listing-head a:hover { color: var(--c-signal); text-decoration: underline; }
 .cairn-listing-head [data-sort] { cursor: pointer; user-select: none; }
 .cairn-listing-head [data-sort]:hover { color: var(--c-ink); }
 .cairn-listing-head [data-sort]:focus-visible { outline: 2px solid var(--c-signal); outline-offset: 2px; }
@@ -132,14 +203,14 @@
 
 /* Column widths are declared once and used by both the header and the rows.
    Two sets of numbers meaning the same thing is how columns drift. */
-.cairn { --col-icon: 1rem; --col-meta: 5.5rem; --col-date: 5.5rem; --col-sum: 8.5rem; --col-arrow: 1rem; }
+.cairn { --col-icon: 1rem; --col-meta: 5.5rem; --col-date: 5.5rem; --col-sum: 8.5rem; }
 
 .col-icon, .cairn-icon { flex: 0 0 var(--col-icon); }
 .col-name { flex: 1 1 auto; min-width: 0; }
 .col-meta, .cairn-item-meta { flex: 0 0 var(--col-meta); text-align: right; }
 .col-date, .cairn-item-date { flex: 0 0 var(--col-date); text-align: right; }
 .col-sum, .cairn-sum { flex: 0 0 var(--col-sum); text-align: right; }
-.col-arrow, .cairn-item-arrow { flex: 0 0 var(--col-arrow); }
+
 
 .cairn-row { border-bottom: 1px solid var(--c-rule); }
 .cairn-row[hidden] { display: none; }
@@ -183,14 +254,7 @@
   white-space: nowrap;
 }
 
-.cairn-item-arrow {
-  color: var(--c-slate);
-  opacity: 0;
-  transition: opacity 0.12s ease;
-}
 
-.cairn-row > a:hover .cairn-item-arrow,
-.cairn-row > a:focus-visible .cairn-item-arrow { opacity: 1; }
 
 /* ── The digest ───────────────────────────────────────────────────────────
    The one loud thing. Without TLS this is the only guarantee a reader gets,
@@ -225,53 +289,6 @@
 .cairn-sum-copy[data-copied="true"] .cairn-sum-head,
 .cairn-sum-copy[data-copied="true"] .cairn-sum-tail { color: var(--c-signal); }
 
-/* ── Also in this directory ───────────────────────────────────────────────
-   One line. A reader came here for the listing, not for a footer explaining
-   what a checksum is; the descriptions live in title attributes. */
-
-.cairn-views {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.4rem;
-  margin-top: 1.5rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--c-rule);
-  font-family: var(--c-mono);
-  font-size: 0.75rem;
-}
-
-.cairn-views a { color: var(--c-slate); text-decoration: none; }
-.cairn-views a:hover { color: var(--c-signal); text-decoration: underline; }
-.cairn-views .sep { color: var(--c-rule); }
-
-.cairn-source { display: inline; }
-
-.cairn-source > summary {
-  display: inline;
-  cursor: pointer;
-  color: var(--c-slate);
-  list-style: none;
-}
-
-.cairn-source > summary::-webkit-details-marker { display: none; }
-.cairn-source > summary::after { content: " \2039"; }
-.cairn-source[open] > summary::after { content: " \203A"; }
-.cairn-source > summary:hover { color: var(--c-signal); }
-.cairn-source > summary:focus-visible { outline: 2px solid var(--c-signal); outline-offset: 2px; }
-
-.cairn-source pre {
-  flex-basis: 100%;
-  margin: 0.6rem 0 0;
-  padding: 0.75rem 1rem;
-  overflow-x: auto;
-  background: var(--c-raise);
-  border-left: 2px solid var(--c-rule);
-  font-size: 0.75rem;
-  line-height: 1.55;
-  color: var(--c-slate);
-}
-
 /* ── Bare presenter ───────────────────────────────────────────────────────
    Styled enough to read, plain enough to survive a text browser. */
 
@@ -299,5 +316,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cairn-item-arrow { transition: none; }
+  * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }

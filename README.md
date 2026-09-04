@@ -10,7 +10,7 @@ a single version pin.
 > schema it does not understand rather than guessing.
 
 ```sh
-go install github.com/livingstaccato/cairn/cmd/cairn@v0.1.0
+go install github.com/livingstaccato/cairn/cmd/cairn@v0.2.1
 ```
 
 ## What it does

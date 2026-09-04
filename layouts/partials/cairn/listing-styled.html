@@ -24,6 +24,13 @@
 {{- $r := .Resources.GetMatch "index.json" -}}
 {{- $entries := slice -}}
 {{- with $r }}{{ $entries = (. | transform.Unmarshal).entries }}{{ end -}}
+{{- /* The page renders at most max_rendered rows. A flat pool of fifty thousand
+       packages is a 34 MB page and nobody reads it; the machine formats carry
+       every entry and are never capped. */ -}}
+{{- $total := len $entries -}}
+{{- $max := int (default 0 $c.max_rendered) -}}
+{{- $shown := $entries -}}
+{{- if and (gt $max 0) (gt $total $max) }}{{ $shown = first $max $entries }}{{ end -}}
 
 {{- $latest := "" -}}
 {{- range $entries }}{{ if gt (string .modified) $latest }}{{ $latest = string .modified }}{{ end }}{{ end -}}
@@ -54,7 +61,11 @@
   {{ end }}
 
   <div class="cairn-toolbar" hidden data-cairn-toolbar>
-    <input class="cairn-filter" type="search" placeholder="Filter by name" aria-label="Filter entries by name" data-cairn-filter>
+    {{- /* The filter searches rendered rows, so on a capped page it searches
+           part of the directory. It has to say which part: a search box that
+           silently covers 2% of a pool is worse than no search box. */ -}}
+    {{- $scope := cond (lt (len $shown) $total) (printf "Filter the first %s" (lang.FormatNumber 0 (len $shown))) "Filter by name" -}}
+    <input class="cairn-filter" type="search" placeholder="{{ $scope }}" aria-label="{{ $scope }}" data-cairn-filter>
   </div>
 
   <div class="cairn-listing">
@@ -71,7 +82,7 @@
     </div>
 
     <div class="cairn-rows" data-cairn-body>
-      {{ range $entries }}
+      {{ range $shown }}
       <div class="cairn-row"
            data-name="{{ .name }}"
            data-size="{{ .size }}"
@@ -91,6 +102,8 @@
       {{ end }}
     </div>
   </div>
+
+  {{ partial "cairn/truncated.html" (dict "shown" (len $shown) "total" $total) }}
 
   {{ with resources.Get "cairn/cairn.js" }}
     {{ $js := . | resources.Minify | resources.Fingerprint "sha256" }}

@@ -81,6 +81,13 @@ test pass.
   files nothing claims, and `on_conflict: error` then refuses every later run.
   The partial save unions in the previous run's claims — saving only what a
   failed run wrote would disown files it never reached.
+- **The HTML is capped, the machine formats never are.** `max_rendered` (1,000
+  by default) bounds the rows on a page, so a directory's `index.html` is a
+  fixed size whether it holds a thousand entries or fifty thousand — 34 MB
+  measured before the cap. `index.json`, `index.csv` and `index.txt` always
+  carry every entry. A capped page states the count and points at `index.txt`,
+  and the styled filter's placeholder narrows to match what it can actually
+  search.
 - **`os.Lstat`, not `os.Stat`,** when testing an output path — a symlink there
   is a conflict, not something to write through.
 - **CSV fields starting `= + - @` get an apostrophe.** Spreadsheets execute

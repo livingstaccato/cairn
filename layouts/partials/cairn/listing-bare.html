@@ -17,6 +17,13 @@
 {{- $r := .Resources.GetMatch "index.json" -}}
 {{- $entries := slice -}}
 {{- with $r }}{{ $entries = (. | transform.Unmarshal).entries }}{{ end -}}
+{{- /* The page renders at most max_rendered rows. A flat pool of fifty thousand
+       packages is a 34 MB page and nobody reads it; the machine formats carry
+       every entry and are never capped. */ -}}
+{{- $total := len $entries -}}
+{{- $max := int (default 0 $c.max_rendered) -}}
+{{- $shown := $entries -}}
+{{- if and (gt $max 0) (gt $total $max) }}{{ $shown = first $max $entries }}{{ end -}}
 
 <div class="cairn cairn--bare" data-cairn-present="bare">
 
@@ -55,7 +62,7 @@
     </thead>
     <tbody>
       <tr><td><a href="../">../</a></td><td></td><td></td><td></td></tr>
-      {{ range $entries }}
+      {{ range $shown }}
       <tr>
         <td><a href="{{ .path }}">{{ .name }}{{ if .is_dir }}/{{ end }}</a>{{ with .title }} — {{ . }}{{ end }}</td>
         <td class="size">{{ if .is_dir }}—{{ else }}{{ partial "cairn/size.html" .size }}{{ end }}</td>
@@ -65,4 +72,5 @@
       {{ end }}
     </tbody>
   </table>
+  {{ partial "cairn/truncated.html" (dict "shown" (len $shown) "total" $total) }}
 </div>

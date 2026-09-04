@@ -57,9 +57,15 @@ var bareTmpl = template.Must(template.New("bare").
 	Parse(bareTemplate))
 
 // bareData is the template's view of a directory.
+//
+// Shown is what the page renders and may be shorter than the listing; Total is
+// the whole directory. The two differ only when a cap applied, and the template
+// uses the difference to say so.
 type bareData struct {
 	Listing model.Listing
 	Prose   string
+	Shown   []model.Entry
+	Total   int
 }
 
 // BareHTML renders a listing as a self-contained, script-free autoindex page.
@@ -67,9 +73,17 @@ type bareData struct {
 // Everything it needs is inline: no stylesheet fetch, no icon font, no
 // JavaScript. That is what lets it work airgapped, over plain HTTP, and in a
 // text browser — the environments a bootstrap mirror actually gets read from.
-func BareHTML(l model.Listing, prose string) ([]byte, error) {
+// maxRendered bounds the rows that reach the page; 0 renders every entry. The
+// machine formats are never capped — a directory of fifty thousand packages is
+// a 34 MB page and a perfectly ordinary index.json.
+func BareHTML(l model.Listing, prose string, maxRendered int) ([]byte, error) {
+	shown := l.Entries
+	if maxRendered > 0 && len(shown) > maxRendered {
+		shown = shown[:maxRendered]
+	}
 	var buf bytes.Buffer
-	if err := bareTmpl.Execute(&buf, bareData{Listing: l, Prose: prose}); err != nil {
+	data := bareData{Listing: l, Prose: prose, Shown: shown, Total: len(l.Entries)}
+	if err := bareTmpl.Execute(&buf, data); err != nil {
 		return nil, fmt.Errorf("render bare html for %s: %w", l.Path, err)
 	}
 	return buf.Bytes(), nil

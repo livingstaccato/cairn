@@ -20,7 +20,7 @@ td.size{text-align:right}
 <thead><tr><th>Name</th><th>Size</th><th>Modified</th><th>SHA-256</th></tr></thead>
 <tbody>
 <tr><td><a href="../">../</a></td><td></td><td></td><td></td></tr>
-{{ range .Listing.Entries }}
+{{ range .Shown }}
 <tr>
   <td><a href="{{ .Path }}">{{ .Name }}{{ if .IsDir }}/{{ end }}</a>{{ with .Title }} — {{ . }}{{ end }}</td>
   <td class="size">{{ if .IsDir }}-{{ else }}{{ humanSize .Size }}{{ end }}</td>
@@ -30,5 +30,12 @@ td.size{text-align:right}
 {{ end }}
 </tbody>
 </table>
+{{ if lt (len .Shown) .Total }}
+<p class="truncated">
+  Showing {{ len .Shown }} of {{ .Total }} entries.
+  The complete listing is <a href="index.txt">index.txt</a>, one name per line,
+  and <a href="index.json">index.json</a>.
+</p>
+{{ end }}
 </body>
 </html>

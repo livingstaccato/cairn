@@ -28,6 +28,10 @@ page, machine-readable indexes, and optional checksums:
 /bootstrap/linux/SHA256SUMS     coreutils format
 ```
 
+The page is capped at 1,000 rows by default and the machine formats are not, so
+`index.html` stays a fixed size on a fifty-thousand-package pool while
+`index.json` still describes every one of them.
+
 The output is plain files. It works behind nginx, on Cloudflare Pages, under
 `python -m http.server`, and from `file://` on a USB stick.
 

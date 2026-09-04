@@ -52,6 +52,10 @@ type Settings struct {
 	Checksum       string   `yaml:"checksum"`
 	Recursive      bool     `yaml:"recursive"`
 	FollowSymlinks bool     `yaml:"follow_symlinks"`
+	// MaxRendered bounds how many entries reach the HTML page. 0 renders every
+	// one. The machine formats are never capped: the page is what has a reader
+	// waiting on it, and index.json is what has a script waiting on it.
+	MaxRendered int `yaml:"max_rendered"`
 }
 
 // Defaults returns the built-in settings, used when a root config omits them.
@@ -67,6 +71,13 @@ func Defaults() Settings {
 		DirsFirst: true,
 		Hidden:    HiddenSkip,
 		Checksum:  ChecksumNone,
+		// A flat package pool renders at roughly 180 bytes a row bare and 660
+		// styled, so ten thousand entries is a 1.8 MB page bare and 6.6 MB
+		// styled — measured, not estimated. Nobody reads ten thousand rows; they
+		// filter, or they fetch index.json. A thousand keeps the page under a
+		// megabyte in the worst case and leaves every byte of the directory
+		// reachable through the machine formats.
+		MaxRendered: 1000,
 	}
 }
 
@@ -83,6 +94,7 @@ type Override struct {
 	Hidden         *string   `yaml:"hidden"`
 	Checksum       *string   `yaml:"checksum"`
 	Recursive      *bool     `yaml:"recursive"`
+	MaxRendered    *int      `yaml:"max_rendered"`
 	FollowSymlinks *bool     `yaml:"follow_symlinks"`
 }
 
@@ -108,6 +120,7 @@ func (o Override) Apply(s Settings) Settings {
 	s.Hidden = deref(o.Hidden, s.Hidden)
 	s.Checksum = deref(o.Checksum, s.Checksum)
 	s.Recursive = deref(o.Recursive, s.Recursive)
+	s.MaxRendered = deref(o.MaxRendered, s.MaxRendered)
 	s.FollowSymlinks = deref(o.FollowSymlinks, s.FollowSymlinks)
 	if o.Outputs != nil {
 		s.Outputs = append([]string(nil), *o.Outputs...)

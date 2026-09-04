@@ -332,3 +332,23 @@
 @media (prefers-reduced-motion: reduce) {
   * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
+
+/* The page renders part of the directory and says so. Set below the listing,
+   where a reader arrives at the end of the rows and finds out what is past
+   them — not above, where it would read as a warning about the page they have
+   not looked at yet. */
+.cairn-truncated {
+  margin: 1rem 0 0;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--c-rule);
+  font-size: 0.8125rem;
+  color: var(--c-slate);
+}
+
+.cairn-truncated strong {
+  font-family: var(--c-mono);
+  font-weight: 500;
+  color: var(--c-ink);
+}
+
+.cairn-truncated code { font-family: var(--c-mono); }

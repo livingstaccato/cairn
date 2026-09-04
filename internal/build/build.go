@@ -358,13 +358,14 @@ func (r *runner) emitHugo(c emitCtx) error {
 		return r.emitResources(c)
 	}
 	b, err := emit.HugoContent(emit.HugoPage{
-		Listing:    c.listing,
-		Prose:      c.prose,
-		Present:    c.settings.Present,
-		Source:     c.source,
-		SourceText: c.sourceText,
-		Formats:    machineFormats(c.settings, c.listing),
-		Recursive:  c.settings.Recursive,
+		Listing:     c.listing,
+		Prose:       c.prose,
+		Present:     c.settings.Present,
+		Source:      c.source,
+		SourceText:  c.sourceText,
+		Formats:     machineFormats(c.settings, c.listing),
+		Recursive:   c.settings.Recursive,
+		MaxRendered: c.settings.MaxRendered,
 	})
 	if err != nil {
 		return err
@@ -478,7 +479,7 @@ func (r *runner) emitHTML(c emitCtx) error {
 		}
 		return nil
 	}
-	b, err := emit.BareHTML(c.listing, c.prose)
+	b, err := emit.BareHTML(c.listing, c.prose, c.settings.MaxRendered)
 	if err != nil {
 		return err
 	}

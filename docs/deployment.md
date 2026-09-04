@@ -116,11 +116,43 @@ template unmarshals. On the same 50,000-entry directory that would not build:
 `_index.md` went from 11 MB to 4 KB, `cairn hugo` from 901 MB to 124 MB, and
 Hugo renders it in 1.4 seconds.
 
-### Page weight is the other limit
+### Page weight is bounded, not proportional
 
-At 10,000 entries the styled listing is a 6.8 MB HTML page, which no amount of
-build-time headroom makes pleasant to load. A directory that large wants
-pagination or a `bare` listing, whichever the audience is.
+A directory's HTML renders at most `max_rendered` rows — 1,000 by default — and
+the machine formats carry every entry. So the page a browser downloads is the
+same size whether the directory holds a thousand packages or fifty thousand:
+
+| entries | `index.html` bare | `index.html` styled | `index.json` |
+| ------- | ----------------- | ------------------- | ------------ |
+| 10,000  | 184 KB            | 680 KB              | 3.5 MB       |
+| 50,000  | 184 KB            | 680 KB              | 17 MB        |
+
+Before the cap those pages were 1.8 MB and 6.6 MB at ten thousand entries, and
+roughly 9 MB and 34 MB at fifty thousand. Nobody reads fifty thousand rows; a
+person filters or reaches for the file. The cap makes the page a fixed cost and
+leaves the directory completely represented in `index.json`, `index.csv` and
+`index.txt`, which are never capped.
+
+A capped page says so, under the listing, and names where the rest is:
+
+> Showing the first **1,000** of 50,000 entries. The whole directory is in
+> `index.txt`, one name per line, and `index.json`.
+
+The styled listing's filter searches the rows it rendered, so on a capped page
+its placeholder reads *Filter the first 1,000* rather than *Filter by name*. A
+search box that silently covers 2% of a pool is worse than no search box.
+
+Set it per rule, or `0` for no cap at all:
+
+```yaml
+rules:
+  - match: "pool/**"
+    max_rendered: 500
+
+  # An archive nobody browses, where the complete listing is the point.
+  - match: "releases/**"
+    max_rendered: 0
+```
 
 ## Checksums when the indexes live elsewhere
 

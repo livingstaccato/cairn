@@ -149,3 +149,25 @@ func TestHugoContentSourceIsOmittedWhenEmpty(t *testing.T) {
 		t.Errorf("source not emitted:\n%s", b)
 	}
 }
+
+func TestHugoContentCarriesRenderCap(t *testing.T) {
+	b, err := HugoContent(HugoPage{Listing: sample(), Present: "styled", MaxRendered: 1000})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The template applies the cap, so the number has to reach it. Deciding it
+	// in the template instead would put the policy in two places and let the
+	// two presenters disagree about the same directory.
+	if !strings.Contains(string(b), "max_rendered: 1000") {
+		t.Errorf("frontmatter omits the render cap:\n%s", b)
+	}
+
+	// Zero means unlimited and is the absence of a cap, not a cap of zero.
+	uncapped, err := HugoContent(HugoPage{Listing: sample(), Present: "styled"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(uncapped), "max_rendered") {
+		t.Errorf("an uncapped page must not declare a cap:\n%s", uncapped)
+	}
+}

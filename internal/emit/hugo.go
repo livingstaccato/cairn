@@ -51,6 +51,10 @@ type cairnParam struct {
 	Generated  string   `yaml:"generated"`
 	Count      int      `yaml:"count"`
 	Recursive  bool     `yaml:"recursive,omitempty"`
+	// MaxRendered is the row cap the template applies. It travels in the
+	// frontmatter rather than being decided in the template so one config key
+	// governs both presenters and both modes.
+	MaxRendered int `yaml:"max_rendered,omitempty"`
 }
 
 // HugoPage is everything a directory's page needs to know about itself.
@@ -65,6 +69,8 @@ type HugoPage struct {
 	Source     string
 	SourceText string
 	Formats    []string
+	// MaxRendered bounds the rows the template renders; 0 renders every one.
+	MaxRendered int
 	// Recursive tells the template this directory also publishes tree.json, so
 	// the format switcher can offer it. Without it the recursive listing is
 	// written and nothing ever links to it.
@@ -84,14 +90,15 @@ func HugoContent(p HugoPage) ([]byte, error) {
 		Title:  titleFor(l.Path),
 		Layout: HugoLayout,
 		Cairn: cairnParam{
-			Present:    p.Present,
-			Path:       l.Path,
-			Source:     p.Source,
-			Formats:    p.Formats,
-			SourceText: p.SourceText,
-			Generated:  l.Generated.Format(time.RFC3339),
-			Count:      l.Count,
-			Recursive:  p.Recursive,
+			Present:     p.Present,
+			Path:        l.Path,
+			Source:      p.Source,
+			Formats:     p.Formats,
+			SourceText:  p.SourceText,
+			Generated:   l.Generated.Format(time.RFC3339),
+			Count:       l.Count,
+			Recursive:   p.Recursive,
+			MaxRendered: p.MaxRendered,
 		},
 	}
 

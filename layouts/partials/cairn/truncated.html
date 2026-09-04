@@ -1,0 +1,17 @@
+{{- /* Says the page is showing part of the directory, and where the whole of it
+       lives.
+
+       A truncated listing that does not admit it is a page that lies about what
+       is on the server — worse than a slow page, which is the thing the cap
+       exists to prevent. index.txt leads because it is the one a shell can use
+       without a JSON parser.
+
+       Call with a dict of shown, total. */ -}}
+{{- if lt .shown .total }}
+<p class="cairn-truncated">
+  Showing the first <strong>{{ lang.FormatNumber 0 .shown }}</strong> of
+  {{ lang.FormatNumber 0 .total }} entries.
+  The whole directory is in <a href="index.txt"><code>index.txt</code></a>,
+  one name per line, and <a href="index.json"><code>index.json</code></a>.
+</p>
+{{- end }}

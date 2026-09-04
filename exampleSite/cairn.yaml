@@ -37,9 +37,12 @@ rules:
     checksum: sha256
     outputs: [html, json, csv, txt, sums]
 
+  # Capped hard on purpose: docs/ holds two pages, so the truncation notice and
+  # the narrowed filter placeholder render in the example and stay covered.
   - match: "docs/**"
     source: pages
     present: styled
+    max_rendered: 1
 
   - match: "external/**"
     source: manifest

@@ -83,6 +83,24 @@ if ! grep -q 'cairn-sum-head' "$pub/bootstrap/index.html"; then
   echo "FAIL: the styled listing rendered no digest"; fail=1
 fi
 
+# A recursive directory publishes its whole subtree as one file, and the format
+# switcher has to offer it — it was written and linked from nowhere for a while.
+if ! grep -q 'href="tree.json"' "$pub/pool/index.html"; then
+  echo "FAIL: the recursive listing is not reachable from the page"; fail=1
+fi
+
+# A capped page states what it is showing and points at the complete listing. A
+# truncated listing that does not say so misrepresents the server.
+if ! grep -q 'cairn-truncated' "$pub/docs/index.html"; then
+  echo "FAIL: a capped page carried no truncation notice"; fail=1
+fi
+if ! grep -q 'placeholder="Filter the first' "$pub/docs/index.html"; then
+  echo "FAIL: the filter on a capped page did not narrow its stated scope"; fail=1
+fi
+if grep -q 'cairn-truncated' "$pub/bootstrap/index.html"; then
+  echo "FAIL: an uncapped page carried a truncation notice"; fail=1
+fi
+
 # Nothing may reach the network at render time.
 if grep -rniE 'fontawesome|fa-solid|cdnjs|googleapis|//cdn\.' "$pub/" >/dev/null; then
   echo "FAIL: external asset reference in output"; fail=1

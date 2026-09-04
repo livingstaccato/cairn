@@ -211,6 +211,7 @@ func (r *runner) dropGenerated(relDir string, entries []model.Entry, s config.Se
 func (r *runner) generatedNames(s config.Settings) map[string]bool {
 	names := map[string]bool{
 		emit.SumsFile:     true,
+		emit.SearchFile:   true,
 		emit.ManifestFile: true,
 		hash.CacheFile:    true,
 	}
@@ -335,6 +336,7 @@ var emitters = map[string]func(*runner, emitCtx) error{
 	config.OutputSums:   (*runner).emitSums,
 	config.OutputHTML:   (*runner).emitHTML,
 	config.OutputPEP503: (*runner).emitPEP503,
+	config.OutputSearch: (*runner).emitSearch,
 }
 
 // emitFor writes the formats named by s.Outputs under basename.
@@ -518,6 +520,28 @@ func (r *runner) emitHTML(c emitCtx) error {
 		return err
 	}
 	return r.write(c.relDir, c.basename+".html", b)
+}
+
+// emitSearch writes the standalone search index.
+//
+// The filename is fixed, so the choice is which listing fills it. Under
+// recursive: true the tree listing is the one worth searching — an index
+// covering a single directory of a deep tree finds almost nothing — and
+// emitting from both listings would write the same file twice, the second
+// overwriting the first with less.
+func (r *runner) emitSearch(c emitCtx) error {
+	want := r.cfg.IndexBasename
+	if c.settings.Recursive {
+		want = treeBasename
+	}
+	if c.basename != want {
+		return nil
+	}
+	b, err := emit.Search(c.listing)
+	if err != nil {
+		return err
+	}
+	return r.write(c.relDir, emit.SearchFile, b)
 }
 
 // emitPEP503 renders a Python simple index.

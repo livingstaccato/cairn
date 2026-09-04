@@ -27,6 +27,7 @@ page, machine-readable indexes, and optional checksums:
 /bootstrap/linux/tree.json      recursive, opt-in per rule
 /bootstrap/linux/tree.csv       recursive, flattened
 /bootstrap/linux/SHA256SUMS     coreutils format
+/bootstrap/linux/search-index.json  every entry, for a browser search box
 ```
 
 The page is capped at 1,000 rows by default and the machine formats are not, so
@@ -65,7 +66,7 @@ per-directory override file. Three axes:
   `manifest` (an authored list, for contents not on disk at build time).
 - **`present`** — `styled` (themed, sortable, filterable) or `bare` (a genuine
   autoindex: no JavaScript, no icon font, renders in `lynx`).
-- **`outputs`** — `html`, `json`, `csv`, `txt`, `sums`, `pep503`.
+- **`outputs`** — `html`, `json`, `csv`, `txt`, `sums`, `pep503`, `search`.
 
 ```yaml
 version: 1
@@ -137,7 +138,7 @@ else reads it, and nothing about a listing changes with it.
 ## Documentation
 
 - [Hugo setup](docs/hugo-setup.md) — importing the module, output formats
-- [Search integration](docs/search-integration.md) — folding entries into a site's existing index
+- [Search integration](docs/search-integration.md) — folding entries into a site's existing index, or emitting a standalone one
 - [Deployment](docs/deployment.md) — Cloudflare Pages, nginx, checksums, machine discovery
 
 ## License

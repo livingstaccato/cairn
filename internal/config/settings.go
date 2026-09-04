@@ -48,6 +48,7 @@ const (
 	OutputText   = "txt"
 	OutputSums   = "sums"
 	OutputPEP503 = "pep503"
+	OutputSearch = "search"
 )
 
 // Settings is fully-resolved behavior for one directory. No pointers: every

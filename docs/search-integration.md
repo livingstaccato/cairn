@@ -56,3 +56,30 @@ skip it: `index.json` per directory is already machine-readable, and
 | `modified` | RFC 3339 timestamp |
 | `kind` | `dir`, `script`, `image`, `archive`, `doc`, `page`, `config`, `data`, `other` |
 | `section` | path of the directory the entry appears in |
+
+## No search of your own
+
+`outputs: [search]` writes `search-index.json` beside the listing: a bare JSON
+array of records, one per entry, carrying the fields a person types — `name`,
+`title`, `path`, `summary`, `tags`, `kind`, `is_dir`, `size`, `modified`.
+Digests and MIME types are left out; nobody searches for them, and every byte
+is downloaded by every visitor who opens the search box.
+
+An array rather than an object with the array inside it, because that is what a
+browser search library takes. Fuse.js, MiniSearch and FlexSearch are each
+constructed from an array of records plus the fields to index, so the file is
+usable with no adapter:
+
+```js
+const records = await (await fetch('/bootstrap/search-index.json')).json();
+const fuse = new Fuse(records, { keys: ['name', 'title', 'summary', 'tags'] });
+fuse.search('nginx');
+```
+
+`name` is worth indexing first. On a file mirror people search for filenames —
+`nginx_1.24.0-1_amd64.deb` — far more often than for titles, and a title is
+frequently absent.
+
+Under `recursive: true` the index covers the whole subtree, which is the useful
+case: an index describing one directory of a deep tree finds almost nothing.
+Without it the index describes its own directory, as `index.json` does.

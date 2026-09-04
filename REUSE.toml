@@ -15,6 +15,8 @@ path = [
   ".secrets.baseline",
   "README.md",
   "docs/**",
+  "ci/bench-site.go.mod.in",
+  "ci/bench-site.hugo.toml.in",
   "AGENTS.md",
   ".actrc",
   "commitlint.config.cjs",

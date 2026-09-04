@@ -74,15 +74,44 @@ which is what most of a mirror should be anyway.
 
 ## What scales with a large mirror
 
-| Cost | Scales with | Bounded by |
-|---|---|---|
-| Hashing | total bytes, first run only | `.cairn-cache.json`, keyed on `(path, size, mtime)` |
-| `_index.md` size | entries *per directory*, since the listing rides in frontmatter | nothing yet; a directory holding tens of thousands of files produces one large YAML document for Hugo to parse |
-| `tree.json` | descendants under a `recursive: true` rule | `tree_max_entries`, which errors rather than truncating |
-| Hugo build | number of directories, not bytes | — |
+Measured with `make bench`, which builds one directory holding N entries — the
+shape that scales worst, and the realistic one for a package pool. Numbers from
+an M-series laptop:
 
-`direct` mode has no frontmatter ceiling: cairn writes `index.json` itself and
-never hands the listing to Hugo.
+| Entries | cairn direct, cold | warm | cairn hugo | hugo render | index.html |
+|---|---|---|---|---|---|
+| 1,000 | 0.12s, 21 MB | 0.03s | 0.03s, 36 MB | 0.35s, 87 MB | 704 KB |
+| 10,000 | 0.69s, 51 MB | 0.16s | 0.15s, 180 MB | 0.75s, 256 MB | 6.8 MB |
+| 50,000 | 3.3s, 195 MB | 0.89s | 0.82s, 901 MB | **fails** | — |
+
+`direct` mode is comfortable throughout: 50,000 entries in 3.3 seconds cold and
+0.89 warm, because the hash cache means an unchanged mirror is re-read only by
+`stat`.
+
+### hugo mode has a hard ceiling near 10,000 entries per directory
+
+Between 10,000 (builds) and 11,000 (does not), Hugo refuses the page:
+
+```
+ERROR assemble: failed to create page from pageMetaSource /pool:
+content/pool/_index.md:2:1: too many YAML aliases for non-scalar nodes
+```
+
+The listing rides in YAML frontmatter, and a decoder limit stops it — not
+memory, not time. A normal apt pool exceeds this, so **`hugo` mode is not
+currently usable for a flat pool of that size.** Use `direct` mode, which has no
+such ceiling.
+
+The fix is to stop carrying entries in frontmatter and hand them to the template
+as a JSON page resource instead. Measured on the same 50,000-entry directory that
+fails today: 0.36s and 152 MB, with the frontmatter down to nine lines. That is
+not implemented yet.
+
+### Page weight is the other limit
+
+At 10,000 entries the styled listing is a 6.8 MB HTML page, which no amount of
+build-time headroom makes pleasant to load. A directory that large wants
+pagination or a `bare` listing, whichever the audience is.
 
 ## Checksums when the indexes live elsewhere
 

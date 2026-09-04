@@ -1,0 +1,12 @@
+module bench
+
+go 1.26.0
+
+require (
+	github.com/livingstaccato/cairn v0.0.0
+	github.com/livingstaccato/cairn/themes/reference v0.0.0
+)
+
+replace github.com/livingstaccato/cairn => __REPO__
+
+replace github.com/livingstaccato/cairn/themes/reference => __REPO__/themes/reference

@@ -3,7 +3,7 @@
 
 GO_COVER_MIN ?= 90.0
 
-.PHONY: gate lint security test cover example tools act act-job clean
+.PHONY: gate lint security test cover example bench tools act act-job clean
 
 gate: lint security test ## Everything a commit must pass
 
@@ -29,6 +29,9 @@ act-job: ## Run one CI job locally, e.g. make act-job JOB=security
 
 example: ## End-to-end: cairn build -> hugo -> assert both halves agree
 	ci/example.sh
+
+bench: ## Measure one directory at 1k, 10k and 50k entries
+	ci/bench.sh
 
 tools: ## Install the gate's binaries
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2

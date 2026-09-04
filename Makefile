@@ -5,7 +5,10 @@ GO_COVER_MIN ?= 90.0
 
 .PHONY: templates pageweight gate lint security test cover example bench tools act act-job clean
 
-gate: lint security test ## Everything a commit must pass
+gate: private lint security test ## Everything a commit must pass
+
+private: ## Refuse identifying strings in tracked files, commits and tags
+	ci/check-private.sh
 
 lint: ## gofmt, vet, golangci-lint, file-size budget
 	ci/lint.sh

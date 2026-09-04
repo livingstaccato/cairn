@@ -52,8 +52,8 @@ func repoTree(t *testing.T) string {
 			t.Fatal(err)
 		}
 	}
-	mk("dists/stable/Release", "Origin: verda\nSuite: stable\nSHA256:\n ab12 9 main/binary-amd64/Packages\n")
-	mk("dists/stable/InRelease", "Origin: verda\nSuite: stable\n")
+	mk("dists/stable/Release", "Origin: example\nSuite: stable\nSHA256:\n ab12 9 main/binary-amd64/Packages\n")
+	mk("dists/stable/InRelease", "Origin: example\nSuite: stable\n")
 	mk("dists/stable/Release.gpg", "-----BEGIN PGP SIGNATURE-----\n")
 	mk("dists/stable/main/binary-amd64/Packages", "Package: nginx\nVersion: 1.24.0-1\n")
 	mk("dists/stable/main/binary-amd64/Release", "Component: main\n")

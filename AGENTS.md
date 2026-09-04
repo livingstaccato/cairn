@@ -4,10 +4,12 @@ Static directory-index and artifact-repo generator. A Go binary and a Hugo
 module in one repo, so emitted data and the templates that render it share a
 single version pin.
 
-Design docs live in the **private** `livingstaccato/cairn-design` repo
-(`docs/superpowers/specs/`, `docs/superpowers/plans/`). This repo is public and
-general-purpose: no employer names, no internal hostnames, no internal paths —
-in code, fixtures, docs or commit messages.
+This repo is public and general-purpose. Nothing identifying goes in it: no
+employer names, no private repo names, no internal hostnames, no internal paths,
+no personal addresses — in code, **fixtures**, docs, commit messages or tag
+messages. Everything here ships in a Go module zip that cannot be unpublished.
+`ci/check-private.sh` enforces it. The design docs are not in this repo; see the
+local `CLAUDE.md`, which is gitignored.
 
 ## Before you start
 

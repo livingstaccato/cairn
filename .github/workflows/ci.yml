@@ -98,6 +98,22 @@ jobs:
       - name: Scan
         run: ci/security.sh
 
+  private:
+    runs-on: ubuntu-latest
+    steps:
+      # Full history: the check reads commit and tag messages, not just the tree.
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      # The terms are supplied by a secret rather than committed — writing down
+      # what must not appear here would itself put it here. The check reports
+      # file:line only and never echoes a match, so this log stays clean.
+      - name: No identifying strings
+        env:
+          PRIVATE_PATTERNS: ${{ secrets.PRIVATE_PATTERNS }}
+        run: ci/ci-check-private.sh
+
   hygiene:
     runs-on: ubuntu-latest
     steps:

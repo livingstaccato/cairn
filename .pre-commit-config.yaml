@@ -28,6 +28,13 @@ repos:
 
   - repo: local
     hooks:
+      - id: check-private
+        name: no identifying strings
+        entry: ci/check-private.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+
       - id: go-lint
         name: gofmt, vet, golangci-lint, max-loc
         entry: ci/lint.sh

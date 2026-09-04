@@ -211,3 +211,78 @@ func TestScopedRebuildDoesNotClaimSiblingsBySharedPrefix(t *testing.T) {
 		t.Errorf("rebuilding docs pruned docs-old: %v", err)
 	}
 }
+
+// A scoped rebuild of the root is a full rebuild, and the ancestor walk has
+// nothing above it to refresh.
+func TestScopedRebuildOfTheRootCoversEverything(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	if _, err := RunScoped(conf(nil), root, out, obs.Discard(), "."); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{
+		filepath.Join(out, "index.json"),
+		filepath.Join(out, "bootstrap", "index.json"),
+		filepath.Join(out, "bootstrap", "linux", "index.json"),
+		filepath.Join(out, "docs", "index.json"),
+	} {
+		if _, err := os.Stat(p); err != nil {
+			t.Errorf("root scope did not write %s: %v", p, err)
+		}
+	}
+	if got := ancestors("."); got != nil {
+		t.Errorf("ancestors(\".\") = %v, want none", got)
+	}
+}
+
+// An empty scope means the whole tree, so a caller with nothing to say does
+// not silently rebuild only the root directory's own listing.
+func TestScopedRebuildTreatsEmptyScopeAsTheRoot(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	if _, err := RunScoped(conf(nil), root, out, obs.Discard(), ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(out, "bootstrap", "linux", "index.json")); err != nil {
+		t.Errorf("empty scope did not rebuild the tree: %v", err)
+	}
+}
+
+// A build that fails partway must still claim what it wrote, or the next run
+// refuses those files as somebody else's.
+func TestScopedRebuildRecordsPartialOutputOnFailure(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	c := conf(nil)
+	c.Defaults = config.Override{Outputs: &[]string{"pdf"}}
+	if _, err := RunScoped(c, root, out, obs.Discard(), "bootstrap"); err == nil {
+		t.Fatal("an unknown output format must fail the rebuild")
+	}
+	if _, err := os.Stat(filepath.Join(out, ".cairn-manifest.json")); err != nil {
+		t.Errorf("a failed rebuild recorded nothing: %v", err)
+	}
+}
+
+// Every directory between the change and the root, nearest first.
+func TestAncestorsWalkToTheRoot(t *testing.T) {
+	got := ancestors("a/b/c")
+	want := []string{"a/b", "a", "."}
+	if len(got) != len(want) {
+		t.Fatalf("ancestors = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("ancestors[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+// A watcher hands over the file that changed, not its directory.
+func TestRelDirOfNamesTheContainingDirectory(t *testing.T) {
+	root := t.TempDir()
+	got, ok := RelDirOf(root, filepath.Join(root, "bootstrap", "linux", "apt.list"))
+	if !ok || got != "bootstrap/linux" {
+		t.Errorf("RelDirOf = %q, %v; want bootstrap/linux", got, ok)
+	}
+	// A file directly in the root belongs to ".", not to "".
+	if got, ok := RelDirOf(root, filepath.Join(root, "top.txt")); !ok || got != "." {
+		t.Errorf("RelDirOf at the root = %q, %v; want .", got, ok)
+	}
+}

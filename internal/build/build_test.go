@@ -330,3 +330,66 @@ func TestRunPEP503AndHTMLCollide(t *testing.T) {
 		t.Fatal("expected a conflict when both html and pep503 target index.html")
 	}
 }
+
+// In-place mode is the deployment that matters for a mirror: index files live
+// beside the artifacts, so the tree rsyncs whole and verifies where it sits.
+// That only works if a build reaches a fixed point — the second run must not
+// list the first run's output, or SHA256SUMS covers files that change every run.
+func TestRunInPlaceIsIdempotent(t *testing.T) {
+	root := tree(t)
+	c := conf(nil)
+	sha := config.ChecksumSHA256
+	outs := []string{config.OutputJSON, config.OutputCSV, config.OutputText, config.OutputSums}
+	c.Defaults = config.Override{Checksum: &sha, Outputs: &outs}
+
+	read := func(rel string) string {
+		t.Helper()
+		b, err := os.ReadFile(filepath.Join(root, rel))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+
+	// out == root: cairn writes into the tree it is indexing.
+	run(t, c, root, root)
+	firstSums := read("bootstrap/SHA256SUMS")
+	firstList := read("bootstrap/index.txt")
+
+	run(t, c, root, root)
+	if got := read("bootstrap/SHA256SUMS"); got != firstSums {
+		t.Errorf("SHA256SUMS drifted between runs:\nfirst:\n%s\nsecond:\n%s", firstSums, got)
+	}
+	if got := read("bootstrap/index.txt"); got != firstList {
+		t.Errorf("listing drifted between runs:\nfirst:\n%s\nsecond:\n%s", firstList, got)
+	}
+
+	for _, generated := range []string{"index.json", "index.csv", "index.txt", "SHA256SUMS"} {
+		if strings.Contains(firstList, generated) {
+			t.Errorf("listing includes cairn's own output %q", generated)
+		}
+	}
+	if !strings.Contains(firstList, "bootstrap.sh") {
+		t.Errorf("listing lost a real file: %q", firstList)
+	}
+}
+
+// Hugo mode writes _index.md into the tree in the same arrangement, and must
+// not list it either.
+func TestRunInPlaceHugoExcludesItsPage(t *testing.T) {
+	root := tree(t)
+	c := conf(nil)
+	c.Mode = config.ModeHugo
+	outs := []string{config.OutputText}
+	c.Defaults = config.Override{Outputs: &outs}
+	run(t, c, root, root)
+	run(t, c, root, root)
+
+	b, err := os.ReadFile(filepath.Join(root, "bootstrap", "index.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), "_index.md") {
+		t.Errorf("listing includes the page cairn generated: %q", b)
+	}
+}

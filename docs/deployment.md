@@ -1,44 +1,90 @@
 # Deploying a cairn site
 
-## Hugo never copies your artifacts
+## Write the indexes into the tree
 
-Worth stating plainly, because it is the first thing anyone asks. In `hugo` mode
-cairn writes one small `_index.md` per directory, plus `index.txt` and
-`SHA256SUMS`, into the site's `content/`. Hugo sees nothing else — not the
-images, not the packages. The example site's `content/` is 68 KB for a tree
-Hugo never reads.
+You never copy the repository. Point `root` and `out` at the same directory and
+cairn writes `index.html`, `index.json`, `index.csv`, `index.txt` and
+`SHA256SUMS` beside the files they describe:
 
-There is no post-build sync step. The web server serves the artifacts from where
-they already are.
+```yaml
+version: 1
+mode: direct
+root: /srv/mirror
+out:  /srv/mirror
+defaults:
+  present:  bare
+  checksum: sha256
+  outputs:  [html, json, csv, txt, sums]
+```
 
-What does scale with a large mirror:
+```nginx
+server {
+    root /srv/mirror;
+    autoindex off;      # cairn's index.html *is* the autoindex
+    index index.html;
+}
+```
+
+One tree. It `rsync`s whole with its indexes attached, and `sha256sum -c` works
+where it sits rather than needing a second path:
+
+```sh
+cd /srv/mirror/pool && sha256sum -c SHA256SUMS
+```
+
+Builds reach a fixed point: cairn excludes its own output from the listings, so
+a second run produces byte-identical `SHA256SUMS` rather than checksumming the
+first run's `index.json`. Re-running is cheap — hashes are cached on
+`(path, size, mtime)`, so nothing unchanged is read again.
+
+**If the tree is synced from upstream with `rsync --delete`,** exclude the
+generated names or the sync removes them:
+
+```sh
+rsync -a --delete \
+  --exclude 'index.html' --exclude 'index.json' --exclude 'index.csv' \
+  --exclude 'index.txt' --exclude 'SHA256SUMS' --exclude '.cairn-*' \
+  upstream::mirror/ /srv/mirror/
+cairn build -config /srv/mirror/cairn.yaml
+```
+
+Running cairn after each sync is what you want anyway: the content changed.
+
+## Styled listings, which need Hugo
+
+`present: styled` needs a theme, so it needs Hugo, and Hugo insists on writing
+to its own `public/`. That is the one arrangement with a copy in it — but the
+copy goes small into big, never the reverse:
+
+```sh
+cairn build -config /srv/site/cairn.yaml   # writes content/, ~68 KB
+hugo --source /srv/site                    # renders public/
+cp -R /srv/site/public/. /srv/mirror/      # deposits pages into the tree
+```
+
+Hugo never sees the artifacts. In `hugo` mode cairn writes one small `_index.md`
+per directory plus `index.txt` and `SHA256SUMS`; the example site's `content/` is
+68 KB for a tree Hugo never reads. Nothing in `public/` is a mirrored byte, so
+depositing it is proportional to the number of directories, not to the size of
+the repository.
+
+If you would rather avoid the copy entirely, use `present: bare` and `direct`
+mode. The bare listing is a real autoindex — no JavaScript, readable in `lynx` —
+which is what most of a mirror should be anyway.
+
+## What scales with a large mirror
 
 | Cost | Scales with | Bounded by |
 |---|---|---|
-| Hashing | total bytes, first run only | `.cairn-cache.json`, keyed on `(path, size, mtime)` — later runs read nothing unchanged |
-| `_index.md` size | entries *per directory*, since the listing rides in frontmatter | nothing yet; a directory with tens of thousands of files produces one large YAML document for Hugo to parse |
+| Hashing | total bytes, first run only | `.cairn-cache.json`, keyed on `(path, size, mtime)` |
+| `_index.md` size | entries *per directory*, since the listing rides in frontmatter | nothing yet; a directory holding tens of thousands of files produces one large YAML document for Hugo to parse |
 | `tree.json` | descendants under a `recursive: true` rule | `tree_max_entries`, which errors rather than truncating |
 | Hugo build | number of directories, not bytes | — |
 
-`direct` mode has no frontmatter ceiling at all: cairn writes `index.json`
-itself and never hands the listing to Hugo.
+`direct` mode has no frontmatter ceiling: cairn writes `index.json` itself and
+never hands the listing to Hugo.
 
-## Where the bytes live
-
-Artifacts stay **outside** Hugo. cairn walks a real tree, emits only index pages,
-and the web server serves the blobs at the same URL prefix.
-
-```
-/srv/artifacts/          the real files, served directly
-/srv/site/public/        cairn + Hugo output, served at the same paths
-```
-
-The alternative — Hugo module mounts, or copying into `static/` — makes Hugo
-copy every byte into `public/` at build time. That is fine for a few SVGs and
-wrong for a mirror holding disk images: the build slows to the speed of the
-copy, and the blobs end up in git.
-
-## Checksums are relative to the served root
+## Checksums when the indexes live elsewhere
 
 `SHA256SUMS` names files as they appear to a client, so it verifies from the
 artifact tree, not from the directory cairn wrote it into:

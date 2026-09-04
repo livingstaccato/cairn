@@ -119,6 +119,8 @@ func (r *runner) collect(relDir, absDir string, s config.Settings) ([]model.Entr
 	}
 	r.warn(warns)
 
+	entries = r.dropGenerated(entries, s)
+
 	m, mwarns, err := meta.Load(absDir)
 	if err != nil {
 		return nil, err
@@ -144,6 +146,46 @@ func (r *runner) produce(relDir, absDir string, s config.Settings) ([]model.Entr
 	default:
 		return walk.Dir(r.root, relDir, s)
 	}
+}
+
+// dropGenerated removes cairn's own output from a listing.
+//
+// Required for the deployment that matters most: writing index files into the
+// artifact tree itself, so a mirror is one directory that rsyncs whole and
+// verifies in place with sha256sum -c. Without this the second run lists the
+// first run's index.json, SHA256SUMS covers files that change on every run, and
+// the build never reaches a fixed point.
+//
+// Excluding unconditionally is safe. If a file cairn would generate already
+// exists and cairn did not create it, emit.Writer refuses the whole build, so
+// there is no case where this hides someone's own file from its own listing.
+func (r *runner) dropGenerated(entries []model.Entry, s config.Settings) []model.Entry {
+	skip := r.generatedNames(s)
+	out := entries[:0:0]
+	for _, e := range entries {
+		if e.IsDir || !skip[e.Name] {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// generatedNames is every filename cairn writes into one directory.
+func (r *runner) generatedNames(s config.Settings) map[string]bool {
+	names := map[string]bool{
+		emit.SumsFile:     true,
+		emit.ManifestFile: true,
+		hash.CacheFile:    true,
+	}
+	for _, base := range []string{r.cfg.IndexBasename, treeBasename} {
+		for _, ext := range []string{".html", ".json", ".csv", ".txt"} {
+			names[base+ext] = true
+		}
+	}
+	if r.cfg.Mode == config.ModeHugo {
+		names[emit.HugoContentFile] = true
+	}
+	return names
 }
 
 // hashEntries fills SHA256 for every file in the listing. A file that cannot be

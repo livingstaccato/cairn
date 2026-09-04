@@ -111,9 +111,11 @@ server, so verify from the tree side:
 cd testdata/example/tree/bootstrap && sha256sum -c ../../out/bootstrap/SHA256SUMS
 ```
 
-Builds are repeatable: cairn records what it generated in `.cairn-manifest.json`
-and will replace its own output on a later run, while still refusing to touch a
-file it did not create.
+Point `root` and `out` at the same directory and the indexes land beside the
+files they describe — one tree that `rsync`s whole and verifies where it sits.
+Nothing is ever copied. Builds reach a fixed point: cairn excludes its own output
+from the listings, records what it wrote in `.cairn-manifest.json`, and still
+refuses to touch a file it did not create.
 
 ## Documentation
 

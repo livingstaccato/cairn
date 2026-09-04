@@ -81,6 +81,16 @@ test pass.
 - **No hardcoded URLs or ports.** They go in a defaults file or at the top of
   the file that owns them. If a port is taken, stop and ask.
 
+## Logging
+
+Telemetry comes from `provide-telemetry`, and `internal/obs` is the **only**
+file that imports it. Everything else takes a `*slog.Logger` — standard library
+— so a consumer vendoring the Hugo module, or a test, never pulls a telemetry
+stack in behind it, and swapping backends touches one file.
+
+Never `fmt.Println` for diagnostics. `obs.Discard()` is the logger for tests and
+for callers that have not set telemetry up, so no call site needs a nil check.
+
 ## Testing
 
 TDD: write the failing test, watch it fail for the right reason, then

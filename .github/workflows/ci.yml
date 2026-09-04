@@ -75,6 +75,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      # pre-commit/action installs itself with pip and does not provide a
+      # Python. Without this the job depends on whatever the runner image
+      # happens to ship, which on a PEP 668 externally-managed interpreter
+      # refuses the install outright.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       # reuse, detect-secrets, codespell. The repo's Go hooks are skipped here:
       # they need a toolchain this job deliberately does not install, and the
       # lint, security and test jobs already run exactly those checks. Without

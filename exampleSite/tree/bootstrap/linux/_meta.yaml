@@ -1,0 +1,4 @@
+apt.list:
+  title: APT sources
+  summary: Package sources used during provisioning
+  tags: [apt, sources]

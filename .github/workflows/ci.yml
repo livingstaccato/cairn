@@ -40,6 +40,22 @@ jobs:
       - name: Enforce coverage
         run: ci/check-coverage.sh coverage.out 90.0
 
+  example:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26"
+      # The Hugo half of the gate needs Hugo
+      - uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: "0.165.0"
+          extended: true
+      # cairn build -> hugo -> assert the two halves agree
+      - name: End-to-end
+        run: ci/example.sh
+
   lint:
     runs-on: ubuntu-latest
     steps:

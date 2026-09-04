@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
+# SPDX-License-Identifier: Apache-2.0
+#
+# End-to-end gate: cairn build -> hugo -> assert the documented output paths and
+# that the Go and Hugo halves agree.
+#
+# This is the only check that can catch the two drifting. Everything else tests
+# one side or the other.
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+repo="$PWD"
+
+rm -rf exampleSite/content exampleSite/public
+go run ./cmd/cairn build -config exampleSite/cairn.yaml
+(cd exampleSite && hugo --quiet)
+
+pub="exampleSite/public"
+fail=0
+check() { [ -e "$pub/$1" ] || { echo "MISSING $pub/$1"; fail=1; }; }
+
+# Every covered directory publishes all three formats at the same URL.
+for d in bootstrap bootstrap/linux docs external; do
+  check "$d/index.html"
+  check "$d/index.json"
+  check "$d/index.csv"
+done
+
+# The CSV column contract is shared between the Go emitter and the Hugo
+# template, and nothing but this compares them.
+go_header="$(go run ./ci/csvheader)"
+hugo_header="$(head -1 "$pub/bootstrap/index.csv")"
+if [ "$go_header" != "$hugo_header" ]; then
+  echo "FAIL: CSV header drift"
+  echo "  go:   $go_header"
+  echo "  hugo: $hugo_header"
+  fail=1
+fi
+
+# bare is JS-free by contract; styled is progressive enhancement over a listing
+# that is already complete.
+if grep -qi '<script' "$pub/bootstrap/index.html"; then
+  echo "FAIL: the bare presenter emitted a script tag"; fail=1
+fi
+if ! grep -qi '<script' "$pub/docs/index.html"; then
+  echo "FAIL: the styled presenter did not emit its enhancement script"; fail=1
+fi
+
+# Nothing may reach the network at render time.
+if grep -rniE 'fontawesome|fa-solid|cdnjs|googleapis|//cdn\.' "$pub/" >/dev/null; then
+  echo "FAIL: external asset reference in output"; fail=1
+fi
+
+# Sizes are formatted in the template, and a sub-kilobyte file must not read as
+# zero — the defect this project exists downstream of.
+if grep -qE '>0 ?KB<|>0\.0 KiB<' "$pub"/*/index.html; then
+  echo "FAIL: a sub-kilobyte size rendered as zero"; fail=1
+fi
+
+# Emitted JSON is valid, non-empty, and uses the contract's key names.
+python3 - "$pub/bootstrap/index.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d["entries"], "no entries"
+required = {"name", "path", "is_dir", "size", "modified", "kind", "depth"}
+missing = required - set(d["entries"][0])
+assert not missing, f"missing keys: {missing}"
+PY
+
+# Checksums verify against the real tool. SHA256SUMS names files relative to the
+# served root, which is the artifact tree, so verification runs from there.
+sums="$repo/exampleSite/content/bootstrap/SHA256SUMS"
+if [ -f "$sums" ]; then
+  if command -v sha256sum >/dev/null; then
+    (cd exampleSite/tree/bootstrap && sha256sum -c "$sums" >/dev/null) \
+      || { echo "FAIL: sha256sum -c"; fail=1; }
+  elif command -v shasum >/dev/null; then
+    (cd exampleSite/tree/bootstrap && shasum -a 256 -c "$sums" >/dev/null) \
+      || { echo "FAIL: shasum -c"; fail=1; }
+  fi
+fi
+
+[ "$fail" -eq 0 ] && echo "OK: end-to-end passed"
+exit "$fail"

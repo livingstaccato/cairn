@@ -24,6 +24,8 @@ path = [
   "internal/emit/templates/**",
   "layouts/**",
   "assets/cairn/icons.svg",
+  "themes/**",
+  "exampleSite/**",
   ".provide/**",
 ]
 precedence = "aggregate"

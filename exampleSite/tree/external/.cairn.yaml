@@ -1,0 +1,13 @@
+source: manifest
+entries:
+  - name: ubuntu-24.04.iso
+    path: https://releases.example.invalid/ubuntu-24.04.iso
+    title: Ubuntu 24.04 LTS
+    summary: Fetched at provision time, not mirrored here
+    kind: image
+    size: 6442450944
+    tags: [base-image]
+  - name: checksums.txt
+    path: https://releases.example.invalid/SHA256SUMS
+    title: Upstream checksums
+    kind: doc

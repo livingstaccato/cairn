@@ -1,0 +1,32 @@
+baseURL = "/"
+title = "cairn example"
+
+# Both modules are imported by path, exactly as a consumer would, and resolved
+# locally by the replace lines in go.mod. Importing rather than mounting is the
+# point: it exercises the real module identity the repo publishes.
+[module]
+  [[module.imports]]
+    path = "github.com/livingstaccato/cairn"
+  [[module.imports]]
+    path = "github.com/livingstaccato/cairn/themes/reference"
+
+# index.json and index.csv beside index.html, from one source.
+[outputFormats]
+  [outputFormats.cairnjson]
+    mediaType = "application/json"
+    baseName = "index"
+    isPlainText = true
+    notAlternative = true
+  [outputFormats.cairncsv]
+    mediaType = "text/csv"
+    baseName = "index"
+    isPlainText = true
+    notAlternative = true
+
+[outputs]
+  home = ["html", "cairnjson", "cairncsv"]
+  section = ["html", "cairnjson", "cairncsv"]
+
+[mediaTypes]
+  [mediaTypes."text/csv"]
+    suffixes = ["csv"]

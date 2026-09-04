@@ -1,0 +1,29 @@
+version: 1
+mode: hugo
+root: ./tree
+out: ./content
+index_basename: index
+on_conflict: error
+
+protect:
+  - "dists/**"
+  - "repodata/**"
+  - "**/Release"
+
+defaults:
+  present: styled
+  outputs: [html, json, csv]
+
+rules:
+  - match: "bootstrap/**"
+    present: bare
+    checksum: sha256
+    outputs: [html, json, csv, sums]
+
+  - match: "docs/**"
+    source: pages
+    present: styled
+
+  - match: "external/**"
+    source: manifest
+    present: styled

@@ -21,5 +21,11 @@ node_modules/
 # the same instructions. AGENTS.md is the tracked source of truth.
 /CLAUDE.md
 
+# Hugo build state
+/exampleSite/public/
+/exampleSite/content/
+/exampleSite/resources/
+.hugo_build.lock
+
 # act artifacts
 /.act-actions/

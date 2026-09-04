@@ -1,0 +1,268 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
+// SPDX-License-Identifier: Apache-2.0
+
+// Package build orchestrates one cairn run: walk, merge metadata, hash, emit.
+package build
+
+import (
+	"fmt"
+	"log/slog"
+	"os"
+	"path"
+	"path/filepath"
+	"time"
+
+	"gopkg.in/yaml.v3"
+
+	"github.com/livingstaccato/cairn/internal/config"
+	"github.com/livingstaccato/cairn/internal/emit"
+	"github.com/livingstaccato/cairn/internal/hash"
+	"github.com/livingstaccato/cairn/internal/meta"
+	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairn/internal/walk"
+)
+
+// treeBasename is the filename stem for a recursive listing, beside the
+// per-directory one.
+const treeBasename = "tree"
+
+// Result summarizes a run for the caller to report.
+type Result struct {
+	Dirs    int
+	Files   int
+	Written []string
+}
+
+// runner carries the values every step of a build needs.
+type runner struct {
+	cfg    *config.Config
+	root   string
+	out    string
+	log    *slog.Logger
+	cache  *hash.Cache
+	now    time.Time
+	result *Result
+}
+
+// Run walks rootDir and writes every configured output under outDir. Warnings
+// are logged as they happen rather than accumulated: on a large mirror the
+// interesting ones are the early ones, and a caller should not have to wait for
+// the walk to finish to see them.
+func Run(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Result, error) {
+	r := &runner{
+		cfg:    cfg,
+		root:   rootDir,
+		out:    outDir,
+		log:    log,
+		cache:  hash.NewCache(filepath.Join(outDir, hash.CacheFile)),
+		now:    time.Now().UTC(),
+		result: &Result{},
+	}
+
+	if err := r.visit("."); err != nil {
+		return r.result, err
+	}
+	if err := r.cache.Save(); err != nil {
+		r.log.Warn("could not save the hash cache; the next run re-hashes",
+			"path", hash.CacheFile, "err", err)
+	}
+	return r.result, nil
+}
+
+// visit processes one directory and recurses into its children.
+func (r *runner) visit(relDir string) error {
+	absDir := filepath.Join(r.root, filepath.FromSlash(relDir))
+	s := r.cfg.Resolve(relDir, r.dirOverride(absDir))
+
+	entries, err := r.collect(relDir, absDir, s)
+	if err != nil {
+		return err
+	}
+
+	prose, err := meta.Prose(absDir)
+	if err != nil {
+		return err
+	}
+
+	if err := r.emitFor(relDir, r.cfg.IndexBasename, r.listing(relDir, entries), s, prose); err != nil {
+		return err
+	}
+	if s.Recursive {
+		if err := r.emitTree(relDir, s, prose); err != nil {
+			return err
+		}
+	}
+
+	r.result.Dirs++
+	return r.recurse(relDir, entries)
+}
+
+// collect walks one directory, merges its authored metadata, and hashes what
+// the settings ask for.
+func (r *runner) collect(relDir, absDir string, s config.Settings) ([]model.Entry, error) {
+	entries, warns, err := walk.Dir(r.root, relDir, s)
+	if err != nil {
+		return nil, err
+	}
+	r.warn(warns)
+
+	m, mwarns, err := meta.Load(absDir)
+	if err != nil {
+		return nil, err
+	}
+	r.warn(mwarns)
+	entries = meta.Apply(entries, m)
+
+	if s.Checksum == config.ChecksumSHA256 {
+		r.hashEntries(absDir, entries)
+	}
+	return entries, nil
+}
+
+// hashEntries fills SHA256 for every file in the listing. A file that cannot be
+// hashed warns and is left without a digest rather than failing the build: the
+// listing is still correct, it just cannot be verified.
+func (r *runner) hashEntries(absDir string, entries []model.Entry) {
+	for i := range entries {
+		if entries[i].IsDir {
+			continue
+		}
+		sum, err := r.cache.Sum(
+			filepath.Join(absDir, entries[i].Name),
+			entries[i].Size, entries[i].ModTime.Unix())
+		if err != nil {
+			r.log.Warn("could not hash file; omitted from SHA256SUMS",
+				"path", entries[i].Path, "err", err)
+			continue
+		}
+		entries[i].SHA256 = sum
+	}
+}
+
+// emitTree renders the recursive listing for a directory.
+func (r *runner) emitTree(relDir string, s config.Settings, prose string) error {
+	all, warns, err := walk.Tree(r.root, relDir, s, r.cfg.TreeMaxEntries)
+	if err != nil {
+		return err
+	}
+	r.warn(warns)
+	return r.emitFor(relDir, treeBasename, r.listing(relDir, all), s, prose)
+}
+
+// recurse descends into each subdirectory of a completed listing.
+func (r *runner) recurse(relDir string, entries []model.Entry) error {
+	for _, e := range entries {
+		if !e.IsDir {
+			r.result.Files++
+			continue
+		}
+		child := e.Name
+		if relDir != "." {
+			child = path.Join(relDir, e.Name)
+		}
+		if err := r.visit(child); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// listing wraps entries in the envelope the emitters write.
+func (r *runner) listing(relDir string, entries []model.Entry) model.Listing {
+	p := "/" + relDir
+	if relDir == "." {
+		p = "/"
+	}
+	return model.Listing{Path: p, Generated: r.now, Count: len(entries), Entries: entries}
+}
+
+// emitFor writes the formats named by s.Outputs under basename.
+func (r *runner) emitFor(relDir, basename string, l model.Listing, s config.Settings, prose string) error {
+	for _, format := range s.Outputs {
+		if err := r.emitOne(format, relDir, basename, l, s, prose); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// emitOne writes a single output format.
+func (r *runner) emitOne(format, relDir, basename string, l model.Listing,
+	s config.Settings, prose string) error {
+
+	switch format {
+	case config.OutputJSON:
+		b, err := emit.JSON(l)
+		if err != nil {
+			return err
+		}
+		return r.write(relDir, basename+".json", b)
+
+	case config.OutputCSV:
+		b, err := emit.CSV(l)
+		if err != nil {
+			return err
+		}
+		return r.write(relDir, basename+".csv", b)
+
+	case config.OutputSums:
+		// SHA256SUMS describes one directory, so a recursive listing does not
+		// get its own: the digests are already in the per-directory files, and
+		// a second copy could disagree with them.
+		if basename != r.cfg.IndexBasename {
+			return nil
+		}
+		b := emit.Sums(l)
+		if len(b) == 0 {
+			return nil
+		}
+		return r.write(relDir, emit.SumsFile, b)
+
+	case config.OutputHTML, config.OutputPEP503:
+		// Rendered by the Hugo layer; see the second plan.
+		_ = prose
+		return nil
+
+	default:
+		return fmt.Errorf("unknown output format %q for %s", format, relDir)
+	}
+}
+
+// write places one output file and records it.
+func (r *runner) write(relDir, name string, body []byte) error {
+	target := name
+	if relDir != "." {
+		target = path.Join(relDir, name)
+	}
+	if err := emit.Write(r.cfg, r.out, target, body); err != nil {
+		return err
+	}
+	r.result.Written = append(r.result.Written, target)
+	return nil
+}
+
+// warn logs each walk warning.
+func (r *runner) warn(ws []walk.Warning) {
+	for _, w := range ws {
+		r.log.Warn("skipped an entry", "path", w.Path, "err", w.Err)
+	}
+}
+
+// dirOverride reads a directory's .cairn.yaml, if present. An unreadable or
+// malformed one is ignored rather than fatal — it is a local preference, not
+// authored content whose loss would make the index wrong.
+func (r *runner) dirOverride(absDir string) *config.Override {
+	p := filepath.Join(absDir, ".cairn.yaml")
+	// #nosec G304 -- p is a directory cairn was configured to scan plus a fixed
+	// filename.
+	b, err := os.ReadFile(p)
+	if err != nil {
+		return nil
+	}
+	var o config.Override
+	if err := yaml.Unmarshal(b, &o); err != nil {
+		r.log.Warn("ignoring malformed .cairn.yaml", "path", p, "err", err)
+		return nil
+	}
+	return &o
+}

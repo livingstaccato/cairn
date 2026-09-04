@@ -15,8 +15,8 @@ directory from one source.
 Then pin it, so the templates and the binary that feeds them move together:
 
 ```sh
-hugo mod get github.com/livingstaccato/cairn@v0.2.1
-go install github.com/livingstaccato/cairn/cmd/cairn@v0.2.1
+hugo mod get github.com/livingstaccato/cairn@v0.3.0
+go install github.com/livingstaccato/cairn/cmd/cairn@v0.3.0
 ```
 
 That is the whole configuration. There are no output formats to declare and no

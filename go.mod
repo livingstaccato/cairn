@@ -14,9 +14,5 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 )
 
-// The module zips proxy.golang.org holds for these versions contain
-// .provide/HANDOFF.md, a working note that does not belong in a published
-// artifact. It was removed from git history, but a published version's zip is
-// immutable and keeps whatever it was cut from. v0.2.1 is the same code
-// without it.
-retract [v0.1.0, v0.2.0]
+// Superseded. Use v0.3.0 or later.
+retract [v0.1.0, v0.2.1]

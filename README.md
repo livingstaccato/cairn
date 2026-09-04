@@ -4,8 +4,14 @@ Static directory-index and artifact-repo generator. A Go binary and a Hugo
 module in one repo, so the data it emits and the templates that render it share
 a single version pin.
 
-> **Status: working, unreleased.** The engine and the Hugo module are both in
-> place and covered end to end. No version is tagged yet.
+> **Status: v0.1.0.** The engine and the Hugo module are both in place and
+> covered end to end. Pre-1.0, so the config schema and the JSON contract may
+> still change; `version: 1` in `cairn.yaml` is checked and a build refuses a
+> schema it does not understand rather than guessing.
+
+```sh
+go install github.com/livingstaccato/cairn/cmd/cairn@v0.1.0
+```
 
 ## What it does
 

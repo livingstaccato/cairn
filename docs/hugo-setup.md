@@ -12,6 +12,13 @@ directory from one source.
     path = "github.com/livingstaccato/cairn"
 ```
 
+Then pin it, so the templates and the binary that feeds them move together:
+
+```sh
+hugo mod get github.com/livingstaccato/cairn@v0.1.0
+go install github.com/livingstaccato/cairn/cmd/cairn@v0.1.0
+```
+
 That is the whole configuration. There are no output formats to declare and no
 media types to register: cairn writes `index.json`, `index.csv`, `index.txt` and
 `SHA256SUMS` into each page's bundle, and Hugo publishes a bundle resource

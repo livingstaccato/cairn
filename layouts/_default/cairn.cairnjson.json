@@ -1,4 +1,0 @@
-{{- /* Same data as the Go emitter's index.json, rendered by Hugo in hugo mode.
-       Key names must match internal/model.Entry's JSON tags. */ -}}
-{{- $c := .Params.cairn -}}
-{{- dict "path" $c.path "generated" $c.generated "count" $c.count "entries" $c.entries | jsonify (dict "indent" "  ") -}}

@@ -82,30 +82,27 @@ an M-series laptop:
 |---|---|---|---|---|---|
 | 1,000 | 0.12s, 21 MB | 0.03s | 0.03s, 36 MB | 0.35s, 87 MB | 704 KB |
 | 10,000 | 0.69s, 51 MB | 0.16s | 0.15s, 180 MB | 0.75s, 256 MB | 6.8 MB |
-| 50,000 | 3.3s, 195 MB | 0.89s | 0.82s, 901 MB | **fails** | — |
+| 50,000 | 3.3s, 195 MB | 0.89s | 0.43s, 124 MB | 1.4s, 424 MB | 34 MB |
 
 `direct` mode is comfortable throughout: 50,000 entries in 3.3 seconds cold and
 0.89 warm, because the hash cache means an unchanged mirror is re-read only by
 `stat`.
 
-### hugo mode has a hard ceiling near 10,000 entries per directory
+### There used to be a ceiling near 10,000 entries per directory
 
-Between 10,000 (builds) and 11,000 (does not), Hugo refuses the page:
+The listing rode in YAML frontmatter, and between 10,000 and 11,000 entries Hugo
+refused the page outright:
 
 ```
 ERROR assemble: failed to create page from pageMetaSource /pool:
 content/pool/_index.md:2:1: too many YAML aliases for non-scalar nodes
 ```
 
-The listing rides in YAML frontmatter, and a decoder limit stops it — not
-memory, not time. A normal apt pool exceeds this, so **`hugo` mode is not
-currently usable for a flat pool of that size.** Use `direct` mode, which has no
-such ceiling.
-
-The fix is to stop carrying entries in frontmatter and hand them to the template
-as a JSON page resource instead. Measured on the same 50,000-entry directory that
-fails today: 0.36s and 152 MB, with the frontmatter down to nine lines. That is
-not implemented yet.
+A decoder limit, not memory or time — and a normal apt pool exceeds it. The
+entries now travel as an `index.json` resource in the page's bundle, which the
+template unmarshals. On the same 50,000-entry directory that would not build:
+`_index.md` went from 11 MB to 4 KB, `cairn hugo` from 901 MB to 124 MB, and
+Hugo renders it in 1.4 seconds.
 
 ### Page weight is the other limit
 
@@ -217,9 +214,24 @@ Depth filtering is client-side. `tree.json` carries every descendant once with
 its depth, so any depth query is a `jq` expression rather than a pre-generated
 variant per level. No static host can interpret `?depth=`, on any deployment.
 
-## Re-running
+## Re-running, and what happens when files go away
 
-Builds are repeatable. cairn records what it generated in `.cairn-manifest.json`
-and replaces its own output on a later run, while still refusing to touch a file
-it did not create. Nothing prunes yet: a file cairn generated once and no longer
-would is left behind.
+Builds are repeatable. cairn records what it generated in `.cairn-manifest.json`,
+replaces its own output on a later run, and still refuses to touch a file it did
+not create.
+
+Removals are handled too. Anything the previous run wrote and this one did not is
+deleted, and a directory left holding nothing goes with it — so a removed file
+loses its digest, and a removed directory loses the whole listing published for
+it rather than serving a page of links to things that are gone.
+
+Only paths the manifest recorded are ever considered, so cairn can delete nothing
+it did not create. Two consequences worth knowing:
+
+- **Losing the manifest stops the build.** An `rsync --delete` or a `git clean`
+  over the output directory is enough. cairn will not overwrite files it can no
+  longer prove it wrote; run once with `on_conflict: skip`, or clear the output
+  directory, to recover.
+- **Two configs must not share one output root.** Each would prune the other's
+  files, and there is no way to tell that apart from a directory that was
+  legitimately removed.

@@ -221,3 +221,41 @@ func TestSourceIsCapped(t *testing.T) {
 		t.Errorf("len = %d, want %d", len(got.Text), SourceMaxBytes)
 	}
 }
+
+// A sidecar overrides field by field, so it can change one thing without
+// restating everything the directory file already said.
+func TestSidecarMergesPerField(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, "x.iso", "")
+	write(t, dir, DirFile, `
+x.iso:
+  title: From meta
+  summary: From meta
+  kind: doc
+  tags: [a, b]
+  weight: 1
+  extra:
+    from: meta
+`)
+	write(t, dir, "x.iso"+SidecarSuffix, `
+kind: image
+weight: 5
+hidden: true
+extra:
+  from: sidecar
+`)
+	m, _, err := Load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := m["x.iso"]
+
+	// Overridden by the sidecar.
+	if got.Kind != "image" || got.Weight != 5 || !got.Hidden || got.Extra["from"] != "sidecar" {
+		t.Errorf("sidecar did not win per field: %+v", got)
+	}
+	// Untouched by it.
+	if got.Title != "From meta" || got.Summary != "From meta" || len(got.Tags) != 2 {
+		t.Errorf("sidecar clobbered fields it said nothing about: %+v", got)
+	}
+}

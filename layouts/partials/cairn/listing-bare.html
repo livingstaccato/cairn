@@ -5,6 +5,19 @@
        path, the digest column header linking to the file that holds it, and the
        authored prose carrying its own provenance. Nothing under the listing. */ -}}
 {{- $c := .Params.cairn -}}
+{{- /* Entries come from the index.json resource in this page's bundle, not from
+       frontmatter. Hugo refused any directory past roughly ten thousand entries
+       while the listing rode in YAML — a decoder limit — and the same
+       50,000-entry directory renders from JSON in a third of a second.
+
+       cairn writes that file, and Hugo publishes a bundle resource verbatim, so
+       the JSON a reader fetches is the exact bytes cairn produced. Nothing is
+       generated twice, which is where the earlier drift between the two came
+       from. */ -}}
+{{- $r := .Resources.GetMatch "index.json" -}}
+{{- $entries := slice -}}
+{{- with $r }}{{ $entries = (. | transform.Unmarshal).entries }}{{ end -}}
+
 <div class="cairn cairn--bare" data-cairn-present="bare">
 
   <header class="cairn-head">
@@ -42,7 +55,7 @@
     </thead>
     <tbody>
       <tr><td><a href="../">../</a></td><td></td><td></td><td></td></tr>
-      {{ range $c.entries }}
+      {{ range $entries }}
       <tr>
         <td><a href="{{ .path }}">{{ .name }}{{ if .is_dir }}/{{ end }}</a>{{ with .title }} — {{ . }}{{ end }}</td>
         <td class="size">{{ if .is_dir }}—{{ else }}{{ partial "cairn/size.html" .size }}{{ end }}</td>

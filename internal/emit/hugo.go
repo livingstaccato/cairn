@@ -33,25 +33,32 @@ type hugoFrontmatter struct {
 	Cairn  cairnParam `yaml:"cairn"`
 }
 
-// cairnParam is the listing as a template sees it. The keys match the JSON
-// contract exactly: a Hugo template and a jq pipeline read the same names.
+// cairnParam is what a template needs *about* the listing. The entries
+// themselves are not here: they travel as an index.json page resource beside the
+// page, which the template unmarshals.
+//
+// They used to ride in this frontmatter, and Hugo refused any directory past
+// roughly ten thousand entries — "too many YAML aliases for non-scalar nodes",
+// a decoder limit rather than a memory or time one. A normal package pool
+// exceeds that. The same 50,000-entry directory renders from a JSON resource in
+// 0.36s where YAML would not build at all.
 type cairnParam struct {
-	Present    string        `yaml:"present"`
-	Path       string        `yaml:"path"`
-	Source     string        `yaml:"source,omitempty"`
-	SourceText string        `yaml:"source_text,omitempty"`
-	Formats    []string      `yaml:"formats,omitempty"`
-	Generated  string        `yaml:"generated"`
-	Count      int           `yaml:"count"`
-	Entries    []model.Entry `yaml:"entries"`
+	Present    string   `yaml:"present"`
+	Path       string   `yaml:"path"`
+	Source     string   `yaml:"source,omitempty"`
+	SourceText string   `yaml:"source_text,omitempty"`
+	Formats    []string `yaml:"formats,omitempty"`
+	Generated  string   `yaml:"generated"`
+	Count      int      `yaml:"count"`
 }
 
-// HugoContent renders one directory as a Hugo branch-bundle _index.md carrying
-// the listing in frontmatter.
+// HugoContent renders one directory as a Hugo branch-bundle _index.md.
 //
-// Hugo's output formats then produce HTML, JSON and CSV from this single
-// source, so the three cannot drift from each other. cairn writes one file per
-// directory in this mode and lets Hugo publish the rest.
+// It carries what a template needs *about* the listing; the entries arrive as an
+// index.json resource in the same bundle.
+//
+// Hugo renders this into index.html; every other output is written beside it as
+// a bundle resource and published verbatim, so nothing is produced twice.
 func HugoContent(l model.Listing, prose, present, source, sourceText string, formats []string) ([]byte, error) {
 	fm := hugoFrontmatter{
 		Title:  titleFor(l.Path),
@@ -64,7 +71,6 @@ func HugoContent(l model.Listing, prose, present, source, sourceText string, for
 			SourceText: sourceText,
 			Generated:  l.Generated.Format(time.RFC3339),
 			Count:      l.Count,
-			Entries:    l.Entries,
 		},
 	}
 

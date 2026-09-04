@@ -230,3 +230,139 @@ func TestWriteUnwritableParentErrors(t *testing.T) {
 		t.Fatal("expected an error when a parent path is a file")
 	}
 }
+
+func TestPruneRemovesOnlyLastRunsOutput(t *testing.T) {
+	out := t.TempDir()
+	c := cfg(t, config.ConflictError)
+
+	w1 := NewWriter(c, out)
+	for _, p := range []string{"a/index.json", "a/index.csv", "b/index.json"} {
+		if err := w1.Write(p, []byte("x")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := w1.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	// A file cairn never wrote, sharing the tree.
+	foreign := filepath.Join(out, "b", "ubuntu.iso")
+	if err := os.WriteFile(foreign, []byte("artifact"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// The second run covers a/ but not b/ — b/ has gone away upstream.
+	w2 := NewWriter(c, out)
+	if err := w2.Write("a/index.json", []byte("y")); err != nil {
+		t.Fatal(err)
+	}
+	removed, err := w2.Prune()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := []string{"a/index.csv", "b/index.json"}
+	if len(removed) != len(want) {
+		t.Fatalf("removed %v, want %v", removed, want)
+	}
+	for i, p := range want {
+		if removed[i] != p {
+			t.Errorf("removed[%d] = %q, want %q (sorted for a stable log)", i, removed[i], p)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(out, "a/index.json")); err != nil {
+		t.Errorf("a live output was pruned: %v", err)
+	}
+	if _, err := os.Stat(foreign); err != nil {
+		t.Errorf("pruning touched a file cairn did not write: %v", err)
+	}
+}
+
+// A directory that held only cairn's output is itself stale; one still holding
+// an artifact is not.
+func TestPruneRemovesEmptiedDirectories(t *testing.T) {
+	out := t.TempDir()
+	c := cfg(t, config.ConflictError)
+
+	w1 := NewWriter(c, out)
+	for _, p := range []string{"gone/index.json", "gone/deeper/index.json", "kept/index.json"} {
+		if err := w1.Write(p, []byte("x")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := w1.Save(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(out, "kept", "artifact.bin"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	w2 := NewWriter(c, out)
+	if _, err := w2.Prune(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Nested directories collapse in one pass, deepest first.
+	if _, err := os.Stat(filepath.Join(out, "gone")); !os.IsNotExist(err) {
+		t.Errorf("emptied directory survived: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(out, "kept")); err != nil {
+		t.Errorf("a directory still holding an artifact was removed: %v", err)
+	}
+}
+
+func TestPruneWithNoManifestDoesNothing(t *testing.T) {
+	out := t.TempDir()
+	if err := os.WriteFile(filepath.Join(out, "index.json"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	removed, err := NewWriter(cfg(t, config.ConflictError), out).Prune()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(removed) != 0 {
+		t.Errorf("removed %v without a manifest; stale files are a nuisance, deletion is not", removed)
+	}
+	if _, err := os.Stat(filepath.Join(out, "index.json")); err != nil {
+		t.Errorf("an unowned file was deleted: %v", err)
+	}
+}
+
+// A path already gone is not an error: an operator may have cleaned up by hand.
+func TestPruneToleratesAlreadyDeleted(t *testing.T) {
+	out := t.TempDir()
+	c := cfg(t, config.ConflictError)
+
+	w1 := NewWriter(c, out)
+	if err := w1.Write("a/index.json", []byte("x")); err != nil {
+		t.Fatal(err)
+	}
+	if err := w1.Save(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(filepath.Join(out, "a")); err != nil {
+		t.Fatal(err)
+	}
+
+	removed, err := NewWriter(c, out).Prune()
+	if err != nil {
+		t.Fatalf("a path already gone must not fail the prune: %v", err)
+	}
+	if len(removed) != 1 {
+		t.Errorf("removed = %v, want the path still reported", removed)
+	}
+}
+
+func TestDigestPreview(t *testing.T) {
+	long := strings.Repeat("a", 64)
+	if got := DigestPreview(long); got != strings.Repeat("a", 12)+"…" {
+		t.Errorf("got %q", got)
+	}
+	if got := DigestPreview(""); got != "" {
+		t.Errorf("an entry with no digest must render nothing, got %q", got)
+	}
+	// Shorter than the preview: return it whole rather than an ellipsis on air.
+	if got := DigestPreview("abc"); got != "abc" {
+		t.Errorf("got %q, want the value unchanged", got)
+	}
+}

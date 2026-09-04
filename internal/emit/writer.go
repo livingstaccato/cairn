@@ -11,7 +11,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/livingstaccato/cairn/internal/config"
@@ -132,6 +134,68 @@ func exists(p string) bool {
 
 // Written returns the paths this run produced.
 func (w *Writer) Written() []string { return w.made }
+
+// Prune deletes output from the previous run that this run did not write, and
+// returns the paths it removed.
+//
+// Without this a removed file leaves its digest behind and, worse, a removed
+// directory leaves a whole published listing for something that is gone — links
+// and all. A generator that only ever adds is not maintaining a mirror.
+//
+// Only paths the previous manifest recorded are considered, so cairn can delete
+// nothing it did not create. A missing or corrupt manifest prunes nothing, which
+// is the safe failure: stale files are a nuisance, deleting someone's artifacts
+// is not.
+//
+// Two configs sharing one output root would each prune the other's files. That
+// is unsupported rather than guarded against — there is no way to tell that case
+// apart from a directory that was legitimately removed.
+func (w *Writer) Prune() ([]string, error) {
+	wrote := make(map[string]bool, len(w.made))
+	for _, p := range w.made {
+		wrote[p] = true
+	}
+
+	var removed []string
+	for p := range w.own {
+		if wrote[p] {
+			continue
+		}
+		abs, err := containedPath(w.root, p)
+		if err != nil {
+			return removed, err
+		}
+		if err := os.Remove(abs); err != nil && !os.IsNotExist(err) {
+			return removed, fmt.Errorf("prune %s: %w", p, err)
+		}
+		removed = append(removed, p)
+	}
+	sort.Strings(removed)
+	w.pruneEmptyDirs(removed)
+	return removed, nil
+}
+
+// pruneEmptyDirs removes directories left holding nothing after a prune.
+//
+// Deepest first, so a nested pair collapses in one pass, and only when empty —
+// os.Remove fails harmlessly on a directory that still holds an artifact, which
+// is exactly the guard wanted here.
+func (w *Writer) pruneEmptyDirs(removed []string) {
+	dirs := make([]string, 0, len(removed))
+	for _, p := range removed {
+		if d := path.Dir(p); d != "." {
+			dirs = append(dirs, d)
+		}
+	}
+	sort.Sort(sort.Reverse(sort.StringSlice(dirs)))
+	for _, d := range dirs {
+		abs, err := containedPath(w.root, d)
+		if err != nil {
+			continue
+		}
+		_ = os.Remove(abs)
+	}
+}
 
 // Save records this run's output so the next run knows what it may replace.
 func (w *Writer) Save() error {

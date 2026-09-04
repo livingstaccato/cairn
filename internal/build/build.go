@@ -31,6 +31,7 @@ type Result struct {
 	Dirs    int
 	Files   int
 	Written []string
+	Pruned  int
 }
 
 // runner carries the values every step of a build needs.
@@ -68,6 +69,17 @@ func Run(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Result,
 		r.log.Warn("could not save the hash cache; the next run re-hashes",
 			"path", hash.CacheFile, "err", err)
 	}
+	// Anything the previous run wrote and this one did not is stale: a removed
+	// file's digest, or a whole listing for a directory that no longer exists.
+	pruned, err := r.writer.Prune()
+	if err != nil {
+		return r.result, err
+	}
+	for _, p := range pruned {
+		r.log.Info("removed stale output", "path", p)
+	}
+	r.result.Pruned = len(pruned)
+
 	// The manifest records what this run owns. Without it the next run cannot
 	// tell its own output from content that was already there, and refuses to
 	// overwrite either.
@@ -297,13 +309,19 @@ func (r *runner) emitFor(relDir, basename string, l model.Listing, s config.Sett
 // emitHugo writes the branch bundle Hugo renders from. A recursive listing does
 // not get its own page: Hugo produces tree.json from the same frontmatter.
 //
-// The split: Hugo renders the page formats, and cairn writes the flat text
-// artifacts itself. index.json and index.csv are the listing re-rendered, so
-// they belong to whatever theme and URL handling the site has. SHA256SUMS and
-// index.txt are not renderings of anything — they are fixed byte formats other
-// tools consume — so routing them through Hugo would mean declaring output
-// formats whose only job is to add nothing, and every consumer would have to
-// copy those declarations into their config.
+// Only the HTML is Hugo's. Every other output is written here, into the page's
+// own bundle, and Hugo publishes a branch-bundle resource verbatim — so
+// index.json, index.csv, index.txt and SHA256SUMS reach the site as the exact
+// bytes cairn produced.
+//
+// That is why a consumer's hugo.toml declares no output formats. It also removes
+// a whole class of defect: while Hugo re-rendered these from frontmatter there
+// were two producers of the same file, and they drifted — a key dropped by
+// omitempty came out as "<no value>", and timestamps disagreed in precision
+// because YAML carried nanoseconds that Go's RFC3339 does not.
+//
+// index.json is written whether or not it was requested: the page reads its
+// entries from it.
 func (r *runner) emitHugo(c emitCtx) error {
 	if c.basename != r.cfg.IndexBasename {
 		return nil
@@ -316,20 +334,31 @@ func (r *runner) emitHugo(c emitCtx) error {
 	if err := r.write(c.relDir, emit.HugoContentFile, b); err != nil {
 		return err
 	}
-	return r.emitFlat(c)
+	if err := r.emitJSON(c); err != nil {
+		return err
+	}
+	return r.emitResources(c)
 }
 
-// flatOutputs are written by cairn in either mode: fixed byte formats with no
-// rendering to do.
-var flatOutputs = map[string]func(*runner, emitCtx) error{
-	config.OutputSums: (*runner).emitSums,
-	config.OutputText: (*runner).emitText,
+// hugoRenders reports whether Hugo produces this format, in which case cairn
+// must not write it too. json is excluded separately: cairn always writes it,
+// because the page reads its entries from it.
+func hugoRenders(format string) bool {
+	switch format {
+	case config.OutputHTML, config.OutputPEP503, config.OutputJSON:
+		return true
+	}
+	return false
 }
 
-// emitFlat writes the outputs Hugo has no part in.
-func (r *runner) emitFlat(c emitCtx) error {
+// emitResources writes the remaining outputs into the page's bundle, for Hugo
+// to publish verbatim.
+func (r *runner) emitResources(c emitCtx) error {
 	for _, f := range c.settings.Outputs {
-		fn, ok := flatOutputs[f]
+		if hugoRenders(f) {
+			continue
+		}
+		fn, ok := emitters[f]
 		if !ok {
 			continue
 		}

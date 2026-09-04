@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/livingstaccato/cairn/internal/model"
 )
 
 // frontmatter is the shape a Hugo template will read back out of .Params.
@@ -18,12 +20,6 @@ type parsedFM struct {
 		Present string `yaml:"present"`
 		Path    string `yaml:"path"`
 		Count   int    `yaml:"count"`
-		Entries []struct {
-			Name  string `yaml:"name"`
-			Size  int64  `yaml:"size"`
-			IsDir bool   `yaml:"is_dir"`
-			Title string `yaml:"title"`
-		} `yaml:"entries"`
 	} `yaml:"cairn"`
 }
 
@@ -60,14 +56,8 @@ func TestHugoContentFrontmatter(t *testing.T) {
 	if fm.Cairn.Present != "styled" {
 		t.Errorf("present = %q", fm.Cairn.Present)
 	}
-	if fm.Cairn.Count != 2 || len(fm.Cairn.Entries) != 2 {
-		t.Errorf("entries = %d, count = %d, want 2 and 2", len(fm.Cairn.Entries), fm.Cairn.Count)
-	}
-	if fm.Cairn.Entries[1].Size != 64 {
-		t.Errorf("size = %d, want exact bytes preserved through YAML", fm.Cairn.Entries[1].Size)
-	}
-	if fm.Cairn.Entries[1].Title != "APT sources" {
-		t.Errorf("title = %q", fm.Cairn.Entries[1].Title)
+	if fm.Cairn.Count != 2 {
+		t.Errorf("count = %d, want 2", fm.Cairn.Count)
 	}
 	if fm.Title != "linux" {
 		t.Errorf("title = %q, want the directory name", fm.Title)
@@ -99,21 +89,47 @@ func TestHugoContentBodyWithFence(t *testing.T) {
 	}
 }
 
-// YAML keys must match the JSON contract, since a Hugo template reads
-// .Params.cairn.entries with the same names a jq consumer uses.
-func TestHugoContentKeysMatchJSONContract(t *testing.T) {
+// The entries must NOT be in frontmatter. Carrying them there capped a
+// directory at roughly ten thousand entries: Hugo refused the page with "too
+// many YAML aliases for non-scalar nodes", a decoder limit rather than a memory
+// or time one. They travel as an index.json resource instead.
+func TestHugoContentOmitsEntries(t *testing.T) {
 	b, err := HugoContent(sample(), "", "styled", "", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	s := string(b)
-	for _, key := range []string{"name:", "path:", "is_dir:", "size:", "modified:", "kind:", "depth:"} {
-		if !strings.Contains(s, key) {
-			t.Errorf("frontmatter missing %q; keys must match the JSON contract", key)
+	if strings.Contains(s, "entries:") {
+		t.Errorf("the listing leaked back into frontmatter:\n%s", s)
+	}
+	for _, name := range []string{"apt.list", "deep"} {
+		if strings.Contains(s, name) {
+			t.Errorf("entry %q reached frontmatter", name)
 		}
 	}
-	if strings.Contains(s, "isdir:") {
-		t.Error("YAML lowercased a field name instead of using its tag")
+}
+
+// Frontmatter size must not grow with the number of entries. This is the
+// property the ceiling depended on.
+func TestHugoContentSizeIsIndependentOfEntryCount(t *testing.T) {
+	small, err := HugoContent(sample(), "", "styled", "", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	big := sample()
+	for i := 0; i < 5000; i++ {
+		big.Entries = append(big.Entries, model.Entry{Name: "pkg.deb", Path: "/pool/pkg.deb", Size: 1})
+	}
+	big.Count = len(big.Entries)
+	large, err := HugoContent(big, "", "styled", "", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Only the count differs, so the two are within a handful of bytes.
+	if d := len(large) - len(small); d > 32 {
+		t.Errorf("frontmatter grew by %d bytes for 5000 more entries; it must not carry them", d)
 	}
 }
 

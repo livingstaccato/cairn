@@ -12,8 +12,21 @@
        hidden and cairn.js reveals it, so a visitor without JavaScript sees a
        complete listing and no dead controls. */ -}}
 {{- $c := .Params.cairn -}}
+{{- /* Entries come from the index.json resource in this page's bundle, not from
+       frontmatter. Hugo refused any directory past roughly ten thousand entries
+       while the listing rode in YAML — a decoder limit — and the same
+       50,000-entry directory renders from JSON in a third of a second.
+
+       cairn writes that file, and Hugo publishes a bundle resource verbatim, so
+       the JSON a reader fetches is the exact bytes cairn produced. Nothing is
+       generated twice, which is where the earlier drift between the two came
+       from. */ -}}
+{{- $r := .Resources.GetMatch "index.json" -}}
+{{- $entries := slice -}}
+{{- with $r }}{{ $entries = (. | transform.Unmarshal).entries }}{{ end -}}
+
 {{- $latest := "" -}}
-{{- range $c.entries }}{{ if gt (string .modified) $latest }}{{ $latest = string .modified }}{{ end }}{{ end -}}
+{{- range $entries }}{{ if gt (string .modified) $latest }}{{ $latest = string .modified }}{{ end }}{{ end -}}
 {{- $hasSums := in $c.formats "sums" -}}
 <div class="cairn cairn--styled" data-cairn-present="styled">
 
@@ -58,7 +71,7 @@
     </div>
 
     <div class="cairn-rows" data-cairn-body>
-      {{ range $c.entries }}
+      {{ range $entries }}
       <div class="cairn-row"
            data-name="{{ .name }}"
            data-size="{{ .size }}"

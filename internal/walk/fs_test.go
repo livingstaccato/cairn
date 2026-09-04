@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/livingstaccato/cairn/internal/config"
 	"github.com/livingstaccato/cairn/internal/model"
@@ -281,5 +282,41 @@ func TestTreeCapIsAnError(t *testing.T) {
 func TestTreeMissingIsError(t *testing.T) {
 	if _, _, err := Tree(t.TempDir(), "nope", config.Defaults(), 10); err == nil {
 		t.Fatal("expected an error for a missing directory")
+	}
+}
+
+// Every sort key falls back to name, which is what makes the order total and so
+// stable across runs — two files of the same size must not swap places between
+// builds and change every emitted file.
+func TestLessByFallsBackToName(t *testing.T) {
+	now := time.Now()
+	a := model.Entry{Name: "alpha", Size: 10, Kind: "doc", ModTime: now}
+	b := model.Entry{Name: "beta", Size: 10, Kind: "doc", ModTime: now}
+
+	for _, key := range []string{config.SortSize, config.SortModTime, config.SortKind, config.SortName, "unknown"} {
+		if !lessBy(key, a, b) {
+			t.Errorf("lessBy(%q) did not fall back to name ordering", key)
+		}
+		if lessBy(key, b, a) {
+			t.Errorf("lessBy(%q) is not antisymmetric on the name fallback", key)
+		}
+	}
+}
+
+func TestLessByOrdersByEachKey(t *testing.T) {
+	early := time.Now().Add(-time.Hour)
+	late := time.Now()
+	cases := []struct {
+		key  string
+		a, b model.Entry
+	}{
+		{config.SortSize, model.Entry{Name: "z", Size: 1}, model.Entry{Name: "a", Size: 2}},
+		{config.SortModTime, model.Entry{Name: "z", ModTime: early}, model.Entry{Name: "a", ModTime: late}},
+		{config.SortKind, model.Entry{Name: "z", Kind: "archive"}, model.Entry{Name: "a", Kind: "doc"}},
+	}
+	for _, c := range cases {
+		if !lessBy(c.key, c.a, c.b) {
+			t.Errorf("lessBy(%q) ignored its key in favour of the name", c.key)
+		}
 	}
 }

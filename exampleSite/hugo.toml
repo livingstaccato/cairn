@@ -19,24 +19,3 @@ title = "cairn example"
   [[module.mounts]]
     source = "tree/docs"
     target = "content/docs"
-
-# index.json and index.csv beside index.html, from one source.
-[outputFormats]
-  [outputFormats.cairnjson]
-    mediaType = "application/json"
-    baseName = "index"
-    isPlainText = true
-    notAlternative = true
-  [outputFormats.cairncsv]
-    mediaType = "text/csv"
-    baseName = "index"
-    isPlainText = true
-    notAlternative = true
-
-[outputs]
-  home = ["html", "cairnjson", "cairncsv"]
-  section = ["html", "cairnjson", "cairncsv"]
-
-[mediaTypes]
-  [mediaTypes."text/csv"]
-    suffixes = ["csv"]

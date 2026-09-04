@@ -38,14 +38,33 @@ for d in bootstrap bootstrap/linux pool docs external; do
   check "$d/index.txt"
 done
 
-# The CSV column contract is shared between the Go emitter and the Hugo
-# template, and nothing but this compares them.
+# Hugo publishes a bundle resource verbatim, so what a reader fetches must be
+# the exact bytes cairn wrote. This is the check that keeps it that way: while
+# Hugo re-rendered these there were two producers of one file and they drifted.
+for f in index.json index.csv index.txt SHA256SUMS; do
+  a="exampleSite/content/bootstrap/$f"
+  b="$pub/bootstrap/$f"
+  if [ -f "$a" ] && ! cmp -s "$a" "$b"; then
+    echo "FAIL: $f published differs from what cairn wrote"
+    fail=1
+  fi
+done
+
+# The CSV column order is a contract shell consumers index into.
 go_header="$(go run ./ci/csvheader)"
-hugo_header="$(head -1 "$pub/bootstrap/index.csv")"
-if [ "$go_header" != "$hugo_header" ]; then
+csv_header="$(head -1 "$pub/bootstrap/index.csv")"
+if [ "$go_header" != "$csv_header" ]; then
   echo "FAIL: CSV header drift"
-  echo "  go:   $go_header"
-  echo "  hugo: $hugo_header"
+  echo "  declared:  $go_header"
+  echo "  published: $csv_header"
+  fail=1
+fi
+
+# Frontmatter must stay small. Carrying the listing in it capped a directory at
+# roughly ten thousand entries.
+fm_lines="$(awk '/^---$/{n++; next} n==1{c++} END{print c+0}' exampleSite/content/bootstrap/_index.md)"
+if [ "$fm_lines" -gt 40 ]; then
+  echo "FAIL: _index.md frontmatter is $fm_lines lines; the listing has leaked back into it"
   fail=1
 fi
 

@@ -37,11 +37,10 @@ type hugoFrontmatter struct {
 // themselves are not here: they travel as an index.json page resource beside the
 // page, which the template unmarshals.
 //
-// They used to ride in this frontmatter, and Hugo refused any directory past
-// roughly ten thousand entries — "too many YAML aliases for non-scalar nodes",
-// a decoder limit rather than a memory or time one. A normal package pool
-// exceeds that. The same 50,000-entry directory renders from a JSON resource in
-// 0.36s where YAML would not build at all.
+// Inline in frontmatter, Hugo refuses any directory past roughly ten thousand
+// entries — "too many YAML aliases for non-scalar nodes", a decoder limit rather
+// than a memory or time one, and a normal package pool exceeds it. A
+// 50,000-entry directory renders from a JSON resource in 0.36s.
 type cairnParam struct {
 	Present    string   `yaml:"present"`
 	Path       string   `yaml:"path"`

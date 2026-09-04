@@ -100,7 +100,7 @@ an M-series laptop:
 0.89 warm, because the hash cache means an unchanged mirror is re-read only by
 `stat`.
 
-### There used to be a ceiling near 10,000 entries per directory
+### The listing travels as a resource, not as frontmatter
 
 The listing rode in YAML frontmatter, and between 10,000 and 11,000 entries Hugo
 refused the page outright:
@@ -127,10 +127,10 @@ same size whether the directory holds a thousand packages or fifty thousand:
 | 10,000  | 184 KB            | 680 KB              | 3.5 MB       |
 | 50,000  | 184 KB            | 680 KB              | 17 MB        |
 
-Before the cap those pages were 1.8 MB and 6.6 MB at ten thousand entries, and
-roughly 9 MB and 34 MB at fifty thousand. Nobody reads fifty thousand rows; a
-person filters or reaches for the file. The cap makes the page a fixed cost and
-leaves the directory completely represented in `index.json`, `index.csv` and
+Uncapped, those pages are 1.8 MB and 6.6 MB at ten thousand entries and roughly
+9 MB and 34 MB at fifty thousand. Nobody reads fifty thousand rows; a person
+filters or reaches for the file. The cap makes the page a fixed cost and leaves
+the directory completely represented in `index.json`, `index.csv` and
 `index.txt`, which are never capped.
 
 A capped page says so, under the listing, and names where the rest is:
@@ -328,17 +328,16 @@ rules:
     hide: ["**/.*", "**/_*", "**/*.tmp", "drafts/**"]
 ```
 
-This used to be an enum — `skip`, `show`, and later `dotfiles` — with the dot
-and underscore conventions baked in together. That was wrong twice. A leading
-underscore is a Hugo convention about pages, and a tree of static artifacts is
-not pages, so `skip` made a published `_tradewars/` vanish from its own parent
-while `show` put `.DS_Store` on the page: no setting described the tree. And
-cairn cannot know which prefixes mean "internal" in someone else's tree, so it
-should not be guessing. A malformed glob matches nothing rather than
-everything — a pattern typo must not silently empty a listing.
+Globs rather than a convention, because cairn cannot know which prefixes mean
+"internal" in someone else's tree. A dot is the filesystem's own answer and is
+the default; an underscore is a Hugo convention about pages, and a tree of
+static artifacts is not pages — a published `_tradewars/` belongs in its
+parent's listing, and `.DS_Store` does not.
 
-A config still carrying `hidden:` is refused with a pointer to this, rather
-than having the key dropped in silence by the YAML decoder.
+A malformed glob matches nothing rather than everything: a pattern typo must not
+silently empty a listing. A config carrying the removed `hidden:` key is refused
+with a pointer to `hide:`, rather than having the key dropped in silence by the
+YAML decoder.
 
 One file can also opt out on its own, without a glob:
 

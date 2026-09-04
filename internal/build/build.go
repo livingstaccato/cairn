@@ -382,9 +382,9 @@ func (r *runner) emitHugo(c emitCtx) error {
 	// a walk. It gets resources and no _index.md, because a directory holds one
 	// page and that page is the directory's own listing.
 	//
-	// This used to return nil here, so recursive: true wrote nothing whatever in
-	// hugo mode. The comment said Hugo rendered tree.json from the frontmatter,
-	// which was true until the entries moved out of it into a resource.
+	// Returning nil for a non-index basename would make recursive: true write
+	// nothing at all in hugo mode: Hugo renders only the page, and the recursive
+	// listing is not one.
 	if c.basename != r.cfg.IndexBasename {
 		if err := r.emitJSON(c); err != nil {
 			return err
@@ -501,9 +501,9 @@ func (r *runner) emitSums(c emitCtx) error {
 // the consumer's theme, which cairn does not have.
 func (r *runner) emitHTML(c emitCtx) error {
 	// The styled presenter lives in the Hugo templates; Go renders only the bare
-	// one. Asking for styled HTML in direct mode is therefore unsatisfiable, and
-	// it used to produce a mirror with no browsable page and no diagnostic at
-	// all — the default present: is styled, so this was the default outcome.
+	// one. Asking for styled HTML in direct mode is unsatisfiable, and silence
+	// would leave a mirror with no browsable page and nothing to explain why —
+	// present: defaults to styled, so that is the default outcome.
 	if c.settings.Present != config.PresentBare {
 		if !r.warnedStyled {
 			r.warnedStyled = true

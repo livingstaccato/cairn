@@ -24,12 +24,11 @@ media types to register: cairn writes `index.json`, `index.csv`, `index.txt` and
 `SHA256SUMS` into each page's bundle, and Hugo publishes a bundle resource
 verbatim. Hugo renders only the HTML.
 
-Two things follow from that. The JSON a reader fetches is the exact bytes cairn
-produced, so the two cannot disagree — they did, while Hugo re-rendered these
-from frontmatter. And the frontmatter stays small, which matters: the listing
-used to ride in it, and Hugo refused any directory past roughly ten thousand
-entries with "too many YAML aliases for non-scalar nodes". The same
-50,000-entry directory now renders in under half a second.
+Two things follow. The JSON a reader fetches is the exact bytes cairn produced,
+so the page and the data cannot disagree. And the frontmatter stays small, which
+is what keeps large directories buildable: with the listing inline, Hugo refuses
+anything past roughly ten thousand entries with "too many YAML aliases for
+non-scalar nodes". A 50,000-entry directory renders in under half a second.
 
 ## cairn.yaml
 

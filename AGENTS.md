@@ -63,8 +63,8 @@ beside its source: `fs.go` → `fs_test.go`.
 These come from the design and each has a test. Do not relax one to make a
 test pass.
 
-- **`Entry.Size` is exact bytes.** Formatting happens only in templates. The
-  bug this replaced rendered every sub-kilobyte file as `0KB`.
+- **`Entry.Size` is exact bytes.** Formatting happens only in templates.
+  Dividing by 1024 at the source renders every sub-kilobyte file as `0KB`.
 - **Zero external runtime assets** in generated output. No CDN, no web fonts,
   no icon font. Icons are an inline SVG sprite. It has to work airgapped.
 - **`bare` presenter emits no `<script>`** and renders in `lynx`.
@@ -72,29 +72,27 @@ test pass.
   globs, and conflicts, and it records what cairn generated so a re-run may
   replace its own output and nothing else. Writing around it defeats all four.
 - **`protect:` skips, it does not fail.** The glob is the operator naming paths
-  another tool owns — apt's signed `dists/`, dnf's `repodata/`. Erroring made the
-  setting useless for its only purpose: a mirror could not be indexed at all. A
-  protected path is never recorded as written, so no later run can overwrite it
-  and `Prune` cannot delete it.
+  another tool owns — apt's signed `dists/`, dnf's `repodata/` — so refusing to
+  write there is the request, not a fault. A protected path is never recorded as
+  written, so no later run can overwrite it and `Prune` cannot delete it.
 - **Every exit from `build.Run` records ownership,** including the error path
-  (`SavePartial`). A build that dies after writing some output otherwise leaves
-  files nothing claims, and `on_conflict: error` then refuses every later run.
-  The partial save unions in the previous run's claims — saving only what a
-  failed run wrote would disown files it never reached.
+  (`SavePartial`). A build that dies mid-write otherwise leaves files nothing
+  claims, and `on_conflict: error` then refuses every later run. The partial save
+  unions in the previous run's claims: saving only what a failed run wrote
+  disowns the files it never reached.
 - **What a listing leaves out is stated, never assumed.** `hide:` is a list of
   globs; the default is `["**/.*"]`, the filesystem's own convention and nothing
-  else. The enum this replaced baked the underscore convention in beside the
-  dot, so a published `_tradewars/` vanished from its own parent while `show`
-  put `.DS_Store` on the page — no value described the tree. cairn cannot know
-  which prefixes mean "internal" in someone else's tree.
-- **A sidecar's `hidden:`, `weight:` and `url:` do something.** All three were
-  declared, parsed, and read by nothing. Weight is applied after the walk, so
-  `build` re-sorts — the walker's order predates it, and a unit test on
-  `sortEntries` will pass while the built output is unordered.
+  else. Baking in the underscore convention beside the dot leaves no setting
+  that describes a tree holding both a published `_tradewars/` and a `.DS_Store`.
+  cairn cannot know which prefixes mean "internal" in someone else's tree.
+- **A sidecar's `hidden:`, `weight:` and `url:` are honoured, not just parsed.**
+  Weight is applied after the walk, so `build` re-sorts: the walker orders
+  entries before metadata is merged, and a unit test on `sortEntries` passes
+  while the built output is unordered.
 - **The HTML is capped, the machine formats never are.** `max_rendered` (1,000
   by default) bounds the rows on a page, so a directory's `index.html` is a
-  fixed size whether it holds a thousand entries or fifty thousand — 34 MB
-  measured before the cap. `index.json`, `index.csv` and `index.txt` always
+  fixed size whether it holds a thousand entries or fifty thousand; uncapped, a
+  50,000-entry directory renders 34 MB. `index.json`, `index.csv` and `index.txt` always
   carry every entry. A capped page states the count and points at `index.txt`,
   and the styled filter's placeholder narrows to match what it can actually
   search.

@@ -20,9 +20,11 @@ import (
 
 const (
 	// SidecarSuffix marks a single file's metadata: ubuntu.iso.meta.yaml.
-	SidecarSuffix = ".meta.yaml"
+	// Defined in walk, which decides what a listing contains and therefore has
+	// to know these names; meta imports walk, so it cannot be the other way.
+	SidecarSuffix = walk.SidecarSuffix
 	// DirFile holds a whole directory's metadata, keyed by filename.
-	DirFile = "_meta.yaml"
+	DirFile = walk.DirFile
 	// DirConfigFile holds per-directory settings, and a manifest source's
 	// entry list.
 	DirConfigFile = ".cairn.yaml"

@@ -127,7 +127,7 @@ func (sc *scanner) entry(relDir string, de os.DirEntry, depth int) (model.Entry,
 	name := de.Name()
 	rel := path.Join(relDir, name)
 
-	if hiddenByPolicy(sc.s.Hidden, name) {
+	if hiddenByPolicy(sc.s.Hidden, name) || IsSidecar(name) {
 		return model.Entry{}, nil, false
 	}
 	if de.Type()&os.ModeSymlink != 0 {
@@ -179,7 +179,7 @@ func (sc *scanner) countChildren(rel string) (int, []Warning) {
 	}
 	n := 0
 	for _, c := range children {
-		if !hiddenByPolicy(sc.s.Hidden, c.Name()) {
+		if !hiddenByPolicy(sc.s.Hidden, c.Name()) && !IsSidecar(c.Name()) {
 			n++
 		}
 	}

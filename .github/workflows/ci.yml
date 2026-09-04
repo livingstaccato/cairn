@@ -56,6 +56,12 @@ jobs:
       - name: End-to-end
         run: ci/example.sh
 
+      # The Go emitters have golden tests; the templates had greps. Three
+      # defects shipped through a green gate in one day, each found by reading
+      # a rendered page.
+      - name: Templates
+        run: ci/templates.sh
+
       # max_rendered exists because a big directory rendered a 34 MB page. This
       # fails if the page starts tracking directory size again.
       - name: Page weight

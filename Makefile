@@ -3,7 +3,7 @@
 
 GO_COVER_MIN ?= 90.0
 
-.PHONY: pageweight gate lint security test cover example bench tools act act-job clean
+.PHONY: templates pageweight gate lint security test cover example bench tools act act-job clean
 
 gate: lint security test ## Everything a commit must pass
 
@@ -29,6 +29,9 @@ act-job: ## Run one CI job locally, e.g. make act-job JOB=security
 
 example: ## End-to-end: cairn build -> hugo -> assert both halves agree
 	ci/example.sh
+
+templates: ## Render the templates against an awkward tree and assert the output
+	ci/templates.sh
 
 pageweight: ## Assert a directory's page does not grow with the directory
 	ci/pageweight.sh

@@ -30,7 +30,7 @@
   <header class="cairn-head">
     {{ partial "cairn/breadcrumb.html" $c.path }}
     <div class="cairn-head-sub">
-      <p class="cairn-head-count">{{ $c.count }} item{{ if ne $c.count 1 }}s{{ end }}</p>
+      <p class="cairn-head-count">{{ $n := int $c.count }}{{ $n }} item{{ if ne $n 1 }}s{{ end }}</p>
       {{ partial "cairn/formats.html" $c }}
     </div>
   </header>

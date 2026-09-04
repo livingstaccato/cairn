@@ -41,7 +41,7 @@
     {{ partial "cairn/breadcrumb.html" $c.path }}
     <div class="cairn-head-sub">
       <p class="cairn-head-count">
-        {{ $c.count }} item{{ if ne $c.count 1 }}s{{ end }}
+        {{ $n := int $c.count }}{{ $n }} item{{ if ne $n 1 }}s{{ end }}
         {{ with $latest }}<span class="sep">·</span> newest {{ dateFormat "2006-01-02" . }}{{ end }}
       </p>
       {{ partial "cairn/formats.html" $c }}
@@ -91,7 +91,7 @@
           {{ partial "cairn/icon.html" .kind }}
           <span class="cairn-item-name">
             {{ .name }}{{ if .is_dir }}/{{ end }}
-            {{ if .is_dir }}<small class="cairn-item-count">{{ .count }} item{{ if ne .count 1 }}s{{ end }}</small>{{ end }}
+            {{ if .is_dir }}<small class="cairn-item-count">{{ $n := int .count }}{{ $n }} item{{ if ne $n 1 }}s{{ end }}</small>{{ end }}
             {{ with .summary }}<small class="cairn-item-summary">{{ . }}</small>{{ end }}
           </span>
           <span class="cairn-item-meta">{{ if .is_dir }}—{{ else }}{{ partial "cairn/size.html" .size }}{{ end }}</span>

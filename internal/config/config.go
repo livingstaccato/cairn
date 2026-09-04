@@ -107,6 +107,9 @@ func (c *Config) validate(p string) error {
 	if err := validateSources(p, c.Defaults, c.Rules); err != nil {
 		return err
 	}
+	if err := validateHidden(p, c.Defaults, c.Rules); err != nil {
+		return err
+	}
 	if c.Mode != ModeDirect && c.Mode != ModeHugo {
 		return fmt.Errorf("config %s: mode must be %s or %s, got %q",
 			p, ModeDirect, ModeHugo, c.Mode)
@@ -166,6 +169,33 @@ func (c *Config) IsProtected(relPath string) bool {
 		}
 	}
 	return false
+}
+
+// validateHidden rejects an unknown hidden: policy. Left unchecked, a typo
+// falls back to skip and silently drops every underscore-prefixed directory —
+// on a tree like static/_odds that is the whole site, and the listing looks
+// merely empty rather than misconfigured.
+func validateHidden(p string, defaults Override, rules []Rule) error {
+	check := func(o Override) error {
+		if o.Hidden == nil {
+			return nil
+		}
+		switch *o.Hidden {
+		case HiddenSkip, HiddenShow, HiddenDotfiles:
+			return nil
+		}
+		return fmt.Errorf("config %s: hidden must be %s, %s or %s, got %q",
+			p, HiddenSkip, HiddenShow, HiddenDotfiles, *o.Hidden)
+	}
+	if err := check(defaults); err != nil {
+		return err
+	}
+	for _, r := range rules {
+		if err := check(r.Override); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // matchDir reports whether a rule glob covers a directory. A glob such as

@@ -6,6 +6,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -209,5 +210,18 @@ func TestUnknownSourceIsRejected(t *testing.T) {
 		if _, err := Load(writeConfig(t, body)); err != nil {
 			t.Errorf("source %q rejected: %v", src, err)
 		}
+	}
+}
+
+func TestValidateRejectsUnknownHidden(t *testing.T) {
+	bad := "hide"
+	c := &Config{Version: 1, OnConflict: ConflictError, Mode: ModeDirect,
+		Defaults: Override{Hidden: &bad}}
+	err := c.validate("cairn.yaml")
+	if err == nil {
+		t.Fatal("an unknown hidden: policy must fail the config, not fall back to skip")
+	}
+	if !strings.Contains(err.Error(), "hidden must be") {
+		t.Errorf("error = %v, want it to name the valid values", err)
 	}
 }

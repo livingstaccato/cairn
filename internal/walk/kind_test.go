@@ -3,7 +3,11 @@
 
 package walk
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/livingstaccato/cairn/internal/config"
+)
 
 func TestKindOf(t *testing.T) {
 	cases := []struct {
@@ -55,6 +59,34 @@ func TestKindOfCompoundExtension(t *testing.T) {
 	for _, n := range []string{"a.tar.gz", "a.tar.xz", "a.tar.zst", "a.tar.bz2"} {
 		if k, _ := KindOf(n, false); k != "archive" {
 			t.Errorf("KindOf(%q) = %q, want archive", n, k)
+		}
+	}
+}
+
+func TestHiddenByPolicy(t *testing.T) {
+	cases := []struct {
+		policy, name string
+		want         bool
+	}{
+		// skip is the default and hides both conventions.
+		{config.HiddenSkip, ".DS_Store", true},
+		{config.HiddenSkip, "_tradewars", true},
+		{config.HiddenSkip, "readme.md", false},
+
+		{config.HiddenShow, ".DS_Store", false},
+		{config.HiddenShow, "_tradewars", false},
+
+		// dotfiles separates the two conventions. A leading dot is a filesystem
+		// convention meaning hidden; a leading underscore is a Hugo content
+		// convention meaning "not a page", which says nothing about a directory
+		// of static artifacts the site publishes and links to.
+		{config.HiddenDotfiles, ".DS_Store", true},
+		{config.HiddenDotfiles, "_tradewars", false},
+		{config.HiddenDotfiles, "readme.md", false},
+	}
+	for _, c := range cases {
+		if got := hiddenByPolicy(c.policy, c.name); got != c.want {
+			t.Errorf("hiddenByPolicy(%q, %q) = %v, want %v", c.policy, c.name, got, c.want)
 		}
 	}
 }

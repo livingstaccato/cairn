@@ -127,7 +127,7 @@ func (sc *scanner) entry(relDir string, de os.DirEntry, depth int) (model.Entry,
 	name := de.Name()
 	rel := path.Join(relDir, name)
 
-	if sc.s.Hidden != config.HiddenShow && isHidden(name) {
+	if hiddenByPolicy(sc.s.Hidden, name) {
 		return model.Entry{}, nil, false
 	}
 	if de.Type()&os.ModeSymlink != 0 {
@@ -179,7 +179,7 @@ func (sc *scanner) countChildren(rel string) (int, []Warning) {
 	}
 	n := 0
 	for _, c := range children {
-		if sc.s.Hidden == config.HiddenShow || !isHidden(c.Name()) {
+		if !hiddenByPolicy(sc.s.Hidden, c.Name()) {
 			n++
 		}
 	}
@@ -210,6 +210,25 @@ func withinRoot(root, target string) bool {
 		return false
 	}
 	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+// hiddenByPolicy reports whether name is hidden under the configured policy.
+//
+// The two conventions are not the same thing and a real mirror needs them
+// apart. A leading dot is a filesystem convention meaning hidden. A leading
+// underscore is a Hugo convention meaning "not a page", which says nothing
+// about a directory of static artifacts that the site publishes and links to —
+// so skip: would drop a whole published subtree, and show: would put .DS_Store
+// on the page.
+func hiddenByPolicy(policy, name string) bool {
+	switch policy {
+	case config.HiddenShow:
+		return false
+	case config.HiddenDotfiles:
+		return strings.HasPrefix(name, ".")
+	default:
+		return isHidden(name)
+	}
 }
 
 // isHidden covers both the dotfile convention and the underscore convention the

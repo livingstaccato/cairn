@@ -291,6 +291,23 @@ it did not create. Two consequences worth knowing:
   that the partial output would belong to nobody and `on_conflict: error` would
   refuse every later run until someone deleted the files by hand.
 
+## Underscore directories
+
+`hidden:` takes three values, because two different conventions look alike:
+
+| value      | hides                        |
+| ---------- | ---------------------------- |
+| `skip`     | `.dotfiles` and `_underscore` (default) |
+| `dotfiles` | `.dotfiles` only             |
+| `show`     | nothing                      |
+
+A leading dot is a filesystem convention meaning hidden. A leading underscore is
+a Hugo convention meaning "not a page", and it says nothing about a directory of
+static artifacts that a site publishes and links to. On a tree like
+`static/_odds/_tradewars/`, `skip` drops the entire published subtree and `show`
+puts `.DS_Store` on the page; `dotfiles` is the one that describes what is
+actually there.
+
 ## Beside a package repository
 
 This is the deployment cairn was built for: an APT or YUM mirror that already

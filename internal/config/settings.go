@@ -25,8 +25,9 @@ const (
 	OrderAsc  = "asc"
 	OrderDesc = "desc"
 
-	HiddenSkip = "skip"
-	HiddenShow = "show"
+	HiddenSkip     = "skip"
+	HiddenShow     = "show"
+	HiddenDotfiles = "dotfiles"
 
 	ChecksumNone   = "none"
 	ChecksumSHA256 = "sha256"

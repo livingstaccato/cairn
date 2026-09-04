@@ -1,0 +1,74 @@
+/* SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
+   SPDX-License-Identifier: Apache-2.0 */
+
+/* cairn listing styles.
+   Colors come from the host theme's custom properties, with fallbacks, so this
+   module drops into any Hugo theme without importing a design system. */
+.cairn {
+  --c-fg: var(--text-1, #1a1a1a);
+  --c-muted: var(--text-2, #6a6a6a);
+  --c-bg: var(--bg-2, #f6f6f6);
+  --c-border: var(--bg-3, #d8d8d8);
+  --c-accent: var(--accent, #3a6ea5);
+
+  color: var(--c-fg);
+}
+
+.cairn-breadcrumb { font-size: 0.85rem; margin-bottom: 1rem; color: var(--c-muted); }
+.cairn-breadcrumb a { color: var(--c-muted); text-decoration: none; }
+.cairn-breadcrumb a:hover { color: var(--c-accent); }
+.cairn-breadcrumb .sep { margin: 0 0.35rem; }
+.cairn-breadcrumb .current { color: var(--c-accent); }
+
+.cairn-prose {
+  margin: 1rem 0 1.5rem;
+  padding: 1rem;
+  background: var(--c-bg);
+  border-left: 3px solid var(--c-accent);
+  border-radius: 0 4px 4px 0;
+}
+
+.cairn-toolbar { display: flex; gap: 0.75rem; margin-bottom: 0.75rem; }
+.cairn-toolbar[hidden] { display: none; }
+.cairn-filter { flex: 1; padding: 0.4rem 0.6rem; border: 1px solid var(--c-border); border-radius: 4px; }
+
+.cairn-listing {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+}
+
+.cairn-listing th {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.cairn-listing th[data-sort] { cursor: pointer; user-select: none; }
+.cairn-listing th[data-sort]:hover { color: var(--c-accent); }
+.cairn-listing th[aria-sort="ascending"]::after { content: " \25B2"; }
+.cairn-listing th[aria-sort="descending"]::after { content: " \25BC"; }
+
+.cairn-listing td { padding: 0.4rem 0.75rem; border-bottom: 1px solid var(--c-border); }
+.cairn-listing tr:last-child td { border-bottom: 0; }
+.cairn-listing td.size, .cairn-listing th.size { text-align: right; font-variant-numeric: tabular-nums; }
+.cairn-listing td.sum { font-family: monospace; font-size: 0.8rem; color: var(--c-muted); }
+
+.cairn-name { display: flex; align-items: center; gap: 0.5rem; }
+.cairn-name a { color: var(--c-fg); text-decoration: none; }
+.cairn-name a:hover { color: var(--c-accent); text-decoration: underline; }
+.cairn-summary { color: var(--c-muted); font-size: 0.85rem; }
+.cairn-icon { flex: 0 0 auto; }
+.cairn-row[hidden] { display: none; }
+
+.cairn-formats { margin-top: 0.75rem; font-size: 0.85rem; color: var(--c-muted); }
+.cairn-formats a { color: var(--c-accent); }
+
+@media (max-width: 40rem) {
+  .cairn-listing .modified, .cairn-listing .sum { display: none; }
+}

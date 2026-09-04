@@ -1,0 +1,21 @@
+{{- /* Single-pass breadcrumb. Takes the cairn path, e.g. "/bootstrap/linux/".
+       Accumulates each href as it goes rather than rebuilding the prefix from
+       scratch per crumb, which is what made the implementation this replaces
+       quadratic in the depth of the path. */ -}}
+{{- $path := . | strings.TrimPrefix "/" | strings.TrimSuffix "/" -}}
+{{- $parts := split $path "/" -}}
+{{- $acc := "" -}}
+<nav class="cairn-breadcrumb" aria-label="Breadcrumb">
+  <a href="/">/</a>
+  {{- if ne $path "" -}}
+    {{- range $i, $crumb := $parts -}}
+      {{- $acc = printf "%s/%s" $acc $crumb -}}
+      {{- if $i }}<span class="sep">/</span>{{ end -}}
+      {{- if eq $i (sub (len $parts) 1) -}}
+        <span class="current">{{ $crumb }}</span>
+      {{- else -}}
+        <a href="{{ $acc }}/">{{ $crumb }}</a>
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+</nav>

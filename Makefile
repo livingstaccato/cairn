@@ -13,8 +13,9 @@ lint: ## gofmt, vet, golangci-lint, file-size budget
 security: ## gosec, govulncheck, go mod verify
 	ci/security.sh
 
-test: ## Race-enabled test suite
+test: ## Race-enabled Go suite plus the module's JavaScript
 	go test -race ./...
+	node --test assets/cairn/cairn.test.mjs
 
 cover: ## Coverage gate over internal/
 	go test -race -coverprofile=coverage.out ./internal/...

@@ -22,6 +22,8 @@ path = [
   # every page cairn generates, licensing a user's output as though it were this
   # project's source.
   "internal/emit/templates/**",
+  "layouts/**",
+  "assets/cairn/icons.svg",
   ".provide/**",
 ]
 precedence = "aggregate"

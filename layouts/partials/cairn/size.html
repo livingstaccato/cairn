@@ -1,0 +1,21 @@
+{{- /* Byte count -> human size. Mirrors emit.HumanSize in Go: binary units, one
+       decimal place at or above 1 KiB, a bare byte count below it.
+       The two must agree — the same directory rendered by the Go path and by
+       Hugo cannot disagree about how big a file is. */ -}}
+{{- $n := . | int -}}
+{{- if lt $n 1024 -}}
+{{ $n }} B
+{{- else -}}
+{{- $units := slice "KiB" "MiB" "GiB" "TiB" "PiB" "EiB" -}}
+{{- $div := 1024.0 -}}
+{{- $exp := 0 -}}
+{{- $m := div $n 1024 -}}
+{{- range seq 5 -}}
+{{- if ge $m 1024 -}}
+{{- $div = mul $div 1024.0 -}}
+{{- $exp = add $exp 1 -}}
+{{- $m = div $m 1024 -}}
+{{- end -}}
+{{- end -}}
+{{- printf "%.1f %s" (div (float $n) $div) (index $units $exp) -}}
+{{- end -}}

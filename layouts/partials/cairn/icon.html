@@ -1,0 +1,7 @@
+{{- /* Renders one sprite icon. Takes an Entry kind string.
+       An unknown kind falls back to "other" rather than emitting a <use> that
+       resolves to nothing and renders as blank space. */ -}}
+{{- $known := slice "dir" "script" "image" "archive" "doc" "page" "config" "data" "other" -}}
+{{- $kind := . -}}
+{{- if not (in $known $kind) }}{{ $kind = "other" }}{{ end -}}
+<svg class="cairn-icon cairn-icon--{{ $kind }}" aria-hidden="true" width="16" height="16"><use href="#cairn-{{ $kind }}"/></svg>

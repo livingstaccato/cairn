@@ -1,0 +1,61 @@
+{{- /* The listing table. One markup path for both presenters — `bare` simply
+       ships no toolbar and no script.
+
+       Sizes are formatted HERE and nowhere earlier: .size in the data is always
+       exact bytes, and formatting it in the generator is what produced "0KB"
+       for every sub-kilobyte file in the implementation this replaces. */ -}}
+{{- $c := .Params.cairn -}}
+{{- $styled := eq $c.present "styled" -}}
+<div class="cairn" data-cairn-present="{{ $c.present }}">
+  {{ partial "cairn/breadcrumb.html" $c.path }}
+
+  {{ with .Content }}<div class="cairn-prose">{{ . }}</div>{{ end }}
+
+  {{ if $styled }}
+  <div class="cairn-toolbar" hidden data-cairn-toolbar>
+    <input class="cairn-filter" type="search" placeholder="Filter…" aria-label="Filter entries" data-cairn-filter>
+  </div>
+  {{ end }}
+
+  <table class="cairn-listing">
+    <thead>
+      <tr>
+        <th {{ if $styled }}data-sort="name" aria-sort="ascending"{{ end }}>Name</th>
+        <th class="size"{{ if $styled }} data-sort="size"{{ end }}>Size</th>
+        <th class="modified"{{ if $styled }} data-sort="modified"{{ end }}>Modified</th>
+        <th class="sum">SHA-256</th>
+      </tr>
+    </thead>
+    <tbody data-cairn-body>
+      {{ range $c.entries }}
+      <tr class="cairn-row"
+          data-name="{{ .name }}"
+          data-size="{{ .size }}"
+          data-modified="{{ .modified }}"
+          data-depth="{{ .depth }}">
+        <td>
+          <span class="cairn-name">
+            {{ partial "cairn/icon.html" .kind }}
+            <a href="{{ .path }}">{{ .name }}{{ if .is_dir }}/{{ end }}</a>
+          </span>
+          {{ with .summary }}<div class="cairn-summary">{{ . }}</div>{{ end }}
+        </td>
+        <td class="size">{{ if .is_dir }}{{ .count }} items{{ else }}{{ partial "cairn/size.html" .size }}{{ end }}</td>
+        <td class="modified"><time datetime="{{ .modified }}">{{ dateFormat "2006-01-02 15:04" .modified }}</time></td>
+        <td class="sum">{{ with .sha256 }}{{ substr . 0 12 }}…{{ end }}</td>
+      </tr>
+      {{ end }}
+    </tbody>
+  </table>
+
+  <p class="cairn-formats">
+    Also as <a href="index.json">JSON</a>, <a href="index.csv">CSV</a>
+  </p>
+
+  {{ if $styled }}
+    {{ with resources.Get "cairn/cairn.js" }}
+      {{ $js := . | resources.Minify | resources.Fingerprint "sha256" }}
+      <script type="module" src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}" defer></script>
+    {{ end }}
+  {{ end }}
+</div>

@@ -13,6 +13,3 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/kr/text v0.2.0 // indirect
 )
-
-// Superseded. Use v0.3.0 or later.
-retract [v0.1.0, v0.2.1]

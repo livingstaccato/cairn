@@ -207,8 +207,15 @@ var emitters = map[string]func(*runner, emitCtx) error{
 }
 
 // emitFor writes the formats named by s.Outputs under basename.
+//
+// In hugo mode it writes one _index.md instead and returns: Hugo renders every
+// format from that page, so emitting them here as well would produce two
+// sources for the same URL that could disagree.
 func (r *runner) emitFor(relDir, basename string, l model.Listing, s config.Settings, prose string) error {
 	c := emitCtx{relDir: relDir, basename: basename, listing: l, settings: s, prose: prose}
+	if r.cfg.Mode == config.ModeHugo {
+		return r.emitHugo(c)
+	}
 	for _, format := range s.Outputs {
 		fn, ok := emitters[format]
 		if !ok {
@@ -219,6 +226,19 @@ func (r *runner) emitFor(relDir, basename string, l model.Listing, s config.Sett
 		}
 	}
 	return nil
+}
+
+// emitHugo writes the branch bundle Hugo renders from. A recursive listing does
+// not get its own page: Hugo produces tree.json from the same frontmatter.
+func (r *runner) emitHugo(c emitCtx) error {
+	if c.basename != r.cfg.IndexBasename {
+		return nil
+	}
+	b, err := emit.HugoContent(c.listing, c.prose, c.settings.Present)
+	if err != nil {
+		return err
+	}
+	return r.write(c.relDir, emit.HugoContentFile, b)
 }
 
 func (r *runner) emitJSON(c emitCtx) error {

@@ -177,3 +177,19 @@ func TestIsProtectedIgnoresBadGlob(t *testing.T) {
 		t.Error("a malformed glob must not match everything")
 	}
 }
+
+func TestModeDefaultsAndValidation(t *testing.T) {
+	c, err := Load(writeConfig(t, "version: 1\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Mode != ModeDirect {
+		t.Errorf("Mode = %q, want %q", c.Mode, ModeDirect)
+	}
+	if _, err := Load(writeConfig(t, "version: 1\nmode: hugo\n")); err != nil {
+		t.Errorf("hugo mode rejected: %v", err)
+	}
+	if _, err := Load(writeConfig(t, "version: 1\nmode: sideways\n")); err == nil {
+		t.Fatal("expected an error for an unknown mode")
+	}
+}

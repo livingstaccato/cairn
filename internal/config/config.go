@@ -21,6 +21,14 @@ const (
 	ConflictSkip  = "skip"
 )
 
+// Output modes. In direct mode cairn writes index.{json,csv,html} itself. In
+// hugo mode it writes one _index.md per directory and Hugo renders the formats
+// from that single source, so they cannot drift.
+const (
+	ModeDirect = "direct"
+	ModeHugo   = "hugo"
+)
+
 // Built-in policy values applied when a root config omits them.
 const (
 	DefaultIndexBasename  = "index"
@@ -36,6 +44,7 @@ type Rule struct {
 // Config is a parsed root cairn.yaml.
 type Config struct {
 	Version        int      `yaml:"version"`
+	Mode           string   `yaml:"mode"`
 	Root           string   `yaml:"root"`
 	Out            string   `yaml:"out"`
 	IndexBasename  string   `yaml:"index_basename"`
@@ -78,6 +87,9 @@ func (c *Config) applyPolicyDefaults() {
 	if c.OnConflict == "" {
 		c.OnConflict = ConflictError
 	}
+	if c.Mode == "" {
+		c.Mode = ModeDirect
+	}
 }
 
 // validate rejects a config this build cannot honor. It is separate from
@@ -91,6 +103,10 @@ func (c *Config) validate(p string) error {
 	if c.OnConflict != ConflictError && c.OnConflict != ConflictSkip {
 		return fmt.Errorf("config %s: on_conflict must be %s or %s, got %q",
 			p, ConflictError, ConflictSkip, c.OnConflict)
+	}
+	if c.Mode != ModeDirect && c.Mode != ModeHugo {
+		return fmt.Errorf("config %s: mode must be %s or %s, got %q",
+			p, ModeDirect, ModeHugo, c.Mode)
 	}
 	return nil
 }

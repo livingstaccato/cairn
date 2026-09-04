@@ -4,7 +4,9 @@
 package build
 
 import (
+	"bytes"
 	"encoding/json"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -235,5 +237,83 @@ func TestRunStyledHTMLIsNotWrittenDirectly(t *testing.T) {
 
 	if _, err := os.Stat(filepath.Join(out, "bootstrap/index.html")); err == nil {
 		t.Error("styled HTML must be left to the Hugo layer")
+	}
+}
+
+func TestRunHugoModeWritesOneFilePerDir(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	c := conf(nil)
+	c.Mode = config.ModeHugo
+	run(t, c, root, out)
+
+	for _, rel := range []string{"_index.md", "bootstrap/_index.md", "bootstrap/linux/_index.md"} {
+		if _, err := os.Stat(filepath.Join(out, rel)); err != nil {
+			t.Errorf("missing %s", rel)
+		}
+	}
+	// Hugo renders these from the page; a second source could disagree.
+	if _, err := os.Stat(filepath.Join(out, "bootstrap/index.json")); err == nil {
+		t.Error("hugo mode must not also write index.json")
+	}
+	b, err := os.ReadFile(filepath.Join(out, "bootstrap/linux/_index.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), "APT sources") {
+		t.Error("metadata did not reach the frontmatter")
+	}
+}
+
+func TestRunHugoModeSkipsRecursivePage(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	c := conf(nil)
+	c.Mode = config.ModeHugo
+	yes := true
+	c.Rules = []config.Rule{{Match: "bootstrap/**", Override: config.Override{Recursive: &yes}}}
+	run(t, c, root, out)
+
+	// Hugo renders tree.json from the same page; a second bundle would be a
+	// second source for one URL.
+	if _, err := os.Stat(filepath.Join(out, "bootstrap/tree.md")); err == nil {
+		t.Error("a recursive listing must not get its own Hugo page")
+	}
+	if _, err := os.Stat(filepath.Join(out, "bootstrap/_index.md")); err != nil {
+		t.Errorf("the directory page is still required: %v", err)
+	}
+}
+
+func TestRunLogsWarningsWithoutFailing(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	// _meta.yaml naming a file that is not there: a mirror populated after
+	// deploy legitimately does this.
+	if err := os.WriteFile(filepath.Join(root, "docs", "_meta.yaml"),
+		[]byte("ghost.iso:\n  title: Not here yet\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	log := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	if _, err := Run(conf(nil), root, out, log); err != nil {
+		t.Fatalf("a warning must not fail the build: %v", err)
+	}
+	if !strings.Contains(buf.String(), "ghost.iso") {
+		t.Errorf("expected the skipped entry to be logged, got %q", buf.String())
+	}
+}
+
+func TestRunAcceptsPEP503AsANoOp(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	c := conf(nil)
+	outs := []string{config.OutputJSON, config.OutputPEP503}
+	c.Defaults = config.Override{Outputs: &outs}
+	res := run(t, c, root, out)
+
+	if _, err := os.Stat(filepath.Join(out, "index.json")); err != nil {
+		t.Errorf("json still expected: %v", err)
+	}
+	for _, w := range res.Written {
+		if strings.HasSuffix(w, "index.html") {
+			t.Error("pep503 is not wired yet and must not write anything")
+		}
 	}
 }

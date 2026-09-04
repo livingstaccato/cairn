@@ -1,0 +1,36 @@
+{{- /* Returns every cairn entry across the site as neutral maps, for a host
+       site to fold into its own search index.
+
+       Keys are deliberately generic: cairn does not own any search engine's
+       record shape. The two known consumers disagree — a Fuse index wants
+       {title,url,content,tags,date,excerpt}, a knowledge-corpus index wants
+       {title,summary,kind,source_path,url,text} — so owning either would be
+       wrong for the other.
+
+       Usage in a host's layouts/index.json:
+
+         {{- range partial "cairn/entries.html" . -}}
+           {{- $idx = $idx | append (dict
+               "title" .title "url" .path "content" .summary
+               "tags" .tags "date" .modified "excerpt" .summary) -}}
+         {{- end -}}
+
+       Pages are found by the presence of .Params.cairn rather than by layout:
+       cairn writes branch bundles, which site.RegularPages does not include. */ -}}
+{{- $out := slice -}}
+{{- range site.Pages -}}
+  {{- with .Params.cairn -}}
+    {{- $section := .path -}}
+    {{- range .entries -}}
+      {{- $out = $out | append (dict
+          "title"    (.title | default .name)
+          "path"     .path
+          "summary"  (.summary | default "")
+          "tags"     (.tags | default slice)
+          "modified" .modified
+          "kind"     .kind
+          "section"  $section) -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- return $out -}}

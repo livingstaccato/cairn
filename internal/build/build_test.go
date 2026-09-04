@@ -301,19 +301,32 @@ func TestRunLogsWarningsWithoutFailing(t *testing.T) {
 	}
 }
 
-func TestRunAcceptsPEP503AsANoOp(t *testing.T) {
+func TestRunEmitsPEP503(t *testing.T) {
 	root, out := tree(t), t.TempDir()
 	c := conf(nil)
 	outs := []string{config.OutputJSON, config.OutputPEP503}
 	c.Defaults = config.Override{Outputs: &outs}
-	res := run(t, c, root, out)
+	run(t, c, root, out)
 
-	if _, err := os.Stat(filepath.Join(out, "index.json")); err != nil {
-		t.Errorf("json still expected: %v", err)
+	b, err := os.ReadFile(filepath.Join(out, "bootstrap/index.html"))
+	if err != nil {
+		t.Fatalf("simple index not written: %v", err)
 	}
-	for _, w := range res.Written {
-		if strings.HasSuffix(w, "index.html") {
-			t.Error("pep503 is not wired yet and must not write anything")
-		}
+	if !strings.Contains(string(b), "pypi:repository-version") {
+		t.Errorf("not a PEP 503 page:\n%s", b)
+	}
+}
+
+// html and pep503 are alternative renderings of one URL, so asking for both is
+// a configuration error the write guard surfaces rather than a silent
+// last-one-wins.
+func TestRunPEP503AndHTMLCollide(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	c := conf(nil)
+	bare := config.PresentBare
+	outs := []string{config.OutputHTML, config.OutputPEP503}
+	c.Defaults = config.Override{Outputs: &outs, Present: &bare}
+	if _, err := Run(c, root, out, obs.Discard()); err == nil {
+		t.Fatal("expected a conflict when both html and pep503 target index.html")
 	}
 }

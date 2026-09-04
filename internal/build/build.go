@@ -284,8 +284,21 @@ func (r *runner) emitHTML(c emitCtx) error {
 	return r.write(c.relDir, c.basename+".html", b)
 }
 
-// emitPEP503 is wired by the Hugo-layer plan.
-func (r *runner) emitPEP503(_ emitCtx) error { return nil }
+// emitPEP503 renders a Python simple index.
+//
+// It writes index.html, which is the filename PEP 503 requires, so a directory
+// configured with both html and pep503 collides there and the write guard
+// refuses. That is correct: they are alternative renderings of one URL.
+func (r *runner) emitPEP503(c emitCtx) error {
+	if c.basename != r.cfg.IndexBasename {
+		return nil
+	}
+	b, err := emit.PEP503(c.listing)
+	if err != nil {
+		return err
+	}
+	return r.write(c.relDir, "index.html", b)
+}
 
 // write places one output file and records it.
 func (r *runner) write(relDir, name string, body []byte) error {

@@ -120,6 +120,20 @@ if ! grep -qF 'report&lt;&amp;&gt;&#34;quoted&#34;.txt' "$pub/bootstrap/index.ht
   echo "FAIL: the escaped filename is not on the page at all"; fail=1
 fi
 
+# weight: in a sidecar leads the sort. It is applied after the walk, so the
+# ordering the walker produced has to be re-established — it was not, and only
+# the built output showed it.
+first=$(python3 -c "
+import json;print(json.load(open('$repo/exampleSite/content/bootstrap/index.json'))['entries'][0]['name'])")
+if [ "$first" != "bootstrap.sh" ]; then
+  echo "FAIL: weight: did not lead the sort (first entry: $first)"; fail=1
+fi
+
+# url: points an entry somewhere else without moving the file.
+if ! grep -q 'https://example.invalid/netboot/boot.ipxe' "$pub/bootstrap/index.html"; then
+  echo "FAIL: url: did not redirect the entry"; fail=1
+fi
+
 # Nothing may reach the network at render time.
 if grep -rniE 'fontawesome|fa-solid|cdnjs|googleapis|//cdn\.' "$pub/" >/dev/null; then
   echo "FAIL: external asset reference in output"; fail=1

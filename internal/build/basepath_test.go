@@ -75,8 +75,10 @@ func TestMetadataSidecarsAreNeverListed(t *testing.T) {
 	}
 
 	c := conf(nil)
-	show := config.HiddenDotfiles
-	c.Defaults = config.Override{Hidden: &show}
+	// Nothing hidden, so a sidecar could only stay out of the listing by being
+	// recognised as cairn's own input.
+	none := []string{}
+	c.Defaults = config.Override{Hide: &none}
 	run(t, c, root, out)
 
 	b, err := os.ReadFile(filepath.Join(out, "bootstrap", "linux", "index.json"))

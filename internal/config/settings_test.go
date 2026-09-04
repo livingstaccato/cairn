@@ -16,7 +16,7 @@ func boolp(b bool) *bool    { return &b }
 func TestOverrideApply(t *testing.T) {
 	base := Settings{
 		Source: "fs", Present: "styled", Outputs: []string{"html", "json", "csv"},
-		Sort: "name", Order: "asc", DirsFirst: true, Hidden: "skip",
+		Sort: "name", Order: "asc", DirsFirst: true, Hide: DefaultHide,
 		Checksum: "none", Recursive: false, FollowSymlinks: false,
 	}
 
@@ -77,7 +77,7 @@ func TestOverrideApply(t *testing.T) {
 func TestDefaults(t *testing.T) {
 	d := Defaults()
 	if d.Source != "fs" || d.Present != "styled" || d.Sort != "name" ||
-		d.Order != "asc" || !d.DirsFirst || d.Hidden != "skip" || d.Checksum != "none" {
+		d.Order != "asc" || !d.DirsFirst || len(d.Hide) != 1 || d.Checksum != "none" {
 		t.Errorf("unexpected defaults: %+v", d)
 	}
 	if len(d.Outputs) != 3 {

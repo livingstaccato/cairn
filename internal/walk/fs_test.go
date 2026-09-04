@@ -35,7 +35,8 @@ func fixture(t *testing.T) string {
 	}
 	mk("bootstrap/bootstrap.sh", 512)
 	mk("bootstrap/ubuntu.iso", 4096)
-	mk("bootstrap/_hidden.txt", 10)
+	mk("bootstrap/.hidden.txt", 10)
+	mk("bootstrap/_notes.txt", 10)
 	mk("bootstrap/linux/apt.list", 64)
 	mk("bootstrap/linux/deep/nested.conf", 32)
 	return root
@@ -50,8 +51,9 @@ func TestDirIsNotRecursive(t *testing.T) {
 	if len(warns) != 0 {
 		t.Errorf("unexpected warnings: %v", warns)
 	}
-	// _hidden.txt skipped by default; nested.conf is not this directory's business.
-	want := []string{"linux", "bootstrap.sh", "ubuntu.iso"}
+	// .hidden.txt is skipped by default; _notes.txt is not, because an
+	// underscore is nobody's filesystem convention. nested.conf belongs to linux/.
+	want := []string{"linux", "_notes.txt", "bootstrap.sh", "ubuntu.iso"}
 	if len(got) != len(want) {
 		t.Fatalf("got %d entries %v, want %d %v", len(got), names(got), len(want), want)
 	}
@@ -106,13 +108,13 @@ func TestDirExactSizeNotRounded(t *testing.T) {
 func TestDirHiddenShow(t *testing.T) {
 	root := fixture(t)
 	s := config.Defaults()
-	s.Hidden = config.HiddenShow
+	s.Hide = nil
 	got, _, err := Dir(root, "bootstrap", s)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 4 {
-		t.Errorf("got %v, want 4 entries including _hidden.txt", names(got))
+	if len(got) != 5 {
+		t.Errorf("got %v, want every entry including the dotfile", names(got))
 	}
 }
 
@@ -147,7 +149,7 @@ func TestDirSorting(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(got) != 3 {
+		if len(got) != 4 {
 			t.Fatalf("got %v", names(got))
 		}
 	})
@@ -317,6 +319,28 @@ func TestLessByOrdersByEachKey(t *testing.T) {
 	for _, c := range cases {
 		if !lessBy(c.key, c.a, c.b) {
 			t.Errorf("lessBy(%q) ignored its key in favour of the name", c.key)
+		}
+	}
+}
+
+func TestSortHonorsWeight(t *testing.T) {
+	es := []model.Entry{
+		{Name: "c.txt"},
+		{Name: "a.txt", Weight: 2},
+		{Name: "b.txt", Weight: 1},
+		{Name: "d.txt"},
+	}
+	s := config.Defaults()
+	s.DirsFirst = false
+	sortEntries(es, s)
+
+	// Weighted entries lead, in weight order; everything else keeps the
+	// configured sort. Zero means unweighted, not "weight zero", or authoring
+	// one entry would silently reorder the whole directory.
+	want := []string{"b.txt", "a.txt", "c.txt", "d.txt"}
+	for i, n := range want {
+		if es[i].Name != n {
+			t.Fatalf("got %v, want %v", names(es), want)
 		}
 	}
 }

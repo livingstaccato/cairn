@@ -1,6 +1,8 @@
 bootstrap.sh:
   title: Entry point
   summary: Curl this first; everything else follows from it
+  # Ordering a filename cannot express: this is the one you run first.
+  weight: 1
 cloud-init.yaml:
   title: Cloud-init user data
 preseed.cfg:
@@ -8,6 +10,8 @@ preseed.cfg:
   summary: Unattended install answers
 boot.ipxe:
   title: iPXE chain script
+  # The file stays here and keeps its size and digest; only the link moves.
+  url: https://example.invalid/netboot/boot.ipxe
 netboot.tar.gz:
   title: Netboot bundle
   summary: Kernel and initrd for network installs

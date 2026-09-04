@@ -259,3 +259,42 @@ extra:
 		t.Errorf("sidecar clobbered fields it said nothing about: %+v", got)
 	}
 }
+
+func TestApplyHonorsHiddenWeightAndURL(t *testing.T) {
+	entries := []model.Entry{
+		{Name: "keep.txt", Path: "/keep.txt"},
+		{Name: "secret.txt", Path: "/secret.txt"},
+		{Name: "talk.md", Path: "/talk.md"},
+	}
+	m := map[string]FileMeta{
+		// Declared, parsed, merged — and until now read by nothing, so writing
+		// it in a sidecar did exactly nothing and said so nowhere.
+		"secret.txt": {Hidden: true},
+		// A real file that should link somewhere else. The bytes stay on disk
+		// and keep their size and digest; only where the listing points moves.
+		"talk.md":  {URL: "https://youtu.be/example", Title: "The talk"},
+		"keep.txt": {Weight: 10},
+	}
+
+	got := Apply(entries, m)
+
+	for _, e := range got {
+		if e.Name == "secret.txt" {
+			t.Error("hidden: true left the entry in the listing")
+		}
+		if e.Name == "talk.md" {
+			if e.Path != "https://youtu.be/example" {
+				t.Errorf("url: did not move the link, path = %q", e.Path)
+			}
+			if e.Title != "The talk" {
+				t.Errorf("title lost alongside url:, got %q", e.Title)
+			}
+		}
+		if e.Name == "keep.txt" && e.Weight != 10 {
+			t.Errorf("weight: not carried onto the entry, got %d", e.Weight)
+		}
+	}
+	if len(got) != 2 {
+		t.Errorf("got %d entries, want 2 after hiding one", len(got))
+	}
+}

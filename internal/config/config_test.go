@@ -213,16 +213,25 @@ func TestUnknownSourceIsRejected(t *testing.T) {
 	}
 }
 
-func TestValidateRejectsUnknownHidden(t *testing.T) {
-	bad := "hide"
+func TestValidateRejectsRemovedHiddenKey(t *testing.T) {
+	old := "skip"
 	c := &Config{Version: 1, OnConflict: ConflictError, Mode: ModeDirect,
-		Defaults: Override{Hidden: &bad}}
+		Defaults: Override{Hidden: &old}}
 	err := c.validate("cairn.yaml")
 	if err == nil {
-		t.Fatal("an unknown hidden: policy must fail the config, not fall back to skip")
+		t.Fatal("a config still using hidden: must be refused, not silently ignored")
 	}
-	if !strings.Contains(err.Error(), "hidden must be") {
-		t.Errorf("error = %v, want it to name the valid values", err)
+	if !strings.Contains(err.Error(), "hide:") {
+		t.Errorf("error = %v, want it to name the replacement", err)
+	}
+}
+
+func TestValidateRejectsBadHideGlob(t *testing.T) {
+	bad := []string{"["}
+	c := &Config{Version: 1, OnConflict: ConflictError, Mode: ModeDirect,
+		Defaults: Override{Hide: &bad}}
+	if err := c.validate("cairn.yaml"); err == nil {
+		t.Fatal("a glob that cannot compile must fail the config")
 	}
 }
 

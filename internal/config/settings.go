@@ -25,10 +25,20 @@ const (
 	OrderAsc  = "asc"
 	OrderDesc = "desc"
 
-	HiddenSkip     = "skip"
-	HiddenShow     = "show"
-	HiddenDotfiles = "dotfiles"
+	// DefaultHide is what a listing leaves out when a config says nothing: the
+	// filesystem's own convention for a file you were not meant to see, and
+	// nothing else. An underscore is a Hugo convention about pages, and a tree
+	// of static artifacts is not pages — baking it in here meant a published
+	// _tradewars/ vanished from its own parent with no setting that could bring
+	// it back without also surfacing .DS_Store.
+	DefaultHideGlob = "**/.*"
+)
 
+// DefaultHide is DefaultHideGlob as a list, constructed per call so a caller
+// mutating the result cannot change what the next caller sees.
+var DefaultHide = []string{DefaultHideGlob}
+
+const (
 	ChecksumNone   = "none"
 	ChecksumSHA256 = "sha256"
 
@@ -43,13 +53,16 @@ const (
 // Settings is fully-resolved behavior for one directory. No pointers: every
 // field has an answer by the time a directory is processed.
 type Settings struct {
-	Source         string   `yaml:"source"`
-	Present        string   `yaml:"present"`
-	Outputs        []string `yaml:"outputs"`
-	Sort           string   `yaml:"sort"`
-	Order          string   `yaml:"order"`
-	DirsFirst      bool     `yaml:"dirs_first"`
-	Hidden         string   `yaml:"hidden"`
+	Source    string   `yaml:"source"`
+	Present   string   `yaml:"present"`
+	Outputs   []string `yaml:"outputs"`
+	Sort      string   `yaml:"sort"`
+	Order     string   `yaml:"order"`
+	DirsFirst bool     `yaml:"dirs_first"`
+	// Hide lists globs, matched against a path relative to root, whose entries
+	// stay out of listings. Explicit rather than conventional: cairn cannot know
+	// which prefixes mean "internal" in someone else's tree.
+	Hide           []string `yaml:"hide"`
 	Checksum       string   `yaml:"checksum"`
 	Recursive      bool     `yaml:"recursive"`
 	FollowSymlinks bool     `yaml:"follow_symlinks"`
@@ -70,7 +83,7 @@ func Defaults() Settings {
 		Sort:      SortName,
 		Order:     OrderAsc,
 		DirsFirst: true,
-		Hidden:    HiddenSkip,
+		Hide:      []string{DefaultHideGlob},
 		Checksum:  ChecksumNone,
 		// A flat package pool renders at roughly 180 bytes a row bare and 660
 		// styled, so ten thousand entries is a 1.8 MB page bare and 6.6 MB
@@ -86,17 +99,22 @@ func Defaults() Settings {
 // an explicitly-configured false is distinguishable from an absent key — the
 // difference between "dirs_first: false" and saying nothing about it.
 type Override struct {
-	Source         *string   `yaml:"source"`
-	Present        *string   `yaml:"present"`
-	Outputs        *[]string `yaml:"outputs"`
-	Sort           *string   `yaml:"sort"`
-	Order          *string   `yaml:"order"`
-	DirsFirst      *bool     `yaml:"dirs_first"`
-	Hidden         *string   `yaml:"hidden"`
-	Checksum       *string   `yaml:"checksum"`
-	Recursive      *bool     `yaml:"recursive"`
-	MaxRendered    *int      `yaml:"max_rendered"`
-	FollowSymlinks *bool     `yaml:"follow_symlinks"`
+	Source    *string   `yaml:"source"`
+	Present   *string   `yaml:"present"`
+	Outputs   *[]string `yaml:"outputs"`
+	Sort      *string   `yaml:"sort"`
+	Order     *string   `yaml:"order"`
+	DirsFirst *bool     `yaml:"dirs_first"`
+	Hide      *[]string `yaml:"hide"`
+	// Hidden is removed. It stays declared so a config still carrying it is
+	// refused with an explanation: an unknown key is dropped in silence by the
+	// YAML decoder, and a listing that quietly stops hiding things is worse
+	// than a build that will not start.
+	Hidden         *string `yaml:"hidden"`
+	Checksum       *string `yaml:"checksum"`
+	Recursive      *bool   `yaml:"recursive"`
+	MaxRendered    *int    `yaml:"max_rendered"`
+	FollowSymlinks *bool   `yaml:"follow_symlinks"`
 }
 
 // deref returns *p when p is set, and fallback otherwise. It exists so Apply
@@ -118,7 +136,9 @@ func (o Override) Apply(s Settings) Settings {
 	s.Sort = deref(o.Sort, s.Sort)
 	s.Order = deref(o.Order, s.Order)
 	s.DirsFirst = deref(o.DirsFirst, s.DirsFirst)
-	s.Hidden = deref(o.Hidden, s.Hidden)
+	if o.Hide != nil {
+		s.Hide = append([]string(nil), *o.Hide...)
+	}
 	s.Checksum = deref(o.Checksum, s.Checksum)
 	s.Recursive = deref(o.Recursive, s.Recursive)
 	s.MaxRendered = deref(o.MaxRendered, s.MaxRendered)

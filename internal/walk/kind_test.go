@@ -63,30 +63,33 @@ func TestKindOfCompoundExtension(t *testing.T) {
 	}
 }
 
-func TestHiddenByPolicy(t *testing.T) {
+func TestHiddenByGlob(t *testing.T) {
 	cases := []struct {
-		policy, name string
-		want         bool
+		globs   []string
+		relPath string
+		want    bool
+		why     string
 	}{
-		// skip is the default and hides both conventions.
-		{config.HiddenSkip, ".DS_Store", true},
-		{config.HiddenSkip, "_tradewars", true},
-		{config.HiddenSkip, "readme.md", false},
+		// The default hides the filesystem's own convention and nothing else.
+		{config.DefaultHide, ".DS_Store", true, "dotfile at the root"},
+		{config.DefaultHide, "pool/.DS_Store", true, "dotfile anywhere"},
+		{config.DefaultHide, "_tradewars", false, "an underscore is not a filesystem convention"},
+		{config.DefaultHide, "readme.md", false, "ordinary file"},
 
-		{config.HiddenShow, ".DS_Store", false},
-		{config.HiddenShow, "_tradewars", false},
+		// Anything else is the operator's to state.
+		{[]string{"**/_*"}, "_tradewars", true, "underscore, when asked for"},
+		{[]string{"**/*.tmp"}, "build/out.tmp", true, "by extension"},
+		{[]string{"drafts/**"}, "drafts/a/b.md", true, "a whole subtree"},
+		{[]string{"drafts/**"}, "published/a.md", false, "outside the subtree"},
+		{nil, ".DS_Store", false, "an empty list hides nothing"},
 
-		// dotfiles separates the two conventions. A leading dot is a filesystem
-		// convention meaning hidden; a leading underscore is a Hugo content
-		// convention meaning "not a page", which says nothing about a directory
-		// of static artifacts the site publishes and links to.
-		{config.HiddenDotfiles, ".DS_Store", true},
-		{config.HiddenDotfiles, "_tradewars", false},
-		{config.HiddenDotfiles, "readme.md", false},
+		// A malformed glob must not take everything with it.
+		{[]string{"["}, "anything", false, "bad pattern matches nothing"},
 	}
 	for _, c := range cases {
-		if got := hiddenByPolicy(c.policy, c.name); got != c.want {
-			t.Errorf("hiddenByPolicy(%q, %q) = %v, want %v", c.policy, c.name, got, c.want)
+		if got := HiddenByGlob(c.globs, c.relPath); got != c.want {
+			t.Errorf("HiddenByGlob(%v, %q) = %v, want %v — %s",
+				c.globs, c.relPath, got, c.want, c.why)
 		}
 	}
 }

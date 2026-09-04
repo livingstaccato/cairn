@@ -5,6 +5,7 @@ package walk
 
 import (
 	"fmt"
+	"github.com/bmatcuk/doublestar/v4"
 	"os"
 	"path"
 	"path/filepath"
@@ -127,7 +128,7 @@ func (sc *scanner) entry(relDir string, de os.DirEntry, depth int) (model.Entry,
 	name := de.Name()
 	rel := path.Join(relDir, name)
 
-	if hiddenByPolicy(sc.s.Hidden, name) || IsSidecar(name) {
+	if HiddenByGlob(sc.s.Hide, rel) || IsSidecar(name) {
 		return model.Entry{}, nil, false
 	}
 	if de.Type()&os.ModeSymlink != 0 {
@@ -179,7 +180,7 @@ func (sc *scanner) countChildren(rel string) (int, []Warning) {
 	}
 	n := 0
 	for _, c := range children {
-		if !hiddenByPolicy(sc.s.Hidden, c.Name()) && !IsSidecar(c.Name()) {
+		if !HiddenByGlob(sc.s.Hide, path.Join(rel, c.Name())) && !IsSidecar(c.Name()) {
 			n++
 		}
 	}
@@ -212,37 +213,50 @@ func withinRoot(root, target string) bool {
 	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
-// hiddenByPolicy reports whether name is hidden under the configured policy.
+// HiddenByGlob reports whether relPath matches any hide: glob.
 //
-// The two conventions are not the same thing and a real mirror needs them
-// apart. A leading dot is a filesystem convention meaning hidden. A leading
-// underscore is a Hugo convention meaning "not a page", which says nothing
-// about a directory of static artifacts that the site publishes and links to —
-// so skip: would drop a whole published subtree, and show: would put .DS_Store
-// on the page.
-func hiddenByPolicy(policy, name string) bool {
-	switch policy {
-	case config.HiddenShow:
-		return false
-	case config.HiddenDotfiles:
-		return strings.HasPrefix(name, ".")
-	default:
-		return isHidden(name)
+// Globs rather than a convention because cairn cannot know which prefixes mean
+// "internal" in someone else's tree. A dot is the filesystem's own answer and
+// is the default; an underscore is a Hugo convention about pages, and a tree of
+// static artifacts is not pages. Baking the second in made a published
+// _tradewars/ vanish from its own parent, with no setting that could show it
+// again without also surfacing .DS_Store.
+//
+// A malformed glob matches nothing rather than everything: a pattern typo must
+// not silently empty a listing.
+func HiddenByGlob(globs []string, relPath string) bool {
+	for _, g := range globs {
+		if ok, err := doublestar.Match(g, relPath); err == nil && ok {
+			return true
+		}
 	}
-}
-
-// isHidden covers both the dotfile convention and the underscore convention the
-// listings this replaces already used.
-func isHidden(name string) bool {
-	return strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_")
+	return false
 }
 
 // sortEntries orders a listing in place.
+// Sort orders a listing the way the settings ask.
+//
+// Exported because weight arrives after the walk: authored metadata is merged
+// in build, so the order the walker produced is stale by then and has to be
+// re-established. The walker still sorts, so a listing with no sidecar is
+// ordered without a second pass.
+func Sort(es []model.Entry, s config.Settings) { sortEntries(es, s) }
+
 func sortEntries(es []model.Entry, s config.Settings) {
 	sort.SliceStable(es, func(i, j int) bool {
 		a, b := es[i], es[j]
 		// Directories-first is a grouping, not an ordering, so Order never
 		// reverses it — a descending listing still opens with its directories.
+		// Weight leads, the way Hugo's does: an authored order is a deliberate
+		// statement and outranks the configured key. Zero means unweighted
+		// rather than "weight zero", so weighting one entry does not silently
+		// reorder everything around it.
+		if (a.Weight != 0) != (b.Weight != 0) {
+			return a.Weight != 0
+		}
+		if a.Weight != b.Weight {
+			return a.Weight < b.Weight
+		}
 		if s.DirsFirst && a.IsDir != b.IsDir {
 			return a.IsDir
 		}

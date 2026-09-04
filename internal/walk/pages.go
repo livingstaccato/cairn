@@ -63,7 +63,7 @@ func Pages(contentRoot, relDir string, s config.Settings) ([]model.Entry, []Warn
 // pageEntry builds one content entry, reporting whether it belongs in the list.
 func pageEntry(absDir, relDir string, de os.DirEntry, s config.Settings) (model.Entry, []Warning, bool) {
 	name := de.Name()
-	if s.Hidden != config.HiddenShow && isHidden(name) {
+	if HiddenByGlob(s.Hide, path.Join(relDir, name)) {
 		return model.Entry{}, nil, false
 	}
 	info, err := de.Info()

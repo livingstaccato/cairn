@@ -158,6 +158,8 @@ func (r *runner) collect(relDir, absDir string, s config.Settings) ([]model.Entr
 	}
 	r.warn(mwarns)
 	entries = meta.Apply(entries, m)
+	// Weight comes from the sidecar, so the walker's order predates it.
+	walk.Sort(entries, s)
 
 	if s.Checksum == config.ChecksumSHA256 {
 		r.hashEntries(absDir, entries)

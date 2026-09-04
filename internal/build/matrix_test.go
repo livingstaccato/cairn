@@ -161,10 +161,10 @@ func TestMatrixRecursiveAcrossModes(t *testing.T) {
 func TestHiddenShowDoesNotListCairnState(t *testing.T) {
 	root := tree(t)
 	c := conf(nil)
-	show := config.HiddenShow
+	none := []string{}
 	sum := config.ChecksumSHA256
 	outs := []string{config.OutputJSON, config.OutputSums}
-	c.Defaults = config.Override{Hidden: &show, Checksum: &sum, Outputs: &outs}
+	c.Defaults = config.Override{Hide: &none, Checksum: &sum, Outputs: &outs}
 
 	run(t, c, root, root)
 	first := readFile(t, filepath.Join(root, "bootstrap", "linux", "SHA256SUMS"))

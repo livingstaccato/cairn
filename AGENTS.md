@@ -81,6 +81,16 @@ test pass.
   files nothing claims, and `on_conflict: error` then refuses every later run.
   The partial save unions in the previous run's claims — saving only what a
   failed run wrote would disown files it never reached.
+- **What a listing leaves out is stated, never assumed.** `hide:` is a list of
+  globs; the default is `["**/.*"]`, the filesystem's own convention and nothing
+  else. The enum this replaced baked the underscore convention in beside the
+  dot, so a published `_tradewars/` vanished from its own parent while `show`
+  put `.DS_Store` on the page — no value described the tree. cairn cannot know
+  which prefixes mean "internal" in someone else's tree.
+- **A sidecar's `hidden:`, `weight:` and `url:` do something.** All three were
+  declared, parsed, and read by nothing. Weight is applied after the walk, so
+  `build` re-sorts — the walker's order predates it, and a unit test on
+  `sortEntries` will pass while the built output is unordered.
 - **The HTML is capped, the machine formats never are.** `max_rendered` (1,000
   by default) bounds the rows on a page, so a directory's `index.html` is a
   fixed size whether it holds a thousand entries or fifty thousand — 34 MB

@@ -32,13 +32,17 @@ const (
 
 // FileMeta is authored metadata for one file.
 type FileMeta struct {
-	Title   string         `yaml:"title"`
-	Summary string         `yaml:"summary"`
-	Kind    string         `yaml:"kind"`
-	Tags    []string       `yaml:"tags"`
-	Weight  int            `yaml:"weight"`
-	Hidden  bool           `yaml:"hidden"`
-	Extra   map[string]any `yaml:"extra"`
+	Title   string   `yaml:"title"`
+	Summary string   `yaml:"summary"`
+	Kind    string   `yaml:"kind"`
+	Tags    []string `yaml:"tags"`
+	Weight  int      `yaml:"weight"`
+	Hidden  bool     `yaml:"hidden"`
+	// URL points the listing somewhere else. The file stays on disk and keeps
+	// its size and digest; only the link moves. A talk checked in as a stub
+	// belongs on the page that hosts it.
+	URL   string         `yaml:"url"`
+	Extra map[string]any `yaml:"extra"`
 }
 
 // merge returns base with every set field of over replacing it. Emptiness is
@@ -63,6 +67,12 @@ func (base FileMeta) merge(over FileMeta) FileMeta {
 	}
 	if over.Hidden {
 		base.Hidden = true
+	}
+	if over.URL != "" {
+		base.URL = over.URL
+	}
+	if over.Weight != 0 {
+		base.Weight = over.Weight
 	}
 	if over.Extra != nil {
 		base.Extra = over.Extra
@@ -159,14 +169,16 @@ func readIfPresent(p string) ([]byte, error) {
 
 // Apply copies metadata onto matching entries, returning a new slice.
 func Apply(entries []model.Entry, m map[string]FileMeta) []model.Entry {
-	out := make([]model.Entry, len(entries))
-	copy(out, entries)
-	for i := range out {
-		fm, ok := m[out[i].Name]
-		if !ok {
+	out := make([]model.Entry, 0, len(entries))
+	for _, e := range entries {
+		fm, ok := m[e.Name]
+		if ok && fm.Hidden {
 			continue
 		}
-		applyOne(&out[i], fm)
+		if ok {
+			applyOne(&e, fm)
+		}
+		out = append(out, e)
 	}
 	return out
 }
@@ -187,6 +199,13 @@ func applyOne(e *model.Entry, fm FileMeta) {
 	}
 	if fm.Extra != nil {
 		e.Extra = fm.Extra
+	}
+	if fm.Weight != 0 {
+		e.Weight = fm.Weight
+	}
+	// Last, so it wins over anything derived from the path it replaces.
+	if fm.URL != "" {
+		e.Path = fm.URL
 	}
 }
 

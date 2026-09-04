@@ -310,22 +310,72 @@ It applies to every producer and to the listing's own path, so breadcrumbs and
 entries agree. An authored `manifest` path that is already a full URL is left
 alone: it names somewhere else on purpose.
 
-## Underscore directories
+## What a listing leaves out
 
-`hidden:` takes three values, because two different conventions look alike:
+`hide:` is a list of globs, matched against the path relative to `root:`. The
+default hides the filesystem's own convention and nothing else:
 
-| value      | hides                        |
-| ---------- | ---------------------------- |
-| `skip`     | `.dotfiles` and `_underscore` (default) |
-| `dotfiles` | `.dotfiles` only             |
-| `show`     | nothing                      |
+```yaml
+defaults:
+  hide: ["**/.*"]        # the default
+```
 
-A leading dot is a filesystem convention meaning hidden. A leading underscore is
-a Hugo convention meaning "not a page", and it says nothing about a directory of
-static artifacts that a site publishes and links to. On a tree like
-`static/_odds/_tradewars/`, `skip` drops the entire published subtree and `show`
-puts `.DS_Store` on the page; `dotfiles` is the one that describes what is
-actually there.
+Everything else is yours to state:
+
+```yaml
+rules:
+  - match: "site/**"
+    hide: ["**/.*", "**/_*", "**/*.tmp", "drafts/**"]
+```
+
+This used to be an enum — `skip`, `show`, and later `dotfiles` — with the dot
+and underscore conventions baked in together. That was wrong twice. A leading
+underscore is a Hugo convention about pages, and a tree of static artifacts is
+not pages, so `skip` made a published `_tradewars/` vanish from its own parent
+while `show` put `.DS_Store` on the page: no setting described the tree. And
+cairn cannot know which prefixes mean "internal" in someone else's tree, so it
+should not be guessing. A malformed glob matches nothing rather than
+everything — a pattern typo must not silently empty a listing.
+
+A config still carrying `hidden:` is refused with a pointer to this, rather
+than having the key dropped in silence by the YAML decoder.
+
+One file can also opt out on its own, without a glob:
+
+```yaml
+# _meta.yaml
+draft-notes.md:
+  hidden: true
+```
+
+## Pointing an entry somewhere else
+
+A file on disk can link elsewhere. The bytes stay where they are and keep their
+size and digest; only the link moves:
+
+```yaml
+# _meta.yaml
+the-talk.md:
+  title: The talk
+  url: https://example.invalid/watch
+```
+
+`base_path` leaves it alone, the way it leaves an authored `manifest` path that
+is already a URL alone. Use it for a stub checked in beside its siblings whose
+real home is somewhere else.
+
+## Ordering by hand
+
+`weight:` in a sidecar leads the sort, ahead of `sort:` and `dirs_first:`:
+
+```yaml
+# _meta.yaml
+install-first.sh:
+  weight: 1
+```
+
+Zero means unweighted rather than "weight zero", so weighting one entry does not
+silently reorder the directory around it.
 
 ## Beside a package repository
 

@@ -122,7 +122,7 @@ func (c *Config) validate(p string) error {
 	if err := validateSources(p, c.Defaults, c.Rules); err != nil {
 		return err
 	}
-	if err := validateHidden(p, c.Defaults, c.Rules); err != nil {
+	if err := validateHide(p, c.Defaults, c.Rules); err != nil {
 		return err
 	}
 	if c.Mode != ModeDirect && c.Mode != ModeHugo {
@@ -186,21 +186,24 @@ func (c *Config) IsProtected(relPath string) bool {
 	return false
 }
 
-// validateHidden rejects an unknown hidden: policy. Left unchecked, a typo
-// falls back to skip and silently drops every underscore-prefixed directory —
-// on a tree like static/_odds that is the whole site, and the listing looks
-// merely empty rather than misconfigured.
-func validateHidden(p string, defaults Override, rules []Rule) error {
+// validateHide rejects a config that cannot mean what it says: a glob that will
+// never compile, or the removed hidden: key.
+func validateHide(p string, defaults Override, rules []Rule) error {
 	check := func(o Override) error {
-		if o.Hidden == nil {
+		if o.Hidden != nil {
+			return fmt.Errorf("config %s: hidden: has been replaced by hide:, "+
+				"a list of globs matched against the path relative to root "+
+				"(the old default is hide: [%q])", p, DefaultHideGlob)
+		}
+		if o.Hide == nil {
 			return nil
 		}
-		switch *o.Hidden {
-		case HiddenSkip, HiddenShow, HiddenDotfiles:
-			return nil
+		for _, g := range *o.Hide {
+			if _, err := doublestar.Match(g, "probe"); err != nil {
+				return fmt.Errorf("config %s: hide: %q is not a valid glob: %w", p, g, err)
+			}
 		}
-		return fmt.Errorf("config %s: hidden must be %s, %s or %s, got %q",
-			p, HiddenSkip, HiddenShow, HiddenDotfiles, *o.Hidden)
+		return nil
 	}
 	if err := check(defaults); err != nil {
 		return err

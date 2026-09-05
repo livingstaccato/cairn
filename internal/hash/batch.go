@@ -50,6 +50,20 @@ const MaxWorkers = 8
 // per core would leave the CPU idle for exactly that share. Two per core keeps
 // a core fed while its neighbour waits, and reaches the measured ceiling on
 // anything with four cores or more.
+//
+// Measured against a sequential build of the same commit, over 95,941 files and
+// 8.6 GB on 24 cores, page cache purged before each cold run and the order
+// alternated between rounds:
+//
+//	cold   8.20s parallel   18.96s sequential   2.31x   1054 MB/s vs 456
+//	warm   7.23s parallel   10.98s sequential   1.52x
+//
+// The gap between those two ratios is the whole argument. Oversubscription buys
+// most where there is I/O to hide, and cold is the case a mirror actually starts
+// from — a first build, or a tree too large to stay resident. Parallel barely
+// notices the page cache at all (13% slower cold than warm); sequential eats the
+// full cost of it (73%). On a tree of much smaller files the read is a smaller
+// share of each digest and the ratio narrows; this corpus averages 88 KB.
 const workersPerProc = 2
 
 // SumAll digests every job and returns the results positionally: out[i] is the

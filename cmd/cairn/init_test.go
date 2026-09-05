@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/livingstaccato/cairn/internal/build"
@@ -94,5 +95,69 @@ func TestInitIsWiredIntoTheCommandTree(t *testing.T) {
 	}
 	if !found {
 		t.Error("cairn has no init subcommand")
+	}
+}
+
+// The refusal has to be the create itself, not a check before it.
+//
+// Lstat and then WriteFile is a gap: two inits in the same directory, or an init
+// racing an editor saving cairn.yaml, both look and both see nothing, and
+// O_CREATE|O_TRUNC then lets the later one clobber the earlier. Exactly one
+// caller can create a file with O_EXCL, so exactly one can succeed here.
+func TestInitCreatesExclusively(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), DefaultConfigFile)
+
+	const racers = 8
+	var wg sync.WaitGroup
+	errs := make([]error, racers)
+	start := make(chan struct{})
+	for i := range racers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var discard strings.Builder
+			<-start
+			errs[i] = runInit(configPath, &discard)
+		}()
+	}
+	close(start)
+	wg.Wait()
+
+	won := 0
+	for _, err := range errs {
+		if err == nil {
+			won++
+		}
+	}
+	if won != 1 {
+		t.Errorf("%d of %d inits created the same config; exactly one may", won, racers)
+	}
+	got, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != starterConfig {
+		t.Errorf("the config is not what init writes:\n%s", got)
+	}
+}
+
+// A create that succeeds and a write that does not must not leave a stub
+// behind: the next run would refuse it, and the operator would be told a config
+// exists when what is there is an empty file this command made.
+func TestInitLeavesNothingBehindWhenTheWriteFails(t *testing.T) {
+	dir := t.TempDir()
+	// A directory in place of the file: the create fails, and nothing about the
+	// tree should change.
+	configPath := filepath.Join(dir, DefaultConfigFile)
+	if err := os.Mkdir(configPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	var stderr strings.Builder
+	if err := runInit(configPath, &stderr); err == nil {
+		t.Fatal("writing over a directory must fail")
+	}
+	fi, err := os.Lstat(configPath)
+	if err != nil || !fi.IsDir() {
+		t.Error("the directory that was in the way did not survive")
 	}
 }

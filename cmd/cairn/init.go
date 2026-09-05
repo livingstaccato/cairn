@@ -78,18 +78,45 @@ func newInitCmd() *cobra.Command {
 // every other file: cairn does not replace what it did not put there. A config
 // is the one file in a cairn tree that is entirely the operator's, and losing a
 // tuned one to a mistyped command would be the worst version of this.
+//
+// The refusal is the create. Looking first and writing second is a gap wide
+// enough to lose a config through: two inits in the same directory, or an init
+// racing an editor saving cairn.yaml, both look and both see nothing, and
+// O_CREATE|O_TRUNC then lets the later one clobber the earlier. O_EXCL makes the
+// question and the answer one operation, so exactly one caller can win it.
+//
+// Not internal/atomicfile, which replaces a file's contents by rename and would
+// do precisely what this must not.
 func runInit(configPath string, stderr io.Writer) error {
-	if _, err := os.Lstat(configPath); err == nil {
+	// #nosec G304,G302 -- the path is the operator's own --config value, and a
+	// config file is readable by whatever runs the build.
+	f, err := os.OpenFile(configPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if errors.Is(err, os.ErrExist) {
 		return fmt.Errorf("refusing to replace %s: it already exists", configPath)
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("check %s: %w", configPath, err)
+	}
+	if err != nil {
+		return fmt.Errorf("create %s: %w", configPath, err)
 	}
 
-	// #nosec G306 -- a config file, readable by whatever runs the build.
-	if err := os.WriteFile(configPath, []byte(starterConfig), 0o644); err != nil {
+	if err := writeStarter(f); err != nil {
+		// Take the file this run made back out of the way. Left behind, it is an
+		// empty config that the next init refuses and that a build reads as an
+		// operator's own.
+		_ = os.Remove(configPath)
 		return fmt.Errorf("write %s: %w", configPath, err)
 	}
 	_, _ = fmt.Fprintf(stderr, "wrote %s\n", configPath)
 	_, _ = fmt.Fprintf(stderr, "put files under ./tree, then: cairn build && cairn serve\n")
 	return nil
+}
+
+// writeStarter fills the created file and closes it, reporting whichever of the
+// two failed. Close is checked because a buffered write can fail there and
+// nowhere else.
+func writeStarter(f *os.File) error {
+	if _, err := f.WriteString(starterConfig); err != nil {
+		_ = f.Close()
+		return err
+	}
+	return f.Close()
 }

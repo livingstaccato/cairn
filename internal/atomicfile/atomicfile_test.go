@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -117,8 +118,12 @@ func TestWriteSkipsIdenticalContent(t *testing.T) {
 }
 
 // The mode the caller asked for is the mode the file ends up with, not
-// CreateTemp's 0600.
+// CreateTemp's 0600. It matters because the staged file starts private and the
+// target has to be readable by whatever serves it.
 func TestWriteAppliesTheRequestedMode(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("windows has no permission bits; every writable file reports 0666")
+	}
 	if os.Getuid() == 0 {
 		t.Skip("root's umask and permissions make this meaningless")
 	}
@@ -152,7 +157,15 @@ func TestWriteCreatesAMissingFile(t *testing.T) {
 
 // Nothing is left behind when the write cannot be staged. A directory that
 // cannot be written to is the ordinary shape of that failure.
+//
+// The cleanup property itself is asserted portably by the rename test above;
+// what this adds is the earlier failure point, where the staged file does not
+// exist yet and the error has to be reported rather than swallowed.
 func TestWriteLeavesNothingBehindOnFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod on windows toggles the read-only attribute, which does not " +
+			"stop a file being created in a directory")
+	}
 	if os.Getuid() == 0 {
 		t.Skip("root writes to a 0500 directory regardless")
 	}

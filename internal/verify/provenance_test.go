@@ -26,6 +26,7 @@ func sampleListing() model.Listing {
 			Name: "nginx.deb", Path: "/pool/nginx.deb", Size: 3,
 			ModTime: time.Date(2026, 9, 5, 11, 0, 0, 0, time.UTC), Kind: "archive",
 		}},
+		Generator: model.Generator,
 	}
 }
 
@@ -82,6 +83,18 @@ func TestProvenOursAcceptsCairnsOwnOutput(t *testing.T) {
 				t.Errorf("cairn's own %s was not recognised, so a real orphan can never be removed", c.name)
 			}
 		})
+	}
+}
+
+// The four keys isListing checked were also a plausible shape for another
+// tool's directory listing to have chosen — path, a timestamp, a count, an
+// array of entries is a generic description of "a directory", not something
+// unique to cairn. A generator marker closes that: the shape can be imitated,
+// a specific value in a specific field is what actually identifies the writer.
+func TestProvenOursRejectsAListingShapeWithNoGenerator(t *testing.T) {
+	foreign := `{"path":"/pool","generated":"2026-09-05T12:00:00Z","count":0,"entries":[]}` + "\n"
+	if provenOurs(writeTemp(t, "index.json", []byte(foreign))) {
+		t.Error("a coincidentally cairn-shaped listing with no generator was accepted")
 	}
 }
 

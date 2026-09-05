@@ -26,7 +26,7 @@ func (r *runner) listing(relDir string, entries []model.Entry) model.Listing {
 	}
 	return model.Listing{
 		Path: p, Generated: r.newest(relDir, entries), Count: len(entries),
-		Entries: r.rebase(entries),
+		Entries: r.rebase(entries), Generator: model.Generator,
 	}
 }
 

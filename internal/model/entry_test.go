@@ -49,6 +49,7 @@ func TestListingJSONShape(t *testing.T) {
 		Path:      "/bootstrap/linux/",
 		Generated: time.Date(2026, 9, 3, 12, 0, 0, 0, time.UTC),
 		Entries:   []Entry{{Name: "a"}, {Name: "b"}},
+		Generator: Generator,
 	}
 	l.Count = len(l.Entries)
 	b, err := json.Marshal(l)
@@ -59,7 +60,7 @@ func TestListingJSONShape(t *testing.T) {
 		`"entries":[` +
 		`{"name":"a","path":"","is_dir":false,"size":0,"modified":"0001-01-01T00:00:00Z","kind":"","mime":"","depth":0},` +
 		`{"name":"b","path":"","is_dir":false,"size":0,"modified":"0001-01-01T00:00:00Z","kind":"","mime":"","depth":0}` +
-		`]}`
+		`],"generator":"cairn"}`
 	if string(b) != want {
 		t.Errorf("got  %s\nwant %s", b, want)
 	}

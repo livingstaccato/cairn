@@ -12,6 +12,7 @@ import (
 	"slices"
 
 	"github.com/livingstaccato/cairn/internal/emit"
+	"github.com/livingstaccato/cairn/internal/model"
 )
 
 // headBytes is how much of a file a header or marker test reads.
@@ -95,10 +96,12 @@ func read(abs string, limit int) []byte {
 
 // isListing reports whether these bytes are a listing cairn emitted.
 //
-// The whole of model.Listing's own shape, not one field of it: a foreign
-// index.json in a package mirror is an object too, and one key in common is not
-// evidence. Every key is required and entries must be an array, which is what
-// separates a listing from a registry's metadata document.
+// path, a timestamp, a count and an array of entries describe any directory
+// listing, not one cairn specifically wrote — a foreign tool's own index.json
+// can carry all four by coincidence, since that is simply what "a directory"
+// looks like in JSON. generator is checked against model.Generator precisely
+// because it is not inferable from the rest of the shape: it says who wrote the
+// file rather than what kind of thing the file describes.
 func isListing(b []byte) bool {
 	if len(b) == 0 {
 		return false
@@ -108,11 +111,13 @@ func isListing(b []byte) bool {
 		Generated *string            `json:"generated"`
 		Count     *int               `json:"count"`
 		Entries   *[]json.RawMessage `json:"entries"`
+		Generator string             `json:"generator"`
 	}
 	if err := json.Unmarshal(b, &l); err != nil {
 		return false
 	}
-	return l.Path != nil && l.Generated != nil && l.Count != nil && l.Entries != nil
+	return l.Path != nil && l.Generated != nil && l.Count != nil && l.Entries != nil &&
+		l.Generator == model.Generator
 }
 
 // isSearchIndex reports whether these bytes are the standalone search index.
@@ -151,9 +156,14 @@ func isSearchIndex(b []byte) bool {
 
 // isCairnCSV reports whether the first row is CSVHeader exactly.
 //
-// CSVHeader is the documented column contract that shell consumers index into,
-// so a file carrying it either came from cairn or is deliberately impersonating
-// cairn's output.
+// Weaker evidence than isListing's generator field, and deliberately left that
+// way: CSVHeader is "the stable documented column contract that shell consumers
+// index into" by position, so a ninth column carrying a marker would break every
+// script written against it — the exact contract the field exists to honour. A
+// file carrying the header either came from cairn or is choosing, by picking
+// these eight names in this order, to look exactly like cairn's output; the
+// residual risk of the second case is smaller than the cost of breaking the
+// first.
 func isCairnCSV(b []byte) bool {
 	if len(b) == 0 {
 		return false

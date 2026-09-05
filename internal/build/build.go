@@ -42,6 +42,10 @@ type Result struct {
 	// Changed lists the outputs whose bytes this run altered, for a deploy that
 	// only has to move what moved.
 	Changed []string
+	// Forgot counts the hash-cache records this run dropped: digests for files
+	// that were under the region it rebuilt and are no longer in the tree. A dry
+	// run reports what it would have dropped.
+	Forgot int
 }
 
 // runner carries the values every step of a build needs.
@@ -121,6 +125,7 @@ func (r *runner) build() error {
 	if err := r.visit("."); err != nil {
 		return err
 	}
+	r.forget(r.root)
 	r.saveCache()
 	// Anything the previous run wrote and this one did not is stale: a removed
 	// file's digest, or a whole listing for a directory that no longer exists.
@@ -165,6 +170,26 @@ func (r *runner) saveCache() {
 		r.log.Warn("could not save the hash cache; the next run re-hashes",
 			"path", hash.CacheFile, "err", err)
 	}
+}
+
+// forget drops the cache records for files that have left the region this run
+// rebuilt, and records how many.
+//
+// Placed here, on the success path, rather than beside SavePartial: a build that
+// died partway never reached the rest of its scope, so "this run did not consult
+// it" says nothing about whether the file is still there. Sweeping then would
+// discard digests that are perfectly good and re-hash a mirror that may be
+// terabytes.
+//
+// The prefix is the region the run was authoritative for — see Cache.Sweep. A
+// dry run counts and drops nothing: the cache is a file under out:, and
+// "--dry-run changed something" is not a sentence that should ever be true.
+func (r *runner) forget(prefix string) {
+	if r.dry {
+		r.result.Forgot = r.cache.Stale(prefix)
+		return
+	}
+	r.result.Forgot = r.cache.Sweep(prefix)
 }
 
 // reportPruned logs and records what a prune removed, or would have.

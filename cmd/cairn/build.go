@@ -93,7 +93,8 @@ func runBuild(configPath, changedTo string, dryRun bool, stderr io.Writer) error
 	log.Info(msg,
 		"directories", res.Dirs, "files", res.Files, "outputs", len(res.Written),
 		"unchanged", res.Unchanged, "changed", len(res.Changed),
-		"pruned", len(res.Pruned), "protected", res.Protected)
+		"pruned", len(res.Pruned), "protected", res.Protected,
+		"forgot", res.Forgot)
 	return nil
 }
 

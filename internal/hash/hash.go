@@ -26,10 +26,17 @@ const CacheFile = ".cairn-cache.json"
 const cacheFileMode os.FileMode = 0o600
 
 // record is one cached digest plus the stat fields that validate it.
+//
+// touched is this run's bookkeeping and never reaches the file: it says the run
+// asked about this path, which is what lets Sweep tell a live record from one
+// describing a file that is no longer there. A byte inside a map entry that is
+// already allocated, rather than a second map of every path consulted, which at
+// the scale this cache exists for would cost more memory than the sweep saves.
 type record struct {
 	Size    int64  `json:"size"`
 	ModUnix int64  `json:"mod_unix"`
 	Sum     string `json:"sum"`
+	touched bool
 }
 
 // Cache memoizes digests across runs.
@@ -102,6 +109,8 @@ func (c *Cache) cached(absPath string, size, modUnix int64) (string, bool) {
 		return "", false
 	}
 	c.hits++
+	r.touched = true
+	c.entries[absPath] = r
 	return r.Sum, true
 }
 
@@ -109,7 +118,7 @@ func (c *Cache) cached(absPath string, size, modUnix int64) (string, bool) {
 func (c *Cache) store(absPath string, size, modUnix int64, sum string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.entries[absPath] = record{Size: size, ModUnix: modUnix, Sum: sum}
+	c.entries[absPath] = record{Size: size, ModUnix: modUnix, Sum: sum, touched: true}
 	c.dirty = true
 }
 

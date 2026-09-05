@@ -86,6 +86,8 @@ func (c *Cache) lookupAll(jobs []Job, out []Result) []int {
 		r, ok := c.entries[jobs[i].Path]
 		if ok && r.matches(jobs[i].Size, jobs[i].ModTime) {
 			c.hits++
+			r.touched = true
+			c.entries[jobs[i].Path] = r
 			out[i].Sum = r.Sum
 			continue
 		}
@@ -134,7 +136,7 @@ func (c *Cache) storeAll(jobs []Job, todo []int, out []Result) {
 			continue
 		}
 		c.entries[jobs[i].Path] = record{
-			Size: jobs[i].Size, ModUnix: jobs[i].ModTime, Sum: out[i].Sum,
+			Size: jobs[i].Size, ModUnix: jobs[i].ModTime, Sum: out[i].Sum, touched: true,
 		}
 		c.dirty = true
 	}

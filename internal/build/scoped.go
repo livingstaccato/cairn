@@ -85,6 +85,10 @@ func (r *runner) buildScoped(scope string) error {
 			return err
 		}
 	}
+	// Bounded to the scope, which is the whole reason Sweep takes a prefix: this
+	// run consulted one subtree, and the digests for the rest of the mirror are
+	// still good.
+	r.forget(filepath.Join(r.root, filepath.FromSlash(scope)))
 	r.saveCache()
 	pruned, err := r.writer.PruneScoped(scope)
 	if err != nil {

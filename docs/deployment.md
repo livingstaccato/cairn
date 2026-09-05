@@ -302,6 +302,17 @@ parse is read as cairn claiming nothing, and the next build then refuses every
 file the last one wrote as somebody else's and prunes none of it. The hash cache
 is written the same way, where the cost of losing it is a full re-hash.
 
+A build also drops the cache records for files that are no longer in the tree,
+and reports the count as `forgot`. Nothing used to remove one, so a mirror that
+churns accumulated an entry for every file that had ever been in it — on a tree
+of two million files, a cache of hundreds of megabytes, read and rewritten on
+every build, almost all of it describing files that are gone. Only the region
+the run actually rebuilt is swept: a full build sweeps from `root:`, and a
+`cairn watch` rebuild sweeps its own subtree, so the digests for the rest of the
+mirror survive a change instead of being re-computed on the next full build. A
+build that failed sweeps nothing, because it never reached the rest of its
+scope.
+
 ### Seeing what a run would do first
 
 ```sh

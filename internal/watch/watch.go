@@ -164,6 +164,9 @@ func (w *Watcher) accept(ev fsnotify.Event, pending map[string]bool) bool {
 	if !ok || w.filter.Ignore(ev.Name) {
 		return false
 	}
+	if redundant(ev, ev.Name) {
+		return false
+	}
 	if ev.Has(fsnotify.Create) {
 		w.addTree(ev.Name)
 	}
@@ -171,6 +174,30 @@ func (w *Watcher) accept(ev fsnotify.Event, pending map[string]bool) bool {
 	// changed: its listing names the entry, and its count and mtime moved.
 	pending[path.Dir(rel)] = true
 	return true
+}
+
+// redundant reports whether an event repeats what the watch on the directory
+// that changed already reports in full.
+//
+// Windows announces a change inside a directory twice: once on that
+// directory's own watch, naming the entry, and once on its parent's, naming
+// the directory. Acting on both is wrong twice over. The parent's copy does
+// not say what moved, so cairn's own output cannot be recognised and discarded
+// — in a mirror the index writes itself back into the tree and wakes the
+// watcher that asked for them. And it scopes the rebuild to the parent, which
+// on a deep tree is most of it, so every scoped rebuild widens to something
+// close to a full one.
+//
+// Only a plain write is dropped. A directory that appeared, went away or was
+// renamed changes what its parent lists, and nothing else reports it.
+// Permissions are not dropped either — no listing carries a mode, so a chmod on
+// a directory changes no output.
+func redundant(ev fsnotify.Event, absPath string) bool {
+	if ev.Has(fsnotify.Create) || ev.Has(fsnotify.Remove) || ev.Has(fsnotify.Rename) {
+		return false
+	}
+	fi, err := os.Lstat(absPath)
+	return err == nil && fi.IsDir()
 }
 
 // addTree registers a directory that has just appeared, and everything under

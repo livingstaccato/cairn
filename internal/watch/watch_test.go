@@ -365,3 +365,52 @@ func TestRunRefusesATreeThatDoesNotFit(t *testing.T) {
 	default:
 	}
 }
+
+// Windows reports a change inside a directory on that directory's watch and on
+// its parent's, and the parent's copy names only the directory. Acting on it
+// scopes the rebuild to the parent — on a deep tree, most of it — and cannot
+// tell cairn's own output from content, which in a mirror is a rebuild that
+// wakes itself. The child's copy says everything the parent's does.
+func TestRedundantDropsAParentsCopyOfAChildsChange(t *testing.T) {
+	root := tree(t)
+	dir := filepath.Join(root, "docs")
+	file := filepath.Join(root, "docs", "intro.md")
+
+	cases := []struct {
+		name string
+		ev   fsnotify.Event
+		want bool
+	}{
+		{"a write naming a directory", fsnotify.Event{Name: dir, Op: fsnotify.Write}, true},
+		{"a chmod naming a directory", fsnotify.Event{Name: dir, Op: fsnotify.Chmod}, true},
+		// Everything else about a directory changes what its parent lists, and
+		// no other event reports it.
+		{"a directory created", fsnotify.Event{Name: dir, Op: fsnotify.Create}, false},
+		{"a directory removed", fsnotify.Event{Name: dir, Op: fsnotify.Remove}, false},
+		{"a directory renamed", fsnotify.Event{Name: dir, Op: fsnotify.Rename}, false},
+		// A file's write is the event that carries the change.
+		{"a write naming a file", fsnotify.Event{Name: file, Op: fsnotify.Write}, false},
+	}
+	for _, tc := range cases {
+		if got := redundant(tc.ev, tc.ev.Name); got != tc.want {
+			t.Errorf("redundant(%s) = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
+// The same, through accept: a parent's copy must leave nothing pending, or the
+// rebuild is scoped to the parent of the directory that actually changed.
+func TestAcceptDropsAParentsCopyOfAChildsChange(t *testing.T) {
+	root := tree(t)
+	w := &Watcher{Config: conf(nil), Root: root, Out: root, Log: obs.Discard()}
+	w.filter = NewFilter(w.Config, root, w.Out, w.Log)
+
+	pending := map[string]bool{}
+	ev := fsnotify.Event{Name: filepath.Join(root, "docs"), Op: fsnotify.Write}
+	if w.accept(ev, pending) {
+		t.Error("a parent's copy of a child's change was acted on")
+	}
+	if len(pending) != 0 {
+		t.Errorf("pending = %v, want nothing", pending)
+	}
+}

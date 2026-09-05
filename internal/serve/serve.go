@@ -34,13 +34,18 @@ import (
 // at their own build. Serving wider than the machine is a thing to ask for in
 // writing, by passing an address.
 //
-// 8173 because the near ports are already spoken for by the tools cairn sits
-// beside — 1313 is Hugo's, 8080, 8000, 3000 and 5000 are occupied on any
-// machine doing web work — and because it is unassigned in the IANA registry
-// and sits below the ephemeral range on both Linux (32768+) and macOS
-// (49152+), so the kernel never hands it to something else while cairn is not
-// looking.
-const DefaultAddr = "127.0.0.1:8173"
+// 22476 is CAIRN on a phone keypad, which is the only part of a port number
+// anybody remembers. The rest is arithmetic: it falls inside IANA's unassigned
+// 22352-22536 block, and it sits below the ephemeral range on both Linux
+// (32768+) and macOS (49152+), so the kernel never hands it to something else
+// while cairn is not looking. The low numbers are unusable anyway — 1313 is
+// Hugo's, and 3000, 5000, 8000 and 8080 are occupied on any machine doing web
+// work.
+//
+// A port cairn does not choose for itself is still the safer habit. Two cairns
+// on one machine collide here whatever the number is, and --addr is the answer
+// to that rather than a different default.
+const DefaultAddr = "127.0.0.1:22476"
 
 // ShutdownGrace bounds the wait for requests still in flight when the context
 // is cancelled. A browser pulling a large artifact out of a mirror should not

@@ -30,7 +30,7 @@ defaults:
 
 ```sh
 cairn build     # writes ./site
-cairn serve     # read it back at http://127.0.0.1:8173
+cairn serve     # read it back at http://127.0.0.1:22476
 ```
 
 Both read `./cairn.yaml` unless `--config` says otherwise. Working from a clone

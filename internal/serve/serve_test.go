@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -138,6 +139,19 @@ func TestDefaultAddrIsLoopbackOnly(t *testing.T) {
 	}
 	if port == "0" || port == "" {
 		t.Errorf("DefaultAddr port is %q, want a fixed port so the URL is predictable", port)
+	}
+	// The comment on DefaultAddr promises this and nothing checked it. Above the
+	// ephemeral floor the kernel may hand the port to some other process while
+	// cairn is not running, and the failure lands on whoever next runs a build
+	// -- as a port already in use, naming a process that has nothing to do with
+	// this.
+	n, err := strconv.Atoi(port)
+	if err != nil {
+		t.Fatalf("DefaultAddr port %q is not a number: %v", port, err)
+	}
+	if n >= 32768 {
+		t.Errorf("DefaultAddr port is %d, want below 32768: at or above the "+
+			"ephemeral floor the kernel can hand it out to anything", n)
 	}
 }
 

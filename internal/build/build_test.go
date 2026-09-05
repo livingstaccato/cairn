@@ -415,7 +415,7 @@ func TestRunPrunesRemovedFilesAndDirectories(t *testing.T) {
 	}
 
 	res := run(t, c, root, out)
-	if res.Pruned == 0 {
+	if len(res.Pruned) == 0 {
 		t.Error("nothing was pruned")
 	}
 
@@ -490,8 +490,8 @@ func TestRunPruneWithoutManifestRemovesNothing(t *testing.T) {
 	c.OnConflict = config.ConflictSkip
 	res := run(t, c, root, out)
 
-	if res.Pruned != 0 {
-		t.Errorf("Pruned = %d, want 0 without a manifest", res.Pruned)
+	if len(res.Pruned) != 0 {
+		t.Errorf("Pruned = %v, want none without a manifest", res.Pruned)
 	}
 	if _, err := os.Stat(filepath.Join(out, "docs/index.json")); err != nil {
 		t.Errorf("stale output should survive a missing manifest: %v", err)

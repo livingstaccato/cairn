@@ -291,6 +291,33 @@ it did not create. Two consequences worth knowing:
   that the partial output would belong to nobody and `on_conflict: error` would
   refuse every later run until someone deleted the files by hand.
 
+The manifest is replaced by a rename rather than rewritten in place, so a build
+interrupted mid-save leaves either the old manifest or the new one and never a
+half-written file. That matters more than it sounds: a manifest that will not
+parse is read as cairn claiming nothing, and the next build then refuses every
+file the last one wrote as somebody else's and prunes none of it. The hash cache
+is written the same way, where the cost of losing it is a full re-hash.
+
+### Seeing what a run would do first
+
+```sh
+cairn build --dry-run
+```
+
+Every decision runs against the tree as it stands — what would be written, which
+of those bodies differ from what is on disk, and every path `Prune` would
+delete — and nothing under `out:` changes, including the manifest and the hash
+cache. Reach for it after moving `out:`, after changing `index_basename` or
+`outputs:`, and any time a build is about to run against a directory whose
+manifest you are not sure of.
+
+`--changed-to` still writes the file it names, so the deployment's transfer list
+can be read before anything moves:
+
+```sh
+cairn build --dry-run --changed-to /tmp/would-change.txt
+```
+
 ## Verifying a published mirror
 
 `cairn check` reads back what a build recorded. It re-hashes every file

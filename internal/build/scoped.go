@@ -84,18 +84,12 @@ func (r *runner) buildScoped(scope string) error {
 			return err
 		}
 	}
-	if err := r.cache.Save(); err != nil {
-		r.log.Warn("could not save the hash cache; the next run re-hashes",
-			"path", hash.CacheFile, "err", err)
-	}
+	r.saveCache()
 	pruned, err := r.writer.PruneScoped(scope)
 	if err != nil {
 		return err
 	}
-	for _, p := range pruned {
-		r.log.Info("removed stale output", "path", p)
-	}
-	r.result.Pruned = len(pruned)
+	r.reportPruned(pruned)
 	return r.writer.SaveScoped(scope)
 }
 

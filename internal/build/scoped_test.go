@@ -311,7 +311,7 @@ func TestScopedRebuildPrunesInsideItsScope(t *testing.T) {
 	if _, err := os.Stat(stale); !os.IsNotExist(err) {
 		t.Errorf("the listing of a removed directory survived: %v", err)
 	}
-	if res.Pruned == 0 {
+	if len(res.Pruned) == 0 {
 		t.Error("the result reported nothing pruned")
 	}
 }

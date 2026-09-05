@@ -38,7 +38,7 @@ func checkFixture(t *testing.T) (configPath, root, out string) {
 func TestCheckPassesOnAnIntactTree(t *testing.T) {
 	configPath, _, _ := checkFixture(t)
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", &stderr); err != nil {
+	if err := runBuild(configPath, "", false, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 	if err := runCheck(context.Background(), configPath, &stderr); err != nil {
@@ -51,7 +51,7 @@ func TestCheckPassesOnAnIntactTree(t *testing.T) {
 func TestCheckFindsATamperedArtifact(t *testing.T) {
 	configPath, root, _ := checkFixture(t)
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", &stderr); err != nil {
+	if err := runBuild(configPath, "", false, &stderr); err != nil {
 		t.Fatal(err)
 	}
 
@@ -75,7 +75,7 @@ func TestCheckFindsATamperedArtifact(t *testing.T) {
 func TestCheckFindsOutputCairnDoesNotOwn(t *testing.T) {
 	configPath, _, out := checkFixture(t)
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", &stderr); err != nil {
+	if err := runBuild(configPath, "", false, &stderr); err != nil {
 		t.Fatal(err)
 	}
 
@@ -106,7 +106,7 @@ func TestCheckMissingConfigFails(t *testing.T) {
 }
 
 func TestCheckRejectsPositionalArgs(t *testing.T) {
-	if _, err := exec(t, "check", "somewhere"); err == nil {
+	if _, err := exec(t, cmdCheck, "somewhere"); err == nil {
 		t.Fatal("check must reject positional arguments")
 	}
 }

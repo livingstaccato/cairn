@@ -29,10 +29,13 @@ const treeBasename = "tree"
 
 // Result summarizes a run for the caller to report.
 type Result struct {
-	Dirs      int
-	Files     int
-	Written   []string
-	Pruned    int
+	Dirs    int
+	Files   int
+	Written []string
+	// Pruned lists the outputs a previous run owned that this one did not
+	// rewrite, and which have been removed. A dry run reports the same list
+	// without having removed anything, which is the whole point of one.
+	Pruned    []string
 	Protected int
 	// Unchanged counts outputs that already held what this run would write.
 	Unchanged int
@@ -50,6 +53,9 @@ type runner struct {
 	cache  *hash.Cache
 	writer *emit.Writer
 	result *Result
+	// dry suppresses every change to the filesystem while leaving each decision
+	// that leads to one intact.
+	dry bool
 	// warnedStyled keeps the styled-in-direct-mode diagnostic to one line per
 	// run rather than one per directory.
 	warnedStyled bool
@@ -60,14 +66,35 @@ type runner struct {
 // interesting ones are the early ones, and a caller should not have to wait for
 // the walk to finish to see them.
 func Run(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Result, error) {
+	return runBuild(cfg, rootDir, outDir, log, false)
+}
+
+// RunDry reports what Run would do and changes nothing.
+//
+// Every decision still runs, against the tree as it stands: what would be
+// written, which of those bodies differ from what is on disk, and — the reason
+// this exists — which files Prune would delete. Deleting published artifacts is
+// the one thing cairn does that cannot be undone by running it again, and a
+// misconfigured out: or a manifest from a different config makes it delete a
+// lot of them. Until now the only way to find out was to let it happen.
+func RunDry(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Result, error) {
+	return runBuild(cfg, rootDir, outDir, log, true)
+}
+
+func runBuild(cfg *config.Config, rootDir, outDir string, log *slog.Logger, dry bool) (*Result, error) {
+	writer := emit.NewWriter
+	if dry {
+		writer = emit.NewDryWriter
+	}
 	r := &runner{
 		cfg:    cfg,
 		root:   rootDir,
 		out:    outDir,
 		log:    log,
 		cache:  hash.NewCache(filepath.Join(outDir, hash.CacheFile)),
-		writer: emit.NewWriter(cfg, outDir),
+		writer: writer(cfg, outDir),
 		result: &Result{},
+		dry:    dry,
 	}
 
 	err := r.build()
@@ -93,25 +120,46 @@ func (r *runner) build() error {
 	if err := r.visit("."); err != nil {
 		return err
 	}
-	if err := r.cache.Save(); err != nil {
-		r.log.Warn("could not save the hash cache; the next run re-hashes",
-			"path", hash.CacheFile, "err", err)
-	}
+	r.saveCache()
 	// Anything the previous run wrote and this one did not is stale: a removed
 	// file's digest, or a whole listing for a directory that no longer exists.
 	pruned, err := r.writer.Prune()
 	if err != nil {
 		return err
 	}
-	for _, p := range pruned {
-		r.log.Info("removed stale output", "path", p)
-	}
-	r.result.Pruned = len(pruned)
+	r.reportPruned(pruned)
 
 	// The manifest records what this run owns. Without it the next run cannot
 	// tell its own output from content that was already there, and refuses to
 	// overwrite either.
 	return r.writer.Save()
+}
+
+// saveCache writes the hash cache back, unless this run is not writing.
+//
+// A dry run leaves it alone even though the cache is only an optimization: it
+// is still a file under the output directory, and "--dry-run changed something"
+// is not a sentence that should ever be true.
+func (r *runner) saveCache() {
+	if r.dry {
+		return
+	}
+	if err := r.cache.Save(); err != nil {
+		r.log.Warn("could not save the hash cache; the next run re-hashes",
+			"path", hash.CacheFile, "err", err)
+	}
+}
+
+// reportPruned logs and records what a prune removed, or would have.
+func (r *runner) reportPruned(pruned []string) {
+	msg := "removed stale output"
+	if r.dry {
+		msg = "would remove stale output"
+	}
+	for _, p := range pruned {
+		r.log.Info(msg, "path", p)
+	}
+	r.result.Pruned = pruned
 }
 
 // visit processes one directory and recurses into its children.

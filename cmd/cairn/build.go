@@ -22,15 +22,16 @@ const DefaultConfigFile = "cairn.yaml"
 func newBuildCmd() *cobra.Command {
 	var configPath string
 	var changedTo string
+	var dryRun bool
 
 	cmd := &cobra.Command{
-		Use:   "build",
+		Use:   cmdBuild,
 		Short: "Write indexes for every directory the config covers",
 		Long: "Generates index.html, index.json, index.csv and SHA256SUMS for every\n" +
 			"directory the config covers.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runBuild(configPath, changedTo, cmd.ErrOrStderr())
+			return runBuild(configPath, changedTo, dryRun, cmd.ErrOrStderr())
 		},
 	}
 	// pflag reads a single dash as shorthand, so the stdlib flag package's
@@ -38,6 +39,9 @@ func newBuildCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&configPath, "config", "c", DefaultConfigFile, "path to the root cairn.yaml")
 	cmd.Flags().StringVar(&changedTo, "changed-to", "",
 		"write the outputs this build altered to this file, one per line")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false,
+		"report what a build would write and remove, and change nothing under out: "+
+			"(--changed-to still writes the file it names)")
 	return cmd
 }
 
@@ -46,7 +50,7 @@ func newBuildCmd() *cobra.Command {
 // Diagnostics go to the supplied writer, which is stderr in production: stdout
 // stays clean so a caller can pipe generated output without filtering log lines
 // out of it.
-func runBuild(configPath, changedTo string, stderr io.Writer) error {
+func runBuild(configPath, changedTo string, dryRun bool, stderr io.Writer) error {
 	ctx := context.Background()
 
 	log, shutdown, err := obs.Setup(ctx, "cairn", stderr)
@@ -65,7 +69,11 @@ func runBuild(configPath, changedTo string, stderr io.Writer) error {
 		return err
 	}
 
-	res, err := build.Run(cfg, rootDir, outDir, log)
+	run := build.Run
+	if dryRun {
+		run = build.RunDry
+	}
+	res, err := run(cfg, rootDir, outDir, log)
 	if err != nil {
 		log.Error("build failed", "err", err)
 		return err
@@ -78,10 +86,14 @@ func runBuild(configPath, changedTo string, stderr io.Writer) error {
 
 	// protected is reported even at zero: an operator whose glob is wider than
 	// they meant otherwise sees a directory with no listing and no reason why.
-	log.Info("build complete",
+	msg := "build complete"
+	if dryRun {
+		msg = "dry run complete; nothing was written"
+	}
+	log.Info(msg,
 		"directories", res.Dirs, "files", res.Files, "outputs", len(res.Written),
 		"unchanged", res.Unchanged, "changed", len(res.Changed),
-		"pruned", res.Pruned, "protected", res.Protected)
+		"pruned", len(res.Pruned), "protected", res.Protected)
 	return nil
 }
 
@@ -95,6 +107,11 @@ func runBuild(configPath, changedTo string, stderr io.Writer) error {
 // Deletions are not in the list. Prune has already removed them from the output
 // directory, so a sync of that directory carries them; a --files-from transfer
 // does not, and needs its own --delete pass.
+//
+// Under --dry-run the file is still written, and holds what a real build would
+// change. The flag guards the output tree; this path is one the operator named
+// on the command line, and previewing a deployment's file list is the reason to
+// ask for both at once.
 func writeChanged(path string, changed []string) error {
 	if path == "" {
 		return nil

@@ -13,11 +13,17 @@ import (
 	"io"
 	"os"
 	"sync"
+
+	"github.com/livingstaccato/cairn/internal/atomicfile"
 )
 
 // CacheFile is the conventional filename for a cache, written under the output
 // directory.
 const CacheFile = ".cairn-cache.json"
+
+// cacheFileMode keeps the cache to its owner. Unlike the generated listings it
+// is cairn's own bookkeeping: nothing serves it, and nothing else reads it.
+const cacheFileMode os.FileMode = 0o600
 
 // record is one cached digest plus the stat fields that validate it.
 type record struct {
@@ -157,8 +163,11 @@ func (c *Cache) Save() error {
 	if err != nil {
 		return fmt.Errorf("marshal cache: %w", err)
 	}
-	if err := os.WriteFile(c.path, b, 0o600); err != nil {
-		return fmt.Errorf("write cache %s: %w", c.path, err)
+	// Replaced rather than rewritten in place. A cache is only an optimization,
+	// but a truncated one is read back as corrupt and thrown away, so a badly
+	// timed Ctrl-C costs a full re-hash of a tree that may be terabytes.
+	if _, err := atomicfile.Write(c.path, b, cacheFileMode); err != nil {
+		return err
 	}
 	c.dirty = false
 	return nil

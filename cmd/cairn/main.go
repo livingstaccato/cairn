@@ -10,6 +10,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Subcommand names, named once so the command tree and the tests that inspect
+// it cannot drift apart.
+const (
+	cmdBuild = "build"
+	cmdWatch = "watch"
+	cmdCheck = "check"
+	cmdServe = "serve"
+)
+
 func main() {
 	if err := newRootCmd().Execute(); err != nil {
 		// cobra has already printed the message; this only sets the code.

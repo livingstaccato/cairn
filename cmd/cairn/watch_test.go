@@ -24,7 +24,7 @@ func TestWatchBuildsBeforeItWatches(t *testing.T) {
 	cancel()
 
 	var stderr strings.Builder
-	if err := runWatch(ctx, configPath, 10*time.Millisecond, &stderr); err != nil {
+	if err := runWatch(ctx, watchOpts{configPath: configPath, settle: 10 * time.Millisecond}, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 	if _, err := os.Stat(filepath.Join(out, "bootstrap", "index.json")); err != nil {
@@ -42,15 +42,15 @@ func TestWatchFailsWhenTheFirstBuildFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	var stderr strings.Builder
-	if err := runWatch(context.Background(), configPath, time.Millisecond, &stderr); err == nil {
+	if err := runWatch(context.Background(), watchOpts{configPath: configPath, settle: time.Millisecond}, &stderr); err == nil {
 		t.Fatal("a failing initial build must be an error")
 	}
 }
 
 func TestWatchMissingConfigFails(t *testing.T) {
 	var stderr strings.Builder
-	err := runWatch(context.Background(), filepath.Join(t.TempDir(), "nope.yaml"),
-		time.Millisecond, &stderr)
+	err := runWatch(context.Background(),
+		watchOpts{configPath: filepath.Join(t.TempDir(), "nope.yaml"), settle: time.Millisecond}, &stderr)
 	if err == nil {
 		t.Fatal("missing config must be an error")
 	}
@@ -60,7 +60,7 @@ func TestWatchMissingConfigFails(t *testing.T) {
 }
 
 func TestWatchRejectsPositionalArgs(t *testing.T) {
-	if _, err := exec(t, "watch", "somewhere"); err == nil {
+	if _, err := exec(t, cmdWatch, "somewhere"); err == nil {
 		t.Fatal("watch must reject positional arguments")
 	}
 }
@@ -68,7 +68,7 @@ func TestWatchRejectsPositionalArgs(t *testing.T) {
 // The tree ships with the command, under the name and shorthand the flags say.
 func TestRootCommandHasWatch(t *testing.T) {
 	for _, c := range newRootCmd().Commands() {
-		if c.Name() != "watch" {
+		if c.Name() != cmdWatch {
 			continue
 		}
 		if c.Flags().Lookup("settle") == nil {

@@ -37,6 +37,7 @@ internal/
   watch/         which directories to watch, what to ignore, what to rebuild
   verify/        read a published tree back: missing, modified, unowned
   serve/         local HTTP for the generated output, declared media types
+  atomicfile/    replace a file by rename, and skip a write that changes nothing
 layouts/         Hugo component module (no baseof, no brand)
 assets/cairn/    CSS, JS, SVG sprite — self-contained, no CDN
 themes/reference/ minimal standalone theme, own go.mod

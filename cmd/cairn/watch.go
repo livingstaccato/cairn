@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -16,16 +17,27 @@ import (
 
 	"github.com/livingstaccato/cairn/internal/build"
 	"github.com/livingstaccato/cairn/internal/config"
+	"github.com/livingstaccato/cairn/internal/emit"
 	"github.com/livingstaccato/cairn/internal/obs"
+	"github.com/livingstaccato/cairn/internal/serve"
 	"github.com/livingstaccato/cairn/internal/watch"
 )
 
+// watchOpts is what the command line said. Grouped rather than passed one by
+// one: the list grew past the point where a reader could tell which string was
+// which at the call site.
+type watchOpts struct {
+	configPath string
+	settle     time.Duration
+	serve      bool
+	addr       string
+}
+
 func newWatchCmd() *cobra.Command {
-	var configPath string
-	var settle time.Duration
+	var o watchOpts
 
 	cmd := &cobra.Command{
-		Use:   "watch",
+		Use:   cmdWatch,
 		Short: "Rebuild the directories a change touched, as it happens",
 		Long: "Builds once, then watches the indexed tree and rebuilds only the\n" +
 			"subtree each change affects. Runs until interrupted.",
@@ -37,22 +49,28 @@ func newWatchCmd() *cobra.Command {
 			// nothing claims.
 			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt)
 			defer stop()
-			return runWatch(ctx, configPath, settle, cmd.ErrOrStderr())
+			if cmd.Flags().Changed("addr") && !o.serve {
+				return fmt.Errorf("--addr names an address to serve on; pass --serve to open it")
+			}
+			return runWatch(ctx, o, cmd.ErrOrStderr())
 		},
 	}
-	cmd.Flags().StringVarP(&configPath, "config", "c", DefaultConfigFile, "path to the root cairn.yaml")
-	cmd.Flags().DurationVar(&settle, "settle", watch.DefaultSettle,
+	cmd.Flags().StringVarP(&o.configPath, "config", "c", DefaultConfigFile, "path to the root cairn.yaml")
+	cmd.Flags().DurationVar(&o.settle, "settle", watch.DefaultSettle,
 		"how long the tree must be quiet before a rebuild")
+	cmd.Flags().BoolVar(&o.serve, "serve", false,
+		"also serve the output over HTTP, so a rebuild is one refresh away")
+	cmd.Flags().StringVar(&o.addr, "addr", serve.DefaultAddr, "address --serve listens on")
 	return cmd
 }
 
-// runWatch builds once and then watches.
+// runWatch builds once and then watches, optionally serving what it built.
 //
 // The first build is not optional. A watcher reports changes from the moment it
 // starts and knows nothing about what happened before, so starting without it
 // would leave whatever was already stale stale until something touched it
 // again.
-func runWatch(ctx context.Context, configPath string, settle time.Duration, stderr io.Writer) error {
+func runWatch(ctx context.Context, o watchOpts, stderr io.Writer) error {
 	log, shutdown, err := obs.Setup(ctx, "cairn", stderr)
 	if err != nil {
 		return err
@@ -63,9 +81,20 @@ func runWatch(ctx context.Context, configPath string, settle time.Duration, stde
 		}
 	}()
 
-	cfg, rootDir, outDir, err := loadPaths(configPath)
+	cfg, rootDir, outDir, err := loadPaths(o.configPath)
 	if err != nil {
 		log.Error("could not load config", "err", err)
+		return err
+	}
+
+	// One cancellation covers both halves: whichever stops first takes the
+	// other down with it, so a server that loses its socket does not leave a
+	// watcher rebuilding a tree nobody can see, and Ctrl-C ends both.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	served, err := startServer(ctx, o, outDir, log)
+	if err != nil {
 		return err
 	}
 
@@ -75,17 +104,65 @@ func runWatch(ctx context.Context, configPath string, settle time.Duration, stde
 	}
 
 	w := &watch.Watcher{
-		Config: cfg, Root: rootDir, Out: outDir, Log: log, Settle: settle,
+		Config: cfg, Root: rootDir, Out: outDir, Log: log, Settle: o.settle,
 		Rebuild: func(scope string) error {
 			_, err := build.RunScoped(cfg, rootDir, outDir, log, scope)
 			return err
 		},
 	}
-	if err := w.Run(ctx); err != nil {
+	watched := make(chan error, 1)
+	go func() { watched <- w.Run(ctx) }()
+
+	// A nil channel blocks forever, which is what --serve absent should mean
+	// here: there is no second half to wait on.
+	select {
+	case err = <-watched:
+		cancel()
+		if served != nil {
+			<-served
+		}
+	case err = <-served:
+		cancel()
+		<-watched
+	}
+	if err != nil {
 		return err
 	}
 	log.Info("stopped watching")
 	return nil
+}
+
+// startServer opens the socket before the first build, or returns nil when
+// --serve was not asked for.
+//
+// Before, deliberately. On a large tree the first build is minutes long, and an
+// address already in use reported at the end of it is reported to somebody who
+// has stopped watching. The output directory is created here for the same
+// reason: the server refuses a directory that does not exist, and on a first
+// run nothing has made it yet.
+func startServer(ctx context.Context, o watchOpts, outDir string, log *slog.Logger) (chan error, error) {
+	if !o.serve {
+		return nil, nil
+	}
+	// #nosec G301 -- see emit.DirMode: the served tree must be traversable by
+	// whatever reads it.
+	if err := os.MkdirAll(outDir, emit.DirMode); err != nil {
+		return nil, fmt.Errorf("create output directory %s: %w", outDir, err)
+	}
+
+	s := &serve.Server{Dir: outDir, Addr: o.addr, Log: log, Ready: make(chan struct{})}
+	served := make(chan error, 1)
+	go func() { served <- s.Run(ctx) }()
+
+	select {
+	case <-s.Ready:
+		log.Info("serving the output", "addr", s.BoundAddr(), "dir", outDir)
+		return served, nil
+	case err := <-served:
+		return nil, err // the bind failed; there is nothing to watch for
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 // loadPaths reads the config and resolves the two directories a run needs.

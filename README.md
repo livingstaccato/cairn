@@ -151,6 +151,18 @@ fine.
 rebuild. Directories the build hides are not watched, and cairn's own output
 never wakes it — including when `root` and `out` are the same directory.
 
+`--serve` runs the viewer in the same process, so a change to the tree and the
+page that shows it are one refresh apart:
+
+```sh
+go run ./cmd/cairn watch --serve --config testdata/example/cairn.yaml
+```
+
+The socket opens before the first build — on a large tree that build is minutes
+long, and an address already in use reported at the end of it is reported to
+somebody who has stopped watching. `--addr` names where to listen, and means
+nothing without `--serve`. If either half stops, so does the other.
+
 ## Verifying
 
 `cairn check` reads back what a build recorded: it re-hashes every file
@@ -179,6 +191,22 @@ depends on when the build ran or which timezone it ran in.
 `--changed-to` writes the outputs whose bytes actually moved, in rsync's
 `--files-from` format, so a mirror republishes the handful of listings that
 changed instead of all of them.
+
+## Seeing it first
+
+`--dry-run` runs every decision a build makes and changes nothing under `out:`
+— no listings, no manifest, no hash cache. It reports what would be written,
+what of that differs from what is on disk, and, the reason to reach for it,
+every file `Prune` would delete:
+
+```sh
+go run ./cmd/cairn build --dry-run --config testdata/example/cairn.yaml
+```
+
+Deleting is the one thing cairn does that running it again cannot undo, and a
+mistyped `out:` or a manifest left by a different config makes it delete a lot.
+`--changed-to` still writes the file it names, so a deployment's transfer list
+can be read before anything moves.
 
 ## Reading it back
 

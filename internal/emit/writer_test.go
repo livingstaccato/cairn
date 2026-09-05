@@ -589,62 +589,6 @@ func TestWriteReplacesAChangedFile(t *testing.T) {
 	}
 }
 
-// Same length, different bytes. A size check alone is a cheap first pass, not
-// the answer.
-func TestUnchangedComparesContentNotLength(t *testing.T) {
-	out := t.TempDir()
-	abs := filepath.Join(out, "f")
-	if err := os.WriteFile(abs, []byte("aaaa"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if unchanged(abs, []byte("bbbb")) {
-		t.Error("two different four-byte files compared equal")
-	}
-	if !unchanged(abs, []byte("aaaa")) {
-		t.Error("identical content compared unequal")
-	}
-}
-
-// A symlink at an output path is something someone else put there. Comparing
-// through it would read the target's bytes and then leave the link standing —
-// the one outcome this package exists to prevent.
-//
-// Constructed so the size check cannot answer it by accident: a symlink's own
-// size is the length of the path it holds, so the target's content is made
-// equal to that path. Both the length and the bytes then match, and only the
-// regular-file guard can tell the difference.
-func TestUnchangedRefusesToCompareThroughASymlink(t *testing.T) {
-	dir := t.TempDir()
-	target := filepath.Join(dir, "target")
-	body := []byte(target)
-	if err := os.WriteFile(target, body, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	link := filepath.Join(dir, "link")
-	if err := os.Symlink(target, link); err != nil {
-		t.Skipf("symlinks unavailable: %v", err)
-	}
-
-	fi, err := os.Lstat(link)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if fi.Size() != int64(len(body)) {
-		t.Skipf("this filesystem does not size a symlink by its target path (%d vs %d)",
-			fi.Size(), len(body))
-	}
-	if unchanged(link, body) {
-		t.Error("compared through a symlink instead of treating it as unowned")
-	}
-}
-
-// A path with nothing at it has nothing to compare.
-func TestUnchangedIsFalseForAMissingFile(t *testing.T) {
-	if unchanged(filepath.Join(t.TempDir(), "nope"), []byte("")) {
-		t.Error("a missing path compared equal")
-	}
-}
-
 func modTime(t *testing.T, p string) time.Time {
 	t.Helper()
 	fi, err := os.Stat(p)

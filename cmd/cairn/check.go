@@ -25,7 +25,7 @@ func newCheckCmd() *cobra.Command {
 	var configPath string
 
 	cmd := &cobra.Command{
-		Use:   "check",
+		Use:   cmdCheck,
 		Short: "Verify a published tree against what cairn recorded",
 		Long: "Re-hashes every file SHA256SUMS names, reports what the manifest\n" +
 			"claims and the disk no longer has, and finds output cairn does not own.",

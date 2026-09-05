@@ -20,7 +20,7 @@ func newServeCmd() *cobra.Command {
 	var configPath, addr string
 
 	cmd := &cobra.Command{
-		Use:   "serve",
+		Use:   cmdServe,
 		Short: "Serve the generated output over HTTP",
 		Long: "Serves the output directory so the generated listings can be read in a\n" +
 			"browser without Hugo or a web server. Runs until interrupted.",

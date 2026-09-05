@@ -8,7 +8,6 @@
 package emit
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -19,6 +18,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/livingstaccato/cairn/internal/atomicfile"
 	"github.com/livingstaccato/cairn/internal/config"
 )
 
@@ -82,8 +82,14 @@ func digestOf(body []byte) string {
 // cairn writes a static site that a web server reads as a different user, so
 // 0600 files and 0750 directories would produce a tree nginx cannot serve. The
 // content is public by construction — it is a published index.
+//
+// DirMode is exported because it is a decision about the shape of the output
+// tree rather than a detail of writing one file: anything that creates a
+// directory cairn will later fill — `cairn watch --serve`, which opens the
+// socket before the first build has made the tree — has to create it the same
+// way, or the served directory is one the web server cannot enter.
 const (
-	outDirMode  os.FileMode = 0o755
+	DirMode     os.FileMode = 0o755
 	outFileMode os.FileMode = 0o644
 )
 
@@ -101,6 +107,7 @@ type Writer struct {
 	prot  []string          // paths a protect: glob kept this run from writing
 	wrote []string          // paths whose bytes this run actually changed
 	sums  map[string]string // what this run put at each path
+	dry   bool              // report what a build would do, change nothing
 }
 
 // NewWriter loads the previous run's manifest, if any. A missing or unreadable
@@ -117,6 +124,20 @@ func NewWriter(cfg *config.Config, outRoot string) *Writer {
 	if own, err := parseManifest(b); err == nil {
 		w.own = own
 	}
+	return w
+}
+
+// NewDryWriter loads the same manifest and answers the same questions, but
+// creates, replaces and deletes nothing.
+//
+// Prune is the only irreversible thing cairn does, and until now the only way
+// to learn what it would remove was to let it. Every decision still runs — the
+// containment check, the protect globs, the conflict policy, the digest of each
+// body against what is on disk — so Written, Changed and the pruned list say
+// exactly what a real run would have done, rather than approximating it.
+func NewDryWriter(cfg *config.Config, outRoot string) *Writer {
+	w := NewWriter(cfg, outRoot)
+	w.dry = true
 	return w
 }
 
@@ -149,7 +170,7 @@ func (w *Writer) Write(relPath string, body []byte) error {
 	// say what stands at the path, not what this particular run happened to move.
 	w.sums[relPath] = digestOf(body)
 
-	if unchanged(abs, body) {
+	if atomicfile.Same(abs, body) {
 		// Recorded as written even though nothing was written. The manifest is
 		// what stops the next run's Prune from deleting it, and a file skipped
 		// here is still a file this run owns.
@@ -157,9 +178,18 @@ func (w *Writer) Write(relPath string, body []byte) error {
 		return nil
 	}
 
-	// #nosec G301 -- see outDirMode: the served tree must be traversable by the
+	if w.dry {
+		// Counted as written and as changed: this is the run reporting what it
+		// would have done, and a caller that filtered dry-run output down to
+		// nothing would be told a build has nothing to do.
+		w.made = append(w.made, relPath)
+		w.wrote = append(w.wrote, relPath)
+		return nil
+	}
+
+	// #nosec G301 -- see DirMode: the served tree must be traversable by the
 	// web server's user.
-	if err := os.MkdirAll(filepath.Dir(abs), outDirMode); err != nil {
+	if err := os.MkdirAll(filepath.Dir(abs), DirMode); err != nil {
 		return fmt.Errorf("create parents for %s: %w", relPath, err)
 	}
 	// #nosec G306 -- see outFileMode: a published index is world-readable by
@@ -191,28 +221,6 @@ func (w *Writer) checkConflict(relPath, abs string) error {
 	return fmt.Errorf("refusing to write %s: path already exists and cairn did not create it "+
 		"(set on_conflict: %s, or index_basename to something unused)",
 		relPath, config.ConflictSkip)
-}
-
-// unchanged reports whether abs already holds exactly body.
-//
-// Rewriting an identical file is not free. It moves the modification time, and
-// in a mirror — root and out the same directory — a moved mtime is a change the
-// parent's listing records and a watcher reacts to. Leaving identical files
-// alone is what makes a build reach a fixed point on the filesystem rather than
-// only in its own output.
-//
-// Only a regular file qualifies. A symlink standing at an output path is
-// something someone else put there: reading through it would compare the
-// target's bytes and then leave the link in place, which is the one outcome
-// this package exists to prevent.
-func unchanged(abs string, body []byte) bool {
-	fi, err := os.Lstat(abs)
-	if err != nil || !fi.Mode().IsRegular() || fi.Size() != int64(len(body)) {
-		return false
-	}
-	// #nosec G304 -- abs is an output path Write has already contained.
-	have, err := os.ReadFile(abs)
-	return err == nil && bytes.Equal(have, body)
 }
 
 // skipped reports whether an existing, unowned path should be left alone.
@@ -307,13 +315,17 @@ func (w *Writer) prune(scope string) ([]string, error) {
 		if err != nil {
 			return removed, err
 		}
-		if err := os.Remove(abs); err != nil && !os.IsNotExist(err) {
-			return removed, fmt.Errorf("prune %s: %w", p, err)
+		if !w.dry {
+			if err := os.Remove(abs); err != nil && !os.IsNotExist(err) {
+				return removed, fmt.Errorf("prune %s: %w", p, err)
+			}
 		}
 		removed = append(removed, p)
 	}
 	sort.Strings(removed)
-	w.pruneEmptyDirs(removed)
+	if !w.dry {
+		w.pruneEmptyDirs(removed)
+	}
 	return removed, nil
 }
 
@@ -406,16 +418,27 @@ func (w *Writer) save(paths []string) error {
 		m.Outputs[p] = w.own[p]
 	}
 
+	if w.dry {
+		return nil
+	}
+
 	b, err := json.Marshal(m)
 	if err != nil {
 		return fmt.Errorf("marshal manifest: %w", err)
 	}
 	abs := filepath.Join(w.root, ManifestFile)
-	if err := os.MkdirAll(w.root, outDirMode); err != nil {
+	// #nosec G301 -- see DirMode: the served tree must be traversable by the
+	// web server's user.
+	if err := os.MkdirAll(w.root, DirMode); err != nil {
 		return fmt.Errorf("create output root: %w", err)
 	}
-	if err := os.WriteFile(abs, b, outFileMode); err != nil {
-		return fmt.Errorf("write manifest %s: %w", abs, err)
+	// Replaced rather than rewritten in place, and left alone when it already
+	// says this. A manifest is the one file whose loss cannot be repaired by
+	// running cairn again — without it the next build disowns everything the
+	// last one wrote — and on a large mirror it is tens of megabytes that a
+	// rebuild changing nothing has no reason to touch.
+	if _, err := atomicfile.Write(abs, b, outFileMode); err != nil {
+		return err
 	}
 	return nil
 }

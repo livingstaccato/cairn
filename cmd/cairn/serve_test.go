@@ -20,7 +20,7 @@ import (
 func TestServeServesTheOutputDirectory(t *testing.T) {
 	configPath, _ := fixture(t)
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", &stderr); err != nil {
+	if err := runBuild(configPath, "", false, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 
@@ -115,14 +115,14 @@ func TestServeMissingConfigFails(t *testing.T) {
 }
 
 func TestServeRejectsPositionalArgs(t *testing.T) {
-	if _, err := exec(t, "serve", "somewhere"); err == nil {
+	if _, err := exec(t, cmdServe, "somewhere"); err == nil {
 		t.Fatal("serve must reject positional arguments")
 	}
 }
 
 func TestRootCommandHasServe(t *testing.T) {
 	for _, c := range newRootCmd().Commands() {
-		if c.Name() != "serve" {
+		if c.Name() != cmdServe {
 			continue
 		}
 		if c.Flags().Lookup("addr") == nil {

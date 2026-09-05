@@ -6,6 +6,7 @@ package emit
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/livingstaccato/cairn/internal/config"
@@ -146,5 +147,25 @@ func TestADryAdoptClaimsNothingOnDisk(t *testing.T) {
 	}
 	if got := body(t, p); got != "orphaned" {
 		t.Errorf("body = %q, want it untouched by a dry run", got)
+	}
+}
+
+// TestTheConflictErrorNamesBothRemedies. The two are for opposite situations
+// and the message is all an operator has to tell them apart: a file that is
+// genuinely somebody else's should be left alone, and output cairn wrote and
+// can no longer prove it wrote should be reclaimed. Naming only skip, as this
+// did, sends the second case to the one setting that freezes the mirror.
+func TestTheConflictErrorNamesBothRemedies(t *testing.T) {
+	out := t.TempDir()
+	stray(t, out, "bootstrap/index.json", "already here")
+
+	err := NewWriter(cfg(t, config.ConflictError), out).Write("bootstrap/index.json", []byte("x"))
+	if err == nil {
+		t.Fatal("expected a conflict")
+	}
+	for _, want := range []string{"on_conflict: skip", "index_basename", "--adopt"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the conflict error does not mention %q: %v", want, err)
+		}
 	}
 }

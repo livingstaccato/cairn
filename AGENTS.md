@@ -81,6 +81,20 @@ test pass.
   another tool owns — apt's signed `dists/`, dnf's `repodata/` — so refusing to
   write there is the request, not a fault. A protected path is never recorded as
   written, so no later run can overwrite it and `Prune` cannot delete it.
+- **`--adopt` is the only way to waive the conflict check, and it waives only
+  that.** It exists for one state: the manifest is lost or unreadable, so every
+  file cairn wrote is one it no longer claims and `on_conflict: error` refuses
+  all of them. `on_conflict: skip` is not a recovery — it leaves each path
+  alone, writes nothing, claims nothing, and freezes the mirror. What `--adopt`
+  claims is the set of paths the build produces that already exist, so it cannot
+  take a file the build does not itself write; it never walks `out:` guessing
+  which files look generated. `protect:` and path containment are checked ahead
+  of it and are not affected, and every claim is reported.
+- **The hash cache forgets, bounded by the region the run rebuilt.** A full
+  build sweeps from `root:`, a scoped rebuild from its scope, a failed build
+  sweeps nothing. Unbounded, a `cairn watch` event would discard the digests for
+  the whole rest of the mirror; not at all, and the cache grows by one record
+  per file that ever existed in the tree.
 - **Every exit from `build.Run` records ownership,** including the error path
   (`SavePartial`). A build that dies mid-write otherwise leaves files nothing
   claims, and `on_conflict: error` then refuses every later run. The partial save

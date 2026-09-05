@@ -265,8 +265,14 @@ func (w *Writer) checkConflict(relPath, abs string) error {
 	if w.cfg.OnConflict == config.ConflictSkip {
 		return nil
 	}
+	// Both remedies, because they are for opposite situations and the message is
+	// all an operator has to tell them apart. A file that is genuinely somebody
+	// else's should be left alone, which is what skip does; output cairn wrote
+	// and can no longer prove it wrote should be reclaimed, and skip would
+	// freeze the mirror instead.
 	return fmt.Errorf("refusing to write %s: path already exists and cairn did not create it "+
-		"(set on_conflict: %s, or index_basename to something unused)",
+		"(if the file is somebody else's, set on_conflict: %s or change index_basename; "+
+		"if cairn wrote it and the manifest was lost, rebuild once with --adopt)",
 		relPath, config.ConflictSkip)
 }
 

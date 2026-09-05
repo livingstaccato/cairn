@@ -44,10 +44,25 @@ func Dir(root, relDir string, s config.Settings) ([]model.Entry, []Warning, erro
 	return entries, warns, nil
 }
 
+// Filter reports whether an entry belongs in a recursive listing. relDir is the
+// directory the entry was read from, so a caller can name a path rather than
+// only a basename.
+//
+// The walk cannot answer this itself. What a build excludes is cairn's own
+// output — the directory it writes into and the filenames it generates — and
+// those are properties of the build's configuration, not of the tree. Passing
+// the decision in keeps the policy with the caller that owns it and still lets
+// the traversal act on it, which a filter applied to the returned slice could
+// not: by then the excluded subtree has already been walked and counted.
+type Filter func(relDir string, e model.Entry) bool
+
 // Tree lists relDir and all descendants. Depth counts from relDir, whose direct
 // children are Depth 1. Exceeding maxEntries is an error, never a truncation: a
 // silently short index is a wrong index.
-func Tree(root, relDir string, s config.Settings, maxEntries int) ([]model.Entry, []Warning, error) {
+//
+// keep is applied at every level, before an entry is listed and before a
+// directory is descended into. A nil keep lists everything the settings allow.
+func Tree(root, relDir string, s config.Settings, maxEntries int, keep Filter) ([]model.Entry, []Warning, error) {
 	sc := &scanner{root: root, s: s}
 	var out []model.Entry
 	var warns []Warning
@@ -62,6 +77,11 @@ func Tree(root, relDir string, s config.Settings, maxEntries int) ([]model.Entry
 		}
 		sortEntries(batch, s)
 		for _, e := range batch {
+			// Before the append and before the recurse, so an excluded
+			// directory is neither named nor walked.
+			if keep != nil && !keep(rel, e) {
+				continue
+			}
 			out = append(out, e)
 			if len(out) > maxEntries {
 				return fmt.Errorf("tree under %q exceeds tree_max_entries (%d); "+

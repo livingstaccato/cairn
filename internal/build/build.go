@@ -313,19 +313,39 @@ func (r *runner) produce(relDir, absDir string, s config.Settings) ([]model.Entr
 // listing. A protected path is the exception — cairn writes nothing there, so a
 // file of that name belongs to whoever put it there and must stay listed.
 func (r *runner) dropGenerated(relDir string, entries []model.Entry, s config.Settings) []model.Entry {
-	skip := r.generatedNames()
+	keep := r.treeFilter()
 	out := entries[:0:0]
 	for _, e := range entries {
-		if r.isOutputDir(relDir, e) {
-			continue
-		}
-		generated := !e.IsDir && skip[e.Name] &&
-			!r.cfg.IsProtected(path.Join(relDir, e.Name))
-		if !generated {
+		if keep(relDir, e) {
 			out = append(out, e)
 		}
 	}
 	return out
+}
+
+// treeFilter returns the rule for what cairn's own output is, for the two walks
+// that have to agree about it.
+//
+// One function because two callers must agree, the same reason OutRel is one
+// function. The per-directory walk reaches it through dropGenerated and the
+// recursive walk through walk.Tree, and they disagreed once: the exclusion was
+// applied on the collect side only, so tree.json and the search index built from
+// it published the output directory and every generated file as content, and a
+// rebuild that changed nothing still rewrote tree.json.
+//
+// The generated-name set is built once and captured rather than rebuilt per
+// entry: a package pool directory is thousands of entries and this is called for
+// every one of them.
+func (r *runner) treeFilter() walk.Filter {
+	skip := r.generatedNames()
+	return func(relDir string, e model.Entry) bool {
+		if r.isOutputDir(relDir, e) {
+			return false
+		}
+		generated := !e.IsDir && skip[e.Name] &&
+			!r.cfg.IsProtected(path.Join(relDir, e.Name))
+		return !generated
+	}
 }
 
 // isOutputDir reports whether this entry is the output directory, sitting

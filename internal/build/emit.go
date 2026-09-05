@@ -24,7 +24,7 @@ const treeBasename = "tree"
 
 // emitTree renders the recursive listing for a directory.
 func (r *runner) emitTree(relDir string, s config.Settings, prose string, src meta.FileSource) error {
-	all, warns, err := walk.Tree(r.root, relDir, s, r.cfg.TreeMaxEntries)
+	all, warns, err := walk.Tree(r.root, relDir, s, r.cfg.TreeMaxEntries, r.treeFilter())
 	if err != nil {
 		return err
 	}

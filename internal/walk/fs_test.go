@@ -257,7 +257,7 @@ func TestDirFollowsContainedSymlink(t *testing.T) {
 
 func TestTreeRecursesWithDepth(t *testing.T) {
 	root := fixture(t)
-	got, _, err := Tree(root, "bootstrap", config.Defaults(), 1000)
+	got, _, err := Tree(root, "bootstrap", config.Defaults(), 1000, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -276,13 +276,13 @@ func TestTreeRecursesWithDepth(t *testing.T) {
 
 func TestTreeCapIsAnError(t *testing.T) {
 	root := fixture(t)
-	if _, _, err := Tree(root, "bootstrap", config.Defaults(), 2); err == nil {
+	if _, _, err := Tree(root, "bootstrap", config.Defaults(), 2, nil); err == nil {
 		t.Fatal("expected an error when the entry cap is exceeded")
 	}
 }
 
 func TestTreeMissingIsError(t *testing.T) {
-	if _, _, err := Tree(t.TempDir(), "nope", config.Defaults(), 10); err == nil {
+	if _, _, err := Tree(t.TempDir(), "nope", config.Defaults(), 10, nil); err == nil {
 		t.Fatal("expected an error for a missing directory")
 	}
 }

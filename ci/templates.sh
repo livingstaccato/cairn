@@ -123,6 +123,10 @@ version: 1
 mode: hugo
 root: ./tree
 out: ./content
+# Published under a prefix, so the breadcrumb's site-absolute root anchor is
+# exercised where being wrong actually shows: it was hardcoded to "/", which is
+# above the mirror here.
+base_path: /mirror
 defaults:
   present: bare
   outputs: [html, json]
@@ -143,6 +147,21 @@ fi
 if ! grep -q 'href="\.\./"' "$b/public/sub/index.html"; then
   say "a bare listing below the top has no way back up"
 fi
+
+# The breadcrumb's root anchor is site-absolute, so under base_path it has to be
+# the top of the mirror. Hardcoded to "/" it left the tree cairn published.
+# Read out of the nav element rather than grepped: the anchors sit on the line
+# after it, and "/" on its own would also match the theme's home link.
+crumbs=$(python3 -c "
+import re,sys
+h = open('$b/public/sub/index.html').read()
+m = re.search(r'<nav class=\"cairn-breadcrumb\".*?</nav>', h, re.S)
+print(' '.join(re.findall(r'href=\"([^\"]*)\"', m.group(0))) if m else 'NO-NAV')")
+case "$crumbs" in
+  "NO-NAV") say "the bare listing rendered no breadcrumb" ;;
+  "/mirror/"*) ;;
+  *) say "the breadcrumb root anchor is not the top of the mirror (hrefs: $crumbs)" ;;
+esac
 
 [ "$fail" -eq 0 ] && echo "OK: templates render correctly"
 exit "$fail"

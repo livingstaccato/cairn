@@ -28,7 +28,7 @@
 <div class="cairn cairn--bare" data-cairn-present="bare">
 
   <header class="cairn-head">
-    {{ partial "cairn/breadcrumb.html" $c.path }}
+    {{ partial "cairn/breadcrumb.html" (dict "path" $c.path "base" $c.base_path) }}
     <div class="cairn-head-sub">
       <p class="cairn-head-count">{{ $n := int $c.count }}{{ $n }} item{{ if ne $n 1 }}s{{ end }}</p>
       {{ partial "cairn/formats.html" $c }}

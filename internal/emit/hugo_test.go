@@ -17,10 +17,11 @@ type parsedFM struct {
 	Title  string `yaml:"title"`
 	Layout string `yaml:"layout"`
 	Cairn  struct {
-		Present string `yaml:"present"`
-		Path    string `yaml:"path"`
-		Count   int    `yaml:"count"`
-		AtRoot  bool   `yaml:"at_root"`
+		Present  string `yaml:"present"`
+		Path     string `yaml:"path"`
+		Count    int    `yaml:"count"`
+		AtRoot   bool   `yaml:"at_root"`
+		BasePath string `yaml:"base_path"`
 	} `yaml:"cairn"`
 }
 
@@ -203,5 +204,35 @@ func TestHugoContentOmitsAtRootBelowTheTop(t *testing.T) {
 	fm, _ := split(t, b)
 	if fm.Cairn.AtRoot {
 		t.Errorf("at_root is set for a listing below the top:\n%s", b)
+	}
+}
+
+// The breadcrumb's root anchor is site-absolute, so under base_path it has to be
+// the top of the mirror rather than the top of the site.
+//
+// It was hardcoded to "/". The crumbs themselves were already right, because
+// listing paths carry the prefix, but the anchor in front of them pointed above
+// the tree cairn published — and from file:// at the filesystem root. A template
+// cannot work this out from the path alone, so it travels with it.
+func TestHugoContentCarriesBasePath(t *testing.T) {
+	b, err := HugoContent(HugoPage{Listing: sample(), BasePath: "/mirror"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fm, _ := split(t, b)
+	if fm.Cairn.BasePath != "/mirror" {
+		t.Errorf("base_path did not reach the frontmatter:\n%s", b)
+	}
+}
+
+// Absent when there is none, so a site published at the root does not carry a
+// key that says nothing.
+func TestHugoContentOmitsAnEmptyBasePath(t *testing.T) {
+	b, err := HugoContent(HugoPage{Listing: sample()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), "base_path") {
+		t.Errorf("an empty base_path was written out:\n%s", b)
 	}
 }

@@ -50,6 +50,11 @@ type cairnParam struct {
 	Generated  string   `yaml:"generated"`
 	Count      int      `yaml:"count"`
 	Recursive  bool     `yaml:"recursive,omitempty"`
+	// BasePath is where the indexed tree starts inside the site, so a template
+	// can build a link to the top of it. The breadcrumb's root anchor is the
+	// case: hardcoded to "/" it points above the mirror under base_path, and at
+	// the filesystem root from file://.
+	BasePath string `yaml:"base_path,omitempty"`
 	// AtRoot suppresses the parent row, the same switch BarePage carries. The
 	// Hugo templates render the bare presenter themselves — emitHugo never calls
 	// BareHTML — so without this the two renderers disagree about the top of the
@@ -86,6 +91,9 @@ type HugoPage struct {
 	// something cairn never wrote. The same switch BarePage carries, for the
 	// renderer that is not BareHTML.
 	AtRoot bool
+	// BasePath is the site-absolute prefix the tree is published under, "" when
+	// it is published at the site root.
+	BasePath string
 }
 
 // HugoContent renders one directory as a Hugo branch-bundle _index.md.
@@ -111,6 +119,7 @@ func HugoContent(p HugoPage) ([]byte, error) {
 			Recursive:   p.Recursive,
 			MaxRendered: p.MaxRendered,
 			AtRoot:      p.AtRoot,
+			BasePath:    p.BasePath,
 		},
 	}
 

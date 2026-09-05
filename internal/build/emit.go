@@ -121,7 +121,8 @@ func (r *runner) emitHugo(c emitCtx) error {
 		Recursive:   c.settings.Recursive,
 		MaxRendered: c.settings.MaxRendered,
 		// The same rule emitHTML applies, for the renderer that is Hugo's.
-		AtRoot: c.relDir == ".",
+		AtRoot:   c.relDir == ".",
+		BasePath: r.cfg.BasePath,
 	})
 	if err != nil {
 		return err

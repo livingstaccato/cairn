@@ -7,8 +7,11 @@
 package build
 
 import (
+	"bytes"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -107,5 +110,31 @@ func TestAManifestThatChangesIsStillWritten(t *testing.T) {
 	}
 	if _, still := own["docs/index.json"]; still {
 		t.Error("the manifest still claims docs/index.json")
+	}
+}
+
+// A manifest cairn cannot read is the worst failure it has, because of what
+// happens next: it claims nothing, and on_conflict: error then refuses a file
+// cairn itself wrote, with a message about a path that already exists. The run
+// has to say what actually went wrong before that starts.
+func TestAnUnreadableManifestIsReportedBeforeTheConflicts(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	run(t, conf(nil), root, out)
+
+	// The shape a manifest from an older cairn has: outputs recorded as a list
+	// of paths, with no digest against any of them.
+	if err := os.WriteFile(filepath.Join(out, emit.ManifestFile),
+		[]byte(`{"version":1,"outputs":["index.json","docs/index.json"]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var logged bytes.Buffer
+	log := slog.New(slog.NewTextHandler(&logged, nil))
+	_, err := Run(conf(nil), root, out, log)
+	if err == nil {
+		t.Fatal("a build that owns nothing must still refuse to overwrite what is there")
+	}
+	if !strings.Contains(logged.String(), "manifest could not be read") {
+		t.Errorf("the run did not say why it owns nothing:\n%s", logged.String())
 	}
 }

@@ -279,9 +279,13 @@ Only paths the manifest recorded are ever considered, so cairn can delete nothin
 it did not create. Two consequences worth knowing:
 
 - **Losing the manifest stops the build.** An `rsync --delete` or a `git clean`
-  over the output directory is enough. cairn will not overwrite files it can no
-  longer prove it wrote; run once with `on_conflict: skip`, or clear the output
-  directory, to recover.
+  over the output directory is enough, as is a manifest written by a cairn old
+  enough to have recorded output in a shape this one does not read. cairn will
+  not overwrite files it can no longer prove it wrote; run once with
+  `on_conflict: skip`, or clear the output directory, to recover. The run says
+  `the manifest could not be read` before anything else — without that line the
+  conflicts that follow name a path and say it already exists, which is true and
+  points at the wrong thing entirely.
 - **Two configs must not share one output root.** Each would prune the other's
   files, and there is no way to tell that apart from a directory that was
   legitimately removed.

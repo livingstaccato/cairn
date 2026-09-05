@@ -108,6 +108,7 @@ type Writer struct {
 	wrote []string          // paths whose bytes this run actually changed
 	sums  map[string]string // what this run put at each path
 	dry   bool              // report what a build would do, change nothing
+	mErr  error             // why the previous manifest was not usable, if it was not
 }
 
 // NewWriter loads the previous run's manifest, if any. A missing or unreadable
@@ -121,11 +122,25 @@ func NewWriter(cfg *config.Config, outRoot string) *Writer {
 	if err != nil {
 		return w
 	}
-	if own, err := parseManifest(b); err == nil {
-		w.own = own
+	own, err := parseManifest(b)
+	if err != nil {
+		// Kept rather than returned, so the caller can say why. A manifest that
+		// will not parse means cairn claims nothing, and the next thing that
+		// happens is on_conflict: error refusing a file it wrote itself last
+		// week — with a message about a path that already exists, which sends
+		// an operator looking in exactly the wrong place.
+		w.mErr = err
+		return w
 	}
+	w.own = own
 	return w
 }
+
+// ManifestError reports why the previous run's manifest was unusable, or nil
+// when there was none to read or it read cleanly. Losing a manifest is not
+// itself fatal — cairn simply owns nothing — but it changes what every later
+// error in the run means, so a caller states it up front.
+func (w *Writer) ManifestError() error { return w.mErr }
 
 // NewDryWriter loads the same manifest and answers the same questions, but
 // creates, replaces and deletes nothing.

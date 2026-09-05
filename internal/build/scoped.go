@@ -58,6 +58,7 @@ func RunScoped(cfg *config.Config, rootDir, outDir string, log *slog.Logger, sco
 		writer: emit.NewWriter(cfg, outDir),
 		result: &Result{},
 	}
+	r.warnAboutTheManifest()
 
 	err := r.buildScoped(scope)
 	if err != nil {

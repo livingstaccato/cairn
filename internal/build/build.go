@@ -96,6 +96,7 @@ func runBuild(cfg *config.Config, rootDir, outDir string, log *slog.Logger, dry 
 		result: &Result{},
 		dry:    dry,
 	}
+	r.warnAboutTheManifest()
 
 	err := r.build()
 	if err != nil {
@@ -133,6 +134,22 @@ func (r *runner) build() error {
 	// tell its own output from content that was already there, and refuses to
 	// overwrite either.
 	return r.writer.Save()
+}
+
+// warnAboutTheManifest says so, once, when the previous run's manifest could
+// not be read.
+//
+// The run continues: cairn owning nothing is a recoverable state, and refusing
+// to start would be worse than the conflict errors that follow. But those
+// errors name a path and say it already exists, which is true and useless —
+// the file exists because cairn wrote it, and the reason it is now a conflict
+// is upstream of anything the path can tell you.
+func (r *runner) warnAboutTheManifest() {
+	if err := r.writer.ManifestError(); err != nil {
+		r.log.Warn("the manifest could not be read, so cairn claims none of the output "+
+			"already in place; expect conflicts, and nothing will be pruned",
+			"path", emit.ManifestFile, "err", err)
+	}
 }
 
 // saveCache writes the hash cache back, unless this run is not writing.

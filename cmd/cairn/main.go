@@ -31,5 +31,6 @@ func newRootCmd() *cobra.Command {
 		SilenceErrors: false,
 	}
 	root.AddCommand(newBuildCmd())
+	root.AddCommand(newWatchCmd())
 	return root
 }

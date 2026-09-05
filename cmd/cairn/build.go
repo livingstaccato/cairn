@@ -7,12 +7,10 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	"github.com/livingstaccato/cairn/internal/build"
-	"github.com/livingstaccato/cairn/internal/config"
 	"github.com/livingstaccato/cairn/internal/obs"
 )
 
@@ -56,17 +54,11 @@ func runBuild(configPath string, stderr io.Writer) error {
 		}
 	}()
 
-	cfg, err := config.Load(configPath)
+	cfg, rootDir, outDir, err := loadPaths(configPath)
 	if err != nil {
 		log.Error("could not load config", "err", err)
 		return err
 	}
-
-	// root and out are resolved against the config's own directory, so a build
-	// behaves the same wherever it is invoked from.
-	base := filepath.Dir(configPath)
-	rootDir := filepath.Join(base, filepath.FromSlash(cfg.Root))
-	outDir := filepath.Join(base, filepath.FromSlash(cfg.Out))
 
 	res, err := build.Run(cfg, rootDir, outDir, log)
 	if err != nil {

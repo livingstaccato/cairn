@@ -25,10 +25,10 @@ import (
 // the root of the rebuild. Walking up from the change to the highest such owner
 // gives the smallest correct scope; with no recursive listing above it, that is
 // the changed directory.
-func Scope(cfg *config.Config, rootDir, relDir string) string {
+func Scope(cfg *config.Config, rootDir, relDir string, log *slog.Logger) string {
 	scope := relDir
 	for dir := relDir; ; dir = path.Dir(dir) {
-		s := cfg.Resolve(dir, dirOverrideAt(rootDir, dir))
+		s := SettingsFor(cfg, rootDir, dir, log)
 		if s.Recursive {
 			scope = dir
 		}
@@ -37,14 +37,6 @@ func Scope(cfg *config.Config, rootDir, relDir string) string {
 		}
 	}
 	return scope
-}
-
-// dirOverrideAt reads a directory's own settings file, tolerating a directory
-// that has just been deleted: a rebuild triggered by a removal still has to
-// resolve settings for the path that is gone.
-func dirOverrideAt(rootDir, relDir string) *config.Override {
-	r := &runner{root: rootDir}
-	return r.dirOverride(filepath.Join(rootDir, filepath.FromSlash(relDir)))
 }
 
 // RunScoped rebuilds one subtree and the listings above it that name it.

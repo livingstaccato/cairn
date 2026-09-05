@@ -121,7 +121,7 @@ func TestScopeClimbsToTheRecursiveOwner(t *testing.T) {
 		Match:    "bootstrap/**",
 		Override: config.Override{Recursive: &yes},
 	}})
-	if got := Scope(c, root, "bootstrap/linux"); got != "bootstrap" {
+	if got := Scope(c, root, "bootstrap/linux", obs.Discard()); got != "bootstrap" {
 		t.Errorf("scope = %q, want bootstrap: the recursive listing above it is stale", got)
 	}
 }
@@ -129,7 +129,7 @@ func TestScopeClimbsToTheRecursiveOwner(t *testing.T) {
 // With nothing recursive above it, the changed directory is the whole scope.
 func TestScopeStopsAtTheChangedDirectory(t *testing.T) {
 	root := tree(t)
-	if got := Scope(conf(nil), root, "bootstrap/linux"); got != "bootstrap/linux" {
+	if got := Scope(conf(nil), root, "bootstrap/linux", obs.Discard()); got != "bootstrap/linux" {
 		t.Errorf("scope = %q, want the changed directory", got)
 	}
 }

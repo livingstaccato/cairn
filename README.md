@@ -129,6 +129,28 @@ Nothing is ever copied. Builds reach a fixed point: cairn excludes its own outpu
 from the listings, records what it wrote in `.cairn-manifest.json`, and still
 refuses to touch a file it did not create.
 
+## Watching
+
+`cairn watch` builds once and then rebuilds only the subtree each change
+affects, which is what makes it usable against a tree of tens of thousands of
+files: a change three directories down re-emits that directory, refreshes the
+listings above it that name it, and leaves the rest alone.
+
+```sh
+go run ./cmd/cairn watch --config testdata/example/cairn.yaml
+```
+
+The whole tree is registered before the first event is read, and the platform's
+limit is checked before any of it is registered — macOS spends a descriptor per
+file, Linux a watch per directory. A tree that does not fit is refused with the
+setting to raise, rather than half-watched: a watcher that reports some changes
+and says nowhere which ones it dropped leaves an index that is wrong and looks
+fine.
+
+`--settle` (250ms by default) is how long the tree has to be quiet before a
+rebuild. Directories the build hides are not watched, and cairn's own output
+never wakes it — including when `root` and `out` are the same directory.
+
 ## Environment
 
 `CAIRN_ENVIRONMENT` labels the build in cairn's log output. It defaults to

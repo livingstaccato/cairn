@@ -34,6 +34,7 @@ internal/
   hash/          SHA-256 with a (path,size,mtime) cache
   emit/          html, json, csv, sums, pep503 + the write guard
   build/         orchestration: walk → merge → hash → emit
+  watch/         which directories to watch, what to ignore, what to rebuild
 layouts/         Hugo component module (no baseof, no brand)
 assets/cairn/    CSS, JS, SVG sprite — self-contained, no CDN
 themes/reference/ minimal standalone theme, own go.mod

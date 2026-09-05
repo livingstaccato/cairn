@@ -195,7 +195,7 @@ func (r *runner) produce(relDir, absDir string, s config.Settings) ([]model.Entr
 // listing. A protected path is the exception — cairn writes nothing there, so a
 // file of that name belongs to whoever put it there and must stay listed.
 func (r *runner) dropGenerated(relDir string, entries []model.Entry, s config.Settings) []model.Entry {
-	skip := r.generatedNames(s)
+	skip := r.generatedNames()
 	out := entries[:0:0]
 	for _, e := range entries {
 		generated := !e.IsDir && skip[e.Name] &&
@@ -208,22 +208,8 @@ func (r *runner) dropGenerated(relDir string, entries []model.Entry, s config.Se
 }
 
 // generatedNames is every filename cairn writes into one directory.
-func (r *runner) generatedNames(s config.Settings) map[string]bool {
-	names := map[string]bool{
-		emit.SumsFile:     true,
-		emit.SearchFile:   true,
-		emit.ManifestFile: true,
-		hash.CacheFile:    true,
-	}
-	for _, base := range []string{r.cfg.IndexBasename, treeBasename} {
-		for _, ext := range []string{".html", ".json", ".csv", ".txt"} {
-			names[base+ext] = true
-		}
-	}
-	if r.cfg.Mode == config.ModeHugo {
-		names[emit.HugoContentFile] = true
-	}
-	return names
+func (r *runner) generatedNames() map[string]bool {
+	return GeneratedNames(r.cfg)
 }
 
 // hashEntries fills SHA256 for every file in the listing. A file that cannot be

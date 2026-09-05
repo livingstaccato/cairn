@@ -60,18 +60,25 @@ func FuzzContainedPath(f *testing.F) {
 		f.Add(n)
 	}
 
+	// Made and resolved once, outside the loop. This was a t.TempDir() per
+	// execution, which put a mkdir and an rmdir on the hot path and held the
+	// target to tens of executions a second where every other one manages tens
+	// of thousands — slow enough that a loaded CI runner tripped the fuzzing
+	// deadline and the gate reported it as a failing input. The root does not
+	// have to vary: the property is about the paths, not the directory.
+	root := f.TempDir()
+	resolved, err := filepath.Abs(root)
+	if err != nil {
+		f.Fatal(err)
+	}
+	if resolved, err = filepath.EvalSymlinks(resolved); err != nil {
+		f.Fatal(err)
+	}
+
 	f.Fuzz(func(t *testing.T, rel string) {
-		root := t.TempDir()
 		got, err := containedPath(root, rel)
 		if err != nil {
 			return // refusing is always a correct answer
-		}
-		resolved, err := filepath.Abs(root)
-		if err != nil {
-			t.Skip()
-		}
-		if resolved, err = filepath.EvalSymlinks(resolved); err != nil {
-			t.Skip()
 		}
 		if got != resolved && !strings.HasPrefix(got, resolved+string(filepath.Separator)) {
 			t.Fatalf("relPath %q escaped the root:\n got %q\nroot %q", rel, got, resolved)

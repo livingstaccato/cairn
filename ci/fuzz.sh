@@ -29,5 +29,14 @@ for pkg in $(go list ./internal/...); do
   done
 done
 
-[ "${failed}" -eq 0 ] || { echo "FAIL: a fuzz target found an input the code does not handle"; exit 1; }
+# Not "found an input": a target also fails by running out of time, and saying
+# it found something sends a reader looking for a corpus file that was never
+# written. A real finding is committed under testdata/fuzz/ and named in the
+# output above.
+[ "${failed}" -eq 0 ] || {
+  echo "FAIL: a fuzz target did not pass — see above for which, and why"
+  echo "      a found input is written under testdata/fuzz/; no such file means"
+  echo "      the target timed out rather than finding anything"
+  exit 1
+}
 echo "OK: every fuzz target survived ${seconds}s"

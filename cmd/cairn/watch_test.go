@@ -5,6 +5,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -80,4 +82,54 @@ func TestRootCommandHasWatch(t *testing.T) {
 		return
 	}
 	t.Error("root command has no watch subcommand")
+}
+
+// checkRoot exists to improve on an opaque syscall error, so it must not
+// replace one opaque answer with a confidently wrong one.
+//
+// Every os.Stat failure became "does not exist" and the underlying error was
+// discarded. A root: whose parent denies traversal is right there on disk, and
+// the operator was told to fix a path that was already correct — as was the case
+// for a symlink loop, or a non-directory partway along the path.
+func TestCheckRootSaysWhyWhenItIsNotAbsence(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root traverses a 0o000 directory, so there is no denial to report")
+	}
+	base := t.TempDir()
+	locked := filepath.Join(base, "locked")
+	if err := os.MkdirAll(filepath.Join(locked, "tree"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(locked, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	// Restored so the temp directory can be cleaned up.
+	t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+
+	err := checkRoot("./locked/tree", filepath.Join(locked, "tree"))
+	if err == nil {
+		t.Fatal("a root: that cannot be read must be refused")
+	}
+	if strings.Contains(err.Error(), "does not exist") {
+		t.Errorf("a permission failure was reported as absence: %v", err)
+	}
+	if !errors.Is(err, fs.ErrPermission) {
+		t.Errorf("the underlying cause was discarded: %v", err)
+	}
+	if !strings.Contains(err.Error(), "./locked/tree") {
+		t.Errorf("the message does not name the setting as it was written: %v", err)
+	}
+}
+
+// A root: that genuinely is not there still says so, in the words that sent an
+// operator to the right line of the config.
+func TestCheckRootStillReportsRealAbsence(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "nope")
+	err := checkRoot("./nope", missing)
+	if err == nil {
+		t.Fatal("a missing root: must be refused")
+	}
+	if !strings.Contains(err.Error(), "does not exist") {
+		t.Errorf("a missing directory should say so: %v", err)
+	}
 }

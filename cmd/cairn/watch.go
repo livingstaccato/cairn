@@ -5,8 +5,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -188,10 +190,19 @@ func loadPathsForBuild(configPath string) (*config.Config, string, string, error
 // produces, so it should say which line to edit.
 func checkRoot(configured, resolved string) error {
 	fi, err := os.Stat(resolved)
-	if err != nil {
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
 		return fmt.Errorf("root: %s does not exist%s", configured, resolvedAs(configured, resolved))
-	}
-	if !fi.IsDir() {
+	case err != nil:
+		// Absence is one reason a stat fails and this function used to report it
+		// for all of them, discarding the cause. A root: whose parent denies
+		// traversal is on disk and correctly configured, and being told it does
+		// not exist sends an operator to edit a line that is already right. The
+		// same goes for a symlink loop, and for a plain file partway along the
+		// path.
+		return fmt.Errorf("root: %s cannot be read%s: %w",
+			configured, resolvedAs(configured, resolved), err)
+	case !fi.IsDir():
 		return fmt.Errorf("root: %s is not a directory%s", configured, resolvedAs(configured, resolved))
 	}
 	return nil

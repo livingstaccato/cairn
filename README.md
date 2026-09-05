@@ -222,9 +222,28 @@ recorded.
 cairn check --remove-orphaned
 ```
 
-It refuses when the manifest claims nothing. Everything generated then looks
-unowned, so this would delete the whole published tree — that state is a lost
-manifest, and [`build --adopt`](#getting-a-wedged-tree-back) is its repair.
+It deletes less than the check reports, on purpose. The report answers whether
+cairn *could* have written a file with that name, which is the right question to
+put in front of a person and the wrong one to hand to `rm`: in a mirror `root:`
+and `out:` are one directory, so nearly every file is somebody's artifact and the
+names cairn generates are the most ordinary names in the tree. A mirrored package
+index and an extracted documentation tree are both called `index.html`.
+
+So removal asks a stronger question and answers it from the file's own bytes. A
+listing carries its own shape, `index.csv` carries cairn's column header,
+`_index.md` carries its frontmatter, and a page cairn rendered carries
+`<meta name="generator" content="cairn">`. Anything those tests do not vouch for
+is kept, still reported, and still fails the check — so a name collision is
+something you are told about rather than something you lose a file to.
+
+Two formats can never answer it. `index.txt` is one filename per line, which is
+what a listing of anything looks like, and `SHA256SUMS` is coreutils format by
+design, so every publisher's is the shape cairn's is. Stale ones are reported and
+left alone; delete those by hand.
+
+It refuses outright when the manifest claims nothing. Everything generated then
+looks unowned, so this would delete the whole published tree — that state is a
+lost manifest, and [`build --adopt`](#getting-a-wedged-tree-back) is its repair.
 
 ## Publishing only what moved
 

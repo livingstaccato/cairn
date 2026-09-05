@@ -379,9 +379,31 @@ discover afterwards.
 One thing it does not do: output from an earlier config that this build no longer
 generates stays unclaimed, and is therefore never pruned — `Prune` only removes
 what the manifest records. `cairn check` reports those as output cairn does not
-own, and `cairn check --remove-orphaned` deletes them once you have read the
-list. That flag refuses while the manifest claims nothing, since everything
-generated looks unowned in that state; adopt first, then remove.
+own, and `cairn check --remove-orphaned` deletes the ones it can show are cairn's
+once you have read the list. That flag refuses while the manifest claims nothing,
+since everything generated looks unowned in that state; adopt first, then remove.
+
+Expect it to leave some behind, and expect that rather than reading it as a
+failed removal. The report is name-based, which is what makes it useful in a
+mirror; deletion is content-based, because in a mirror a foreign `index.html` is
+an ordinary thing to find and losing it is unrecoverable. A file is removed only
+when its own bytes identify it — a listing's shape, cairn's CSV header,
+`_index.md` frontmatter, or the `generator` meta tag in a page cairn rendered.
+
+`index.txt` and `SHA256SUMS` never qualify: one filename per line is what any
+listing looks like, and `SHA256SUMS` is coreutils format, so cairn's is
+indistinguishable from the one a Debian or release mirror ships. Stale ones
+survive every `--remove-orphaned` run, stay in the report, and keep the check
+exiting non-zero until you delete them yourself. That last part is worth knowing
+in a pipeline: a run that deleted everything it could still exits non-zero when
+anything was kept.
+
+Pages published before the `generator` meta tag existed do not carry it, and a
+rebuild will not give them one: cairn writes the paths it currently generates,
+and a stale page is by definition at a path it no longer does. Those are kept
+permanently and have to be deleted by hand. Only HTML written by a version that
+emits the marker can be removed automatically later, so this is a one-time cost
+against trees published before it.
 
 ### Seeing what a run would do first
 

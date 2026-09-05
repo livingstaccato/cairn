@@ -53,8 +53,17 @@ func loadManifest(outDir string) (map[string]string, error) {
 // existence as the artifact's, which is the substitution the whole ownership
 // record exists to make visible.
 func (v *verifier) checkMissing() {
+	outAbs, err := resolveRoot(v.out)
+	if err != nil {
+		// The output root itself cannot be resolved, so no claim can be checked
+		// against it and every one of them is unaccounted for.
+		for claim := range v.claimed {
+			v.missing[claim] = true
+		}
+		return
+	}
 	for claim := range v.claimed {
-		abs, err := containedPath(v.out, claim)
+		abs, err := containedIn(outAbs, claim)
 		if err != nil {
 			// A claim resolving outside the output root is one emit.Write could
 			// never have produced, so the manifest has been edited or corrupted.
@@ -70,18 +79,19 @@ func (v *verifier) checkMissing() {
 	}
 }
 
-// containedPath joins a slash-separated relative path onto a root and refuses a
-// result outside it.
+// resolveRoot makes a root absolute and follows any symlink standing in it.
 //
-// filepath.Join cleans "..", so a crafted path resolves quietly outside the root
-// unless containment is checked afterwards. This mirrors emit's guard on the
-// write side; the read side needs it just as much, because every path it is
-// given comes from a file on disk that cairn did not necessarily write.
+// The expensive half of the containment check, and the half that does not vary.
+// Every caller here tests many paths against one root — every claim in a
+// manifest, every line of a SHA256SUMS, every orphan a removal takes — so this
+// is called once and containedIn is called per path. Together in one function
+// they cost an Abs and an EvalSymlinks per path against a value that could not
+// have changed between them, and a mirror with fifty thousand orphans paid for
+// fifty thousand of each.
 //
-// Only the root is symlink-resolved. Resolving the target would follow a link
-// standing at the path, which is the one thing callers here must decide about
-// themselves.
-func containedPath(root, rel string) (string, error) {
+// Only the root is resolved. Resolving the target would follow a link standing
+// at the path, which is the one thing callers here must decide for themselves.
+func resolveRoot(root string) (string, error) {
 	rootAbs, err := filepath.Abs(root)
 	if err != nil {
 		return "", fmt.Errorf("resolve %s: %w", root, err)
@@ -89,13 +99,24 @@ func containedPath(root, rel string) (string, error) {
 	if resolved, err := filepath.EvalSymlinks(rootAbs); err == nil {
 		rootAbs = resolved
 	}
+	return rootAbs, nil
+}
+
+// containedIn joins a slash-separated relative path onto an already-resolved
+// root and refuses a result outside it.
+//
+// filepath.Join cleans "..", so a crafted path resolves quietly outside the root
+// unless containment is checked afterwards. This mirrors emit's guard on the
+// write side; the read side needs it just as much, because every path it is
+// given comes from a file on disk that cairn did not necessarily write.
+func containedIn(rootAbs, rel string) (string, error) {
 	abs := filepath.Join(rootAbs, filepath.FromSlash(rel))
 	back, err := filepath.Rel(rootAbs, abs)
 	if err != nil {
 		return "", fmt.Errorf("resolve %s: %w", rel, err)
 	}
 	if back == ".." || strings.HasPrefix(back, ".."+string(filepath.Separator)) {
-		return "", fmt.Errorf("%s resolves outside %s", rel, root)
+		return "", fmt.Errorf("%s resolves outside %s", rel, rootAbs)
 	}
 	return abs, nil
 }

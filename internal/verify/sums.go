@@ -47,6 +47,14 @@ func (v *verifier) checkSums(relSums string) error {
 	if err != nil {
 		return fmt.Errorf("read %s: %w", relSums, err)
 	}
+	// One resolution for every line of this file rather than one per line: the
+	// indexed root does not move while a SHA256SUMS is being read, and a pool
+	// directory's file is thousands of lines long.
+	rootAbs, err := resolveRoot(v.root)
+	if err != nil {
+		return err
+	}
+
 	dir := path.Dir(relSums)
 	for _, line := range strings.Split(string(b), "\n") {
 		line = strings.TrimSuffix(line, "\r")
@@ -63,7 +71,7 @@ func (v *verifier) checkSums(relSums string) error {
 				"path", relSums, "line", line)
 			continue
 		}
-		v.checkDigest(path.Join(dir, name), sum)
+		v.checkDigest(rootAbs, path.Join(dir, name), sum)
 	}
 	return nil
 }
@@ -73,8 +81,8 @@ func (v *verifier) checkSums(relSums string) error {
 // Absent is reported as missing rather than modified: the two findings lead an
 // operator to different places, one to whatever removed the file and the other
 // to whatever rewrote it.
-func (v *verifier) checkDigest(target, want string) {
-	abs, err := containedPath(v.root, target)
+func (v *verifier) checkDigest(rootAbs, target, want string) {
+	abs, err := containedIn(rootAbs, target)
 	if err != nil {
 		// A name climbing out of the tree names nothing cairn published. It is
 		// reported and never resolved: dropping it would let a doctored

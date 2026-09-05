@@ -70,8 +70,15 @@ func RemoveOrphaned(outDir string, rep *Report) (*Removal, error) {
 		return res, ErrNoClaims
 	}
 
+	// Resolved once for the whole removal rather than per path: it cannot
+	// change under us, and a mirror can present tens of thousands of orphans.
+	outAbs, err := resolveRoot(outDir)
+	if err != nil {
+		return res, err
+	}
+
 	for _, rel := range rep.Orphaned {
-		abs, err := containedPath(outDir, rel)
+		abs, err := containedIn(outAbs, rel)
 		if err != nil {
 			return res, err
 		}
@@ -87,7 +94,7 @@ func RemoveOrphaned(outDir string, rep *Report) (*Removal, error) {
 	}
 	sort.Strings(res.Removed)
 	sort.Strings(res.Kept)
-	res.RemovedDirs = removeEmptyDirs(outDir, res.Removed)
+	res.RemovedDirs = removeEmptyDirs(outAbs, res.Removed)
 	return res, nil
 }
 
@@ -106,7 +113,7 @@ func RemoveOrphaned(outDir string, rep *Report) (*Removal, error) {
 //
 // The output root is never a candidate. path.Dir stops at ".", and the root is
 // not litter however empty a removal leaves it.
-func removeEmptyDirs(outDir string, removed []string) []string {
+func removeEmptyDirs(outAbs string, removed []string) []string {
 	seen := map[string]bool{}
 	var dirs []string
 	for _, rel := range removed {
@@ -130,7 +137,7 @@ func removeEmptyDirs(outDir string, removed []string) []string {
 
 	var gone []string
 	for _, d := range dirs {
-		abs, err := containedPath(outDir, d)
+		abs, err := containedIn(outAbs, d)
 		if err != nil {
 			continue
 		}

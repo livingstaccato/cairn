@@ -315,6 +315,28 @@ scope.
 
 ### Getting a wedged tree back
 
+Ownership has two states, and one edge leads back out of the bad one.
+
+```mermaid
+stateDiagram-v2
+    Owned: Owned — the manifest records every file cairn wrote
+    Unclaimed: Unclaimed — the output is still there, the manifest is not
+    Refused: refused on the first file
+    Frozen: nothing written, nothing claimed
+
+    [*] --> Owned: first build
+    Owned --> Unclaimed: rsync --delete, git clean,<br/>or a manifest this cairn cannot parse
+    Unclaimed --> Refused: build
+    Unclaimed --> Frozen: build, on_conflict skip
+    Refused --> Unclaimed
+    Frozen --> Unclaimed
+    Unclaimed --> Owned: build --adopt
+```
+
+The two boxes along the bottom are the trap. They are what the first two
+remedies an operator reaches for actually do, and both loop straight back:
+nothing about the tree has changed.
+
 ```sh
 cairn build --dry-run --adopt   # read what it would take
 cairn build --adopt             # take it

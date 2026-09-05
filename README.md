@@ -15,7 +15,16 @@ a single version pin.
 go install github.com/livingstaccato/cairn/cmd/cairn@main
 ```
 
-Put a `cairn.yaml` beside the tree you want indexed:
+Put the files you want indexed under `./tree`, then:
+
+```sh
+cairn init      # a commented cairn.yaml, ready to build
+cairn build     # writes ./site
+cairn serve     # read it back at http://127.0.0.1:22476
+```
+
+`cairn init` writes this, with the reasoning alongside each setting. It refuses
+to replace a config that is already there.
 
 ```yaml
 version: 1
@@ -28,14 +37,11 @@ defaults:
   checksum: sha256
 ```
 
-```sh
-cairn build     # writes ./site
-cairn serve     # read it back at http://127.0.0.1:22476
-```
-
-Both read `./cairn.yaml` unless `--config` says otherwise. Working from a clone
-instead? `cairn build --config testdata/example/cairn.yaml` runs against the
-example tree in this repo.
+Every command reads `./cairn.yaml` unless `--config` says otherwise, and a key
+cairn does not recognise is refused rather than ignored — a mistyped `checksum:`
+used to mean no `SHA256SUMS` and a build that called itself complete. Working
+from a clone instead? `cairn build --config testdata/example/cairn.yaml` runs
+against the example tree in this repo.
 
 `present: bare` is the one line worth understanding on day one. It is a real
 autoindex — no JavaScript, no icon font, renders in `lynx` — and it needs

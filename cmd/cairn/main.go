@@ -17,6 +17,7 @@ const (
 	cmdWatch = "watch"
 	cmdCheck = "check"
 	cmdServe = "serve"
+	cmdInit  = "init"
 )
 
 func main() {
@@ -43,5 +44,6 @@ func newRootCmd() *cobra.Command {
 	root.AddCommand(newWatchCmd())
 	root.AddCommand(newCheckCmd())
 	root.AddCommand(newServeCmd())
+	root.AddCommand(newInitCmd())
 	return root
 }

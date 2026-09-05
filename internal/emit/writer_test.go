@@ -608,17 +608,32 @@ func TestUnchangedComparesContentNotLength(t *testing.T) {
 // A symlink at an output path is something someone else put there. Comparing
 // through it would read the target's bytes and then leave the link standing —
 // the one outcome this package exists to prevent.
+//
+// Constructed so the size check cannot answer it by accident: a symlink's own
+// size is the length of the path it holds, so the target's content is made
+// equal to that path. Both the length and the bytes then match, and only the
+// regular-file guard can tell the difference.
 func TestUnchangedRefusesToCompareThroughASymlink(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(dir, "target")
-	if err := os.WriteFile(target, []byte("same"), 0o644); err != nil {
+	body := []byte(target)
+	if err := os.WriteFile(target, body, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	link := filepath.Join(dir, "link")
 	if err := os.Symlink(target, link); err != nil {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
-	if unchanged(link, []byte("same")) {
+
+	fi, err := os.Lstat(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fi.Size() != int64(len(body)) {
+		t.Skipf("this filesystem does not size a symlink by its target path (%d vs %d)",
+			fi.Size(), len(body))
+	}
+	if unchanged(link, body) {
 		t.Error("compared through a symlink instead of treating it as unowned")
 	}
 }
@@ -637,4 +652,55 @@ func modTime(t *testing.T, p string) time.Time {
 		t.Fatal(err)
 	}
 	return fi.ModTime()
+}
+
+// Written is what cairn owns; Changed is what moved. A deploy needs the second,
+// and until the writer tracked it there was no way to ask.
+func TestChangedListsOnlyWhatMoved(t *testing.T) {
+	out := t.TempDir()
+	c := cfg(t, config.ConflictError)
+
+	w := NewWriter(c, out)
+	for _, p := range []string{"a.json", "b.json"} {
+		if err := w.Write(p, []byte("one")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := w.Save(); err != nil {
+		t.Fatal(err)
+	}
+	if got := w.Changed(); len(got) != 2 {
+		t.Fatalf("first run Changed = %v, want both paths", got)
+	}
+
+	// Second run: one file's content moves, the other's does not.
+	w2 := NewWriter(c, out)
+	if err := w2.Write("a.json", []byte("one")); err != nil {
+		t.Fatal(err)
+	}
+	if err := w2.Write("b.json", []byte("two")); err != nil {
+		t.Fatal(err)
+	}
+	if got := w2.Changed(); !slices.Equal(got, []string{"b.json"}) {
+		t.Errorf("Changed = %v, want [b.json]", got)
+	}
+	if got := w2.Written(); !slices.Equal(got, []string{"a.json", "b.json"}) {
+		t.Errorf("Written = %v, want both — cairn owns them either way", got)
+	}
+	if w2.Unchanged() != 1 {
+		t.Errorf("Unchanged = %d, want 1", w2.Unchanged())
+	}
+}
+
+// A protected path is written by nobody, so it never counts as changed. Claiming
+// it would put another tool's file into a deployment's transfer list.
+func TestChangedExcludesProtectedPaths(t *testing.T) {
+	out := t.TempDir()
+	w := NewWriter(cfg(t, config.ConflictError), out)
+	if err := w.Write("dists/Release", []byte("x")); err != nil {
+		t.Fatal(err)
+	}
+	if got := w.Changed(); len(got) != 0 {
+		t.Errorf("Changed = %v, want nothing", got)
+	}
 }

@@ -40,12 +40,12 @@ const (
 // reports a conflict; with one, cairn overwrites what it previously wrote and
 // still refuses to touch anything it did not.
 type Writer struct {
-	cfg  *config.Config
-	root string
-	own  map[string]bool // paths this run may overwrite, from the previous run
-	made []string        // paths written by this run
-	prot []string        // paths a protect: glob kept this run from writing
-	same int             // paths already holding what this run would write
+	cfg   *config.Config
+	root  string
+	own   map[string]bool // paths this run may overwrite, from the previous run
+	made  []string        // paths written by this run
+	prot  []string        // paths a protect: glob kept this run from writing
+	wrote []string        // paths whose bytes this run actually changed
 }
 
 // NewWriter loads the previous run's manifest, if any. A missing or unreadable
@@ -99,7 +99,6 @@ func (w *Writer) Write(relPath string, body []byte) error {
 		// what stops the next run's Prune from deleting it, and a file skipped
 		// here is still a file this run owns.
 		w.made = append(w.made, relPath)
-		w.same++
 		return nil
 	}
 
@@ -114,6 +113,7 @@ func (w *Writer) Write(relPath string, body []byte) error {
 		return fmt.Errorf("write %s: %w", relPath, err)
 	}
 	w.made = append(w.made, relPath)
+	w.wrote = append(w.wrote, relPath)
 	return nil
 }
 
@@ -176,11 +176,19 @@ func exists(p string) bool {
 // Written returns the paths this run produced.
 func (w *Writer) Written() []string { return w.made }
 
+// Changed lists the paths whose bytes this run actually altered.
+//
+// Written is what cairn owns; this is what moved. A deployment that syncs a
+// mirror does not need to re-upload a listing that is byte-identical to the one
+// already published, and until now nothing could tell it which those were — the
+// build knew and threw the answer away.
+func (w *Writer) Changed() []string { return w.wrote }
+
 // Unchanged counts the paths that already held what this run would have
 // written. The caller reports it: on a rebuild it is the difference between
 // "nothing needed doing" and "everything was rewritten identically", which is
 // the number an operator watching a mirror wants.
-func (w *Writer) Unchanged() int { return w.same }
+func (w *Writer) Unchanged() int { return len(w.made) - len(w.wrote) }
 
 // Protected lists the paths this run declined to write because a protect: glob
 // covered them. The caller reports the count: a skip is silent by design, and

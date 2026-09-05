@@ -36,6 +36,9 @@ type Result struct {
 	Protected int
 	// Unchanged counts outputs that already held what this run would write.
 	Unchanged int
+	// Changed lists the outputs whose bytes this run altered, for a deploy that
+	// only has to move what moved.
+	Changed []string
 }
 
 // runner carries the values every step of a build needs.
@@ -81,6 +84,7 @@ func Run(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Result,
 	r.result.Written = r.writer.Written()
 	r.result.Protected = len(r.writer.Protected())
 	r.result.Unchanged = r.writer.Unchanged()
+	r.result.Changed = r.writer.Changed()
 	return r.result, err
 }
 

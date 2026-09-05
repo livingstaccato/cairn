@@ -50,6 +50,14 @@ type cairnParam struct {
 	Generated  string   `yaml:"generated"`
 	Count      int      `yaml:"count"`
 	Recursive  bool     `yaml:"recursive,omitempty"`
+	// AtRoot suppresses the parent row, the same switch BarePage carries. The
+	// Hugo templates render the bare presenter themselves — emitHugo never calls
+	// BareHTML — so without this the two renderers disagree about the top of the
+	// tree, and the Hugo one offers a link above it.
+	//
+	// It travels as data because a template cannot work it out: under base_path
+	// every listing path carries the prefix, so the top of the tree is not "/".
+	AtRoot bool `yaml:"at_root,omitempty"`
 	// MaxRendered is the row cap the template applies. It travels in the
 	// frontmatter rather than being decided in the template so one config key
 	// governs both presenters and both modes.
@@ -74,6 +82,10 @@ type HugoPage struct {
 	// the format switcher can offer it. Without it the recursive listing is
 	// written and nothing ever links to it.
 	Recursive bool
+	// AtRoot is the top of the indexed tree, where a parent link would point at
+	// something cairn never wrote. The same switch BarePage carries, for the
+	// renderer that is not BareHTML.
+	AtRoot bool
 }
 
 // HugoContent renders one directory as a Hugo branch-bundle _index.md.
@@ -98,6 +110,7 @@ func HugoContent(p HugoPage) ([]byte, error) {
 			Count:       l.Count,
 			Recursive:   p.Recursive,
 			MaxRendered: p.MaxRendered,
+			AtRoot:      p.AtRoot,
 		},
 	}
 

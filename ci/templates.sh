@@ -108,5 +108,41 @@ for f in index.json index.csv index.txt SHA256SUMS; do
   [ -f "$pub/many/$f" ] || say "many/$f was not published"
 done
 
+# The parent row, in the renderer hugo mode actually uses. emitHugo never calls
+# BareHTML, so the Go template's AtRoot switch proves nothing about this partial:
+# the rule has to arrive as at_root frontmatter and the template has to read it.
+# It needs its own site because the fixture above renders a styled root, and the
+# top of the tree is the only place the row is wrong.
+b="$d/bare"
+mkdir -p "$b/tree/sub"
+printf 'top\n' > "$b/tree/top.txt"
+printf 'nested\n' > "$b/tree/sub/nested.txt"
+
+cat > "$b/cairn.yaml" <<YAML
+version: 1
+mode: hugo
+root: ./tree
+out: ./content
+defaults:
+  present: bare
+  outputs: [html, json]
+YAML
+
+sed "s|__REPO__|$repo|g" ci/bench-site.go.mod.in > "$b/go.mod"
+printf 'baseURL = "/"\ntitle = "bare"\n\n[module]\n  [[module.imports]]\n    path = "github.com/livingstaccato/cairn"\n  [[module.imports]]\n    path = "github.com/livingstaccato/cairn/themes/reference"\n' > "$b/hugo.toml"
+
+(cd "$b" && "$d/cairn" build --config cairn.yaml >/dev/null 2>&1)
+(cd "$b" && hugo --quiet >/dev/null 2>&1)
+
+# At the top of the tree the parent points at something cairn never indexed: it
+# leaves the mirror under base_path and walks out of the tree from file://.
+if grep -q 'href="\.\./"' "$b/public/index.html"; then
+  say "the top bare listing offers a link above the tree"
+fi
+# Everywhere else it is the only way back up.
+if ! grep -q 'href="\.\./"' "$b/public/sub/index.html"; then
+  say "a bare listing below the top has no way back up"
+fi
+
 [ "$fail" -eq 0 ] && echo "OK: templates render correctly"
 exit "$fail"

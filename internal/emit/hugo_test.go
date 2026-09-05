@@ -20,6 +20,7 @@ type parsedFM struct {
 		Present string `yaml:"present"`
 		Path    string `yaml:"path"`
 		Count   int    `yaml:"count"`
+		AtRoot  bool   `yaml:"at_root"`
 	} `yaml:"cairn"`
 }
 
@@ -169,5 +170,38 @@ func TestHugoContentCarriesRenderCap(t *testing.T) {
 	}
 	if strings.Contains(string(uncapped), "max_rendered") {
 		t.Errorf("an uncapped page must not declare a cap:\n%s", uncapped)
+	}
+}
+
+// The Hugo templates render the bare presenter themselves — emitHugo never calls
+// BareHTML — so the parent-row rule has to reach them as data. It could not:
+// AtRoot was a field on BarePage and nothing else, so the Go template suppressed
+// the row at the top of the tree and the Hugo partial had no way to know it
+// should.
+//
+// A template cannot derive this from the path either. Under base_path every
+// listing path carries the prefix, so "/" is not what the top of the tree looks
+// like.
+func TestHugoContentCarriesAtRoot(t *testing.T) {
+	b, err := HugoContent(HugoPage{Listing: sample(), AtRoot: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fm, _ := split(t, b)
+	if !fm.Cairn.AtRoot {
+		t.Errorf("at_root did not reach the frontmatter:\n%s", b)
+	}
+}
+
+// Below the top it must be absent or false, so the partial keeps the only way
+// back up.
+func TestHugoContentOmitsAtRootBelowTheTop(t *testing.T) {
+	b, err := HugoContent(HugoPage{Listing: sample()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fm, _ := split(t, b)
+	if fm.Cairn.AtRoot {
+		t.Errorf("at_root is set for a listing below the top:\n%s", b)
 	}
 }

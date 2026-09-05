@@ -61,7 +61,13 @@
       </tr>
     </thead>
     <tbody>
-      <tr><td><a href="../">../</a></td><td></td><td></td><td></td></tr>
+      {{- /* Not at the top of the tree: there the parent is something cairn
+             never indexed, so the link leaves the mirror under base_path and
+             walks out of the tree from file://. The Go template applies the
+             same rule; this partial is the renderer hugo mode uses, and the
+             switch reaches it as at_root because a template cannot derive it —
+             under base_path the top of the tree is not "/". */ -}}
+      {{ if not $c.at_root }}<tr><td><a href="../">../</a></td><td></td><td></td><td></td></tr>{{ end }}
       {{ range $shown }}
       <tr>
         <td><a href="{{ .path }}">{{ .name }}{{ if .is_dir }}/{{ end }}</a>{{ with .title }} — {{ . }}{{ end }}</td>

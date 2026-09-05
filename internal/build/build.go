@@ -221,19 +221,34 @@ func (r *runner) generatedNames() map[string]bool {
 // hashed warns and is left without a digest rather than failing the build: the
 // listing is still correct, it just cannot be verified.
 func (r *runner) hashEntries(absDir string, entries []model.Entry) {
+	// Collected first, then hashed together. One directory of a package pool is
+	// thousands of files, and digesting them one at a time leaves every core but
+	// one idle waiting on a read that has already returned.
+	jobs := make([]hash.Job, 0, len(entries))
+	at := make([]int, 0, len(entries))
 	for i := range entries {
 		if entries[i].IsDir {
 			continue
 		}
-		sum, err := r.cache.Sum(
-			filepath.Join(absDir, entries[i].Name),
-			entries[i].Size, entries[i].ModTime.Unix())
-		if err != nil {
+		jobs = append(jobs, hash.Job{
+			Path:    filepath.Join(absDir, entries[i].Name),
+			Size:    entries[i].Size,
+			ModTime: entries[i].ModTime.Unix(),
+		})
+		at = append(at, i)
+	}
+
+	for j, res := range r.cache.SumAll(jobs) {
+		i := at[j]
+		if res.Err != nil {
+			// A file that cannot be hashed is left without a digest rather than
+			// failing the build: the listing is still correct, it just cannot be
+			// verified.
 			r.log.Warn("could not hash file; omitted from SHA256SUMS",
-				"path", entries[i].Path, "err", err)
+				"path", entries[i].Path, "err", res.Err)
 			continue
 		}
-		entries[i].SHA256 = sum
+		entries[i].SHA256 = res.Sum
 	}
 }
 

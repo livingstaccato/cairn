@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 )
 
 // CacheFile is the conventional filename for a cache, written under the output
@@ -26,11 +27,20 @@ type record struct {
 }
 
 // Cache memoizes digests across runs.
+//
+// Every field after path is guarded by mu. SumAll hashes a batch on several
+// goroutines and a caller may run batches concurrently, so the map is shared
+// mutable state; the lock is never held across a read of a file, only across
+// the map operations at either end of a batch.
 type Cache struct {
 	path    string
+	mu      sync.Mutex
 	entries map[string]record
 	hits    int
 	dirty   bool
+	// workers overrides the computed bound in SumAll. Zero means "decide from
+	// the machine"; it exists so a test can pin the bound it is asserting.
+	workers int
 }
 
 // NewCache loads path if it is readable and parseable. A missing or corrupt
@@ -55,18 +65,52 @@ func NewCache(path string) *Cache {
 // Sum returns the hex digest of absPath, reusing the cached value when size and
 // mtime are both unchanged.
 func (c *Cache) Sum(absPath string, size, modUnix int64) (string, error) {
-	if r, ok := c.entries[absPath]; ok && r.Size == size && r.ModUnix == modUnix {
-		c.hits++
-		return r.Sum, nil
+	if sum, ok := c.cached(absPath, size, modUnix); ok {
+		return sum, nil
 	}
-	sum, err := digest(absPath)
+	// Deliberately not under the lock: the read is the slow part, and holding
+	// the lock across it would serialize concurrent callers on the one thing
+	// that is worth doing at the same time.
+	sum, err := digestFile(absPath)
 	if err != nil {
 		return "", err
 	}
-	c.entries[absPath] = record{Size: size, ModUnix: modUnix, Sum: sum}
-	c.dirty = true
+	c.store(absPath, size, modUnix, sum)
 	return sum, nil
 }
+
+// matches reports whether this record still describes a file of that size and
+// mtime — the whole of the cache's validity rule, in one place, because Sum and
+// SumAll must not drift on what counts as a hit.
+func (r record) matches(size, modUnix int64) bool {
+	return r.Size == size && r.ModUnix == modUnix
+}
+
+// cached returns the recorded digest for absPath if it is still valid, counting
+// the hit.
+func (c *Cache) cached(absPath string, size, modUnix int64) (string, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	r, ok := c.entries[absPath]
+	if !ok || !r.matches(size, modUnix) {
+		return "", false
+	}
+	c.hits++
+	return r.Sum, true
+}
+
+// store records a freshly computed digest.
+func (c *Cache) store(absPath string, size, modUnix int64, sum string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.entries[absPath] = record{Size: size, ModUnix: modUnix, Sum: sum}
+	c.dirty = true
+}
+
+// digestFile is the file-reading step, indirected so a test can watch how many
+// run at once. The descriptor bound is a promise about behaviour, and a promise
+// no test can observe is not one.
+var digestFile = digest
 
 // digest streams a file through SHA-256. Streaming rather than reading whole:
 // the files this exists for are disk images.
@@ -92,10 +136,20 @@ func digest(absPath string) (string, error) {
 }
 
 // Hits reports cache hits since load.
-func (c *Cache) Hits() int { return c.hits }
+func (c *Cache) Hits() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.hits
+}
 
 // Save writes the cache back, if anything changed.
+//
+// The lock is held across the write: what lands on disk has to be one moment's
+// snapshot of the map, and Save runs once at the end of a build rather than on
+// the hot path, so the cost of holding it is a run's worth of nothing.
 func (c *Cache) Save() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if !c.dirty {
 		return nil
 	}

@@ -98,16 +98,37 @@ func runInit(configPath string, stderr io.Writer) error {
 		return fmt.Errorf("create %s: %w", configPath, err)
 	}
 
+	// Captured before the write, while f is still the descriptor O_EXCL handed
+	// back: an identity to clean up against rather than a path to trust.
+	fi, statErr := f.Stat()
+
 	if err := writeStarter(f); err != nil {
-		// Take the file this run made back out of the way. Left behind, it is an
-		// empty config that the next init refuses and that a build reads as an
-		// operator's own.
-		_ = os.Remove(configPath)
+		// Take the file this run made back out of the way — but only if
+		// configPath still names it. O_EXCL made the create exclusive; it says
+		// nothing about the moment writeStarter fails, when an editor racing to
+		// save the same path could already have replaced it. Removing by path
+		// alone there would delete somebody else's config, which is the loss
+		// this whole change exists to prevent.
+		if statErr == nil {
+			removeIfSameFile(configPath, fi)
+		}
 		return fmt.Errorf("write %s: %w", configPath, err)
 	}
 	_, _ = fmt.Fprintf(stderr, "wrote %s\n", configPath)
 	_, _ = fmt.Fprintf(stderr, "put files under ./tree, then: cairn build && cairn serve\n")
 	return nil
+}
+
+// removeIfSameFile deletes path only when it still names the file fi describes.
+//
+// Lstat rather than Stat: a symlink placed at path in the meantime is not the
+// file this run created either, whatever it points at.
+func removeIfSameFile(path string, fi os.FileInfo) {
+	current, err := os.Lstat(path)
+	if err != nil || !os.SameFile(fi, current) {
+		return
+	}
+	_ = os.Remove(path)
 }
 
 // writeStarter fills the created file and closes it, reporting whichever of the

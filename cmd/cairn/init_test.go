@@ -161,3 +161,77 @@ func TestInitLeavesNothingBehindWhenTheWriteFails(t *testing.T) {
 		t.Error("the directory that was in the way did not survive")
 	}
 }
+
+// removeIfSameFile is the safety check standing between a failed write and the
+// config-loss O_EXCL was written to prevent: O_EXCL only makes the create
+// exclusive, and says nothing about the moment writeStarter fails, when an
+// editor racing to save the same path could already have replaced it.
+func TestRemoveIfSameFileRemovesItsOwnFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "cairn.yaml")
+	if err := os.WriteFile(path, []byte("mine\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fi, err := os.Lstat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	removeIfSameFile(path, fi)
+
+	if _, err := os.Lstat(path); !os.IsNotExist(err) {
+		t.Errorf("the file it created was not removed: %v", err)
+	}
+}
+
+// The race this exists for: something else has already put a different file at
+// the same path by the time cleanup runs. Removing by path alone would delete
+// that file instead of the one this run made.
+func TestRemoveIfSameFileSkipsAPathSomethingElseReplaced(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "cairn.yaml")
+	if err := os.WriteFile(path, []byte("ours, about to fail\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fi, err := os.Lstat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The race: an editor's save replaces the path with a different inode
+	// before this run's cleanup gets to it.
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	theirs := []byte("root: ./mine\nout: ./mine-out\n")
+	if err := os.WriteFile(path, theirs, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	removeIfSameFile(path, fi)
+
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("the replacement was removed: %v", err)
+	}
+	if string(got) != string(theirs) {
+		t.Errorf("the replacement was altered: %q", got)
+	}
+}
+
+// Nothing to clean up if the path is simply gone already: removeIfSameFile must
+// not error, since a caller on the failure path has nothing better to report
+// than the write error it already has.
+func TestRemoveIfSameFileToleratesAnAlreadyGonePath(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "cairn.yaml")
+	if err := os.WriteFile(path, []byte("x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fi, err := os.Lstat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+
+	removeIfSameFile(path, fi) // must not panic
+}

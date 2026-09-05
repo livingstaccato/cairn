@@ -78,24 +78,49 @@ func RemoveOrphaned(outDir string, rep *Report) (*Removal, error) {
 	}
 
 	for _, rel := range rep.Orphaned {
-		abs, err := containedIn(outAbs, rel)
+		deleted, err := removeOneOrphan(outAbs, rel)
 		if err != nil {
 			return res, err
 		}
-		// The name got it reported; only the content gets it deleted.
-		if !provenOurs(abs) {
+		if deleted {
+			res.Removed = append(res.Removed, rel)
+		} else {
 			res.Kept = append(res.Kept, rel)
-			continue
 		}
-		if err := os.Remove(abs); err != nil && !os.IsNotExist(err) {
-			return res, fmt.Errorf("remove %s: %w", rel, err)
-		}
-		res.Removed = append(res.Removed, rel)
 	}
 	sort.Strings(res.Removed)
 	sort.Strings(res.Kept)
 	res.RemovedDirs = removeEmptyDirs(outAbs, res.Removed)
 	return res, nil
+}
+
+// removeOneOrphan decides one path's fate and, if its content proves it,
+// deletes it.
+//
+// verifiedAncestors is called twice rather than once and trusted for both
+// steps: an ancestor a concurrent writer swapped for a symlink between the
+// provenance read and the unlink is exactly the gap a single check up front
+// would leave open, and each of those two filesystem operations is a place a
+// swap could have landed by the time it runs.
+func removeOneOrphan(outAbs, rel string) (deleted bool, err error) {
+	abs, err := containedIn(outAbs, rel)
+	if err != nil {
+		return false, err
+	}
+	if err := verifiedAncestors(outAbs, rel); err != nil {
+		return false, err
+	}
+	// The name got it reported; only the content gets it deleted.
+	if !provenOurs(abs) {
+		return false, nil
+	}
+	if err := verifiedAncestors(outAbs, rel); err != nil {
+		return false, err
+	}
+	if err := os.Remove(abs); err != nil && !os.IsNotExist(err) {
+		return false, fmt.Errorf("remove %s: %w", rel, err)
+	}
+	return true, nil
 }
 
 // removeEmptyDirs clears the directories the removals left holding nothing, and
@@ -139,6 +164,12 @@ func removeEmptyDirs(outAbs string, removed []string) []string {
 	for _, d := range dirs {
 		abs, err := containedIn(outAbs, d)
 		if err != nil {
+			continue
+		}
+		// Best effort, like the rest of this function: a directory a concurrent
+		// writer is standing in front of is a directory this sweep leaves alone,
+		// the same as one os.Remove refuses because it still holds something.
+		if err := verifiedAncestors(outAbs, d); err != nil {
 			continue
 		}
 		if os.Remove(abs) == nil {

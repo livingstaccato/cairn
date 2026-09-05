@@ -274,3 +274,61 @@ func TestRemoveOrphanedNeverSweepsTheOutputRoot(t *testing.T) {
 		t.Fatal("the output root itself was removed")
 	}
 }
+
+// The race containedIn's own doc leaves to callers: rootAbs is resolved once
+// for the whole removal, but nothing re-checks an intermediate directory
+// between then and the moment a file under it is read or deleted. Swap that
+// directory for a symlink pointing outside outAbs in between, and a lexically
+// contained path stops describing what it names.
+//
+// This is not a live race — Go's stdlib has no portable, no-follow,
+// descriptor-relative open, so a real concurrent swap cannot be closed outright
+// on every platform this builds for. What can be tested is the state the race
+// produces: an ancestor that has become a symlink by the time the file under it
+// is acted on.
+func TestRemoveOrphanedRefusesWhenAnAncestorBecameASymlink(t *testing.T) {
+	f := mirror(t)
+	l := sampleListing()
+	f.outFile("a/b/index.csv", string(mustBytes(emit.CSV(l))))
+	f.outFile("keep/index.json", "{}")
+	f.manifest("keep/index.json")
+
+	rep := f.run()
+	if !slices.Contains(rep.Orphaned, "a/b/index.csv") {
+		t.Fatalf("Orphaned = %v, want a/b/index.csv: the premise of this test", rep.Orphaned)
+	}
+
+	// The swap: "a" becomes a symlink to a directory that mirrors the relative
+	// shape the orphan path expects — b/index.csv — so the resolved path
+	// through the symlink names a real, deletable file, and cairn's own bytes
+	// at it so provenOurs would accept it if the swap is not caught first.
+	outside := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(outside, "b"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	victim := filepath.Join(outside, "b", "index.csv")
+	if err := os.WriteFile(victim, []byte(header(t)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(filepath.Join(f.out, "a")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(f.out, "a")); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := RemoveOrphaned(f.out, rep)
+	if err == nil && slices.Contains(res.Removed, "a/b/index.csv") {
+		t.Error("reported a/b/index.csv removed while acting through a swapped ancestor")
+	}
+	if _, statErr := os.Lstat(victim); statErr != nil {
+		t.Error("a file outside the output root was removed through a swapped ancestor")
+	}
+}
+
+// header is cairn's real CSV header, for a body a foreign path can carry to
+// look like cairn's own output without going through the emitter.
+func header(t *testing.T) string {
+	t.Helper()
+	return string(mustBytes(emit.CSV(sampleListing())))
+}

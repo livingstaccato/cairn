@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -109,6 +110,10 @@ func resolveRoot(root string) (string, error) {
 // unless containment is checked afterwards. This mirrors emit's guard on the
 // write side; the read side needs it just as much, because every path it is
 // given comes from a file on disk that cairn did not necessarily write.
+//
+// A lexical check only, and load-bearing only against the path string, not
+// against the filesystem at the moment something acts on it — see
+// verifiedAncestors for that half.
 func containedIn(rootAbs, rel string) (string, error) {
 	abs := filepath.Join(rootAbs, filepath.FromSlash(rel))
 	back, err := filepath.Rel(rootAbs, abs)
@@ -119,4 +124,45 @@ func containedIn(rootAbs, rel string) (string, error) {
 		return "", fmt.Errorf("%s resolves outside %s", rel, rootAbs)
 	}
 	return abs, nil
+}
+
+// verifiedAncestors refuses rel if any directory between rootAbs and its
+// basename is a symlink.
+//
+// rootAbs is resolved once for a whole removal, and containedIn's check is
+// lexical — a string comparison, not a question put to the filesystem. Between
+// that resolution and the moment a given file is read or deleted, a concurrent
+// writer with access to outAbs could replace an intermediate directory with a
+// symlink, and a path-based read or unlink follows it: the file that gets acted
+// on is whatever the swapped link now names, wherever that is.
+//
+// Call this immediately before the operation it protects, not once per removal.
+// The same swap-then-restore is possible between a provenance read and the
+// unlink that follows it, so checking early leaves that gap exactly as open as
+// checking never.
+//
+// This narrows the race to the syscall gap between Lstat and the operation
+// after it; it does not close it. A portable, no-follow, descriptor-relative
+// open (openat2 with RESOLVE_NO_SYMLINKS, or equivalent) would, but that is a
+// Linux-only syscall and this builds for macOS and Windows too. The basename
+// itself is not checked here: os.Remove does not follow a symlink standing at
+// the final component, and a symlink there is a question checkOrphan already
+// considered, not one this function needs to answer again.
+func verifiedAncestors(rootAbs, rel string) error {
+	dir := path.Dir(rel)
+	if dir == "." {
+		return nil
+	}
+	cur := rootAbs
+	for _, part := range strings.Split(dir, "/") {
+		cur = filepath.Join(cur, filepath.FromSlash(part))
+		fi, err := os.Lstat(cur)
+		if err != nil {
+			return fmt.Errorf("stat %s: %w", cur, err)
+		}
+		if fi.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("%s is a symlink; refusing to act through it", cur)
+		}
+	}
+	return nil
 }

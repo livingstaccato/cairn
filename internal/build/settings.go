@@ -39,7 +39,25 @@ func SettingsFor(cfg *config.Config, rootDir, relDir string, log *slog.Logger) c
 // output one level deeper — site/, then site/site/ — and never reached a fixed
 // point.
 func OutRel(rootDir, outDir string) string {
-	rel, err := filepath.Rel(rootDir, outDir)
+	// Absolute before comparing. resolveDir keeps a relative root: relative and
+	// honours an absolute out: as written, so the pair reaching this function is
+	// routinely one of each — and filepath.Rel refuses that pair with an error
+	// that reads exactly like "the output is not inside the tree". That is the
+	// regression described above, arriving through the configuration rather than
+	// through a caller that forgot the rule.
+	//
+	// Abs and not EvalSymlinks: out: names a directory this build is about to
+	// create, so resolving symlinks would fail on the first run of a tree that
+	// does not exist yet and hand back the same wrong "" it is here to prevent.
+	rootAbs, err := filepath.Abs(rootDir)
+	if err != nil {
+		return ""
+	}
+	outAbs, err := filepath.Abs(outDir)
+	if err != nil {
+		return ""
+	}
+	rel, err := filepath.Rel(rootAbs, outAbs)
 	if err != nil {
 		return ""
 	}

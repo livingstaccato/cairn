@@ -37,6 +37,9 @@ type Result struct {
 	// Changed lists the outputs whose bytes this run altered, for a deploy that
 	// only has to move what moved.
 	Changed []string
+	// Adopted lists the output paths this run claimed that no previous run had
+	// recorded — the conflict check waived, once, on request.
+	Adopted []string
 	// Forgot counts the hash-cache records this run dropped: digests for files
 	// that were under the region it rebuilt and are no longer in the tree. A dry
 	// run reports what it would have dropped.
@@ -65,7 +68,7 @@ type runner struct {
 // interesting ones are the early ones, and a caller should not have to wait for
 // the walk to finish to see them.
 func Run(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Result, error) {
-	return runBuild(cfg, rootDir, outDir, log, false)
+	return RunWith(cfg, rootDir, outDir, log, Options{})
 }
 
 // RunDry reports what Run would do and changes nothing.
@@ -77,23 +80,42 @@ func Run(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Result,
 // misconfigured out: or a manifest from a different config makes it delete a
 // lot of them. Until now the only way to find out was to let it happen.
 func RunDry(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Result, error) {
-	return runBuild(cfg, rootDir, outDir, log, true)
+	return RunWith(cfg, rootDir, outDir, log, Options{Dry: true})
 }
 
-func runBuild(cfg *config.Config, rootDir, outDir string, log *slog.Logger, dry bool) (*Result, error) {
-	writer := emit.NewWriter
-	if dry {
-		writer = emit.NewDryWriter
-	}
+// Options are the departures from a default build that a command line may ask
+// for. The zero value is an ordinary build.
+type Options struct {
+	// Dry reports what a build would do and changes nothing under out:.
+	Dry bool
+	// Adopt claims output paths that already exist and cairn does not own,
+	// instead of refusing them.
+	//
+	// This is the way back from a lost or unreadable .cairn-manifest.json. In
+	// that state every file cairn wrote is a file it no longer claims, and
+	// on_conflict: error refuses all of them; the only escapes were deleting the
+	// output — impossible where root: and out: are the same directory, since
+	// that deletes the artifacts — or on_conflict: skip, which then writes
+	// nothing and prunes nothing and freezes the mirror for good.
+	//
+	// What it claims is exactly the set of paths this build produces that
+	// already exist. It never walks out: looking for files that seem generated,
+	// so it cannot take one this build does not itself write, and protect: and
+	// path containment are checked ahead of it and are not affected.
+	Adopt bool
+}
+
+// RunWith is Run with the one-run departures a command line asked for.
+func RunWith(cfg *config.Config, rootDir, outDir string, log *slog.Logger, opts Options) (*Result, error) {
 	r := &runner{
 		cfg:    cfg,
 		root:   rootDir,
 		out:    outDir,
 		log:    log,
 		cache:  hash.NewCache(filepath.Join(outDir, hash.CacheFile)),
-		writer: writer(cfg, outDir),
+		writer: emit.NewWriterWith(cfg, outDir, emit.Options{Dry: opts.Dry, Adopt: opts.Adopt}),
 		result: &Result{},
-		dry:    dry,
+		dry:    opts.Dry,
 	}
 	r.warnAboutTheManifest()
 
@@ -112,6 +134,7 @@ func runBuild(cfg *config.Config, rootDir, outDir string, log *slog.Logger, dry 
 	r.result.Protected = len(r.writer.Protected())
 	r.result.Unchanged = r.writer.Unchanged()
 	r.result.Changed = r.writer.Changed()
+	r.result.Adopted = r.writer.Adopted()
 	return r.result, err
 }
 

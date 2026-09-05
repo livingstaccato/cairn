@@ -107,15 +107,42 @@ type Writer struct {
 	prot  []string          // paths a protect: glob kept this run from writing
 	wrote []string          // paths whose bytes this run actually changed
 	sums  map[string]string // what this run put at each path
+	took  []string          // paths this run claimed that it did not previously own
 	dry   bool              // report what a build would do, change nothing
+	adopt bool              // claim an existing path cairn does not own
 	mErr  error             // why the previous manifest was not usable, if it was not
+}
+
+// Options are the departures from default behaviour a single run may ask for.
+//
+// Neither is expressible in cairn.yaml, on purpose. A config that permanently
+// suppressed the conflict check would turn off the property that stops cairn
+// overwriting somebody else's files — silently, on every run after the one that
+// needed it. These are asked for on the command line, for one run, by somebody
+// who is watching.
+type Options struct {
+	// Dry answers every question a build asks and changes nothing under the
+	// output root.
+	Dry bool
+	// Adopt claims an output path that already exists and cairn does not own,
+	// instead of refusing it.
+	Adopt bool
 }
 
 // NewWriter loads the previous run's manifest, if any. A missing or unreadable
 // manifest yields an empty one: the cost is a conflict error the operator can
 // resolve, never a silent overwrite.
 func NewWriter(cfg *config.Config, outRoot string) *Writer {
-	w := &Writer{cfg: cfg, root: outRoot, own: map[string]string{}, sums: map[string]string{}}
+	return NewWriterWith(cfg, outRoot, Options{})
+}
+
+// NewWriterWith is NewWriter with the one-run departures a command line asked
+// for.
+func NewWriterWith(cfg *config.Config, outRoot string, opts Options) *Writer {
+	w := &Writer{
+		cfg: cfg, root: outRoot, own: map[string]string{}, sums: map[string]string{},
+		dry: opts.Dry, adopt: opts.Adopt,
+	}
 	// #nosec G304 -- composed from the configured output directory and a fixed
 	// filename.
 	b, err := os.ReadFile(filepath.Join(outRoot, ManifestFile))
@@ -151,9 +178,7 @@ func (w *Writer) ManifestError() error { return w.mErr }
 // body against what is on disk — so Written, Changed and the pruned list say
 // exactly what a real run would have done, rather than approximating it.
 func NewDryWriter(cfg *config.Config, outRoot string) *Writer {
-	w := NewWriter(cfg, outRoot)
-	w.dry = true
-	return w
+	return NewWriterWith(cfg, outRoot, Options{Dry: true})
 }
 
 // Write places body at root/relPath, creating parents.
@@ -230,6 +255,13 @@ func (w *Writer) checkConflict(relPath, abs string) error {
 	if _, ours := w.own[relPath]; ours {
 		return nil // cairn wrote it last run; overwriting is the whole point
 	}
+	if w.adopt {
+		// Ahead of the skip policy on purpose: under skip the path would be
+		// left alone and stay unowned, so the next run would skip it again and
+		// Prune could never reach it. Asking to adopt is asking to take it.
+		w.took = append(w.took, relPath)
+		return nil
+	}
 	if w.cfg.OnConflict == config.ConflictSkip {
 		return nil
 	}
@@ -240,6 +272,9 @@ func (w *Writer) checkConflict(relPath, abs string) error {
 
 // skipped reports whether an existing, unowned path should be left alone.
 func (w *Writer) skipped(relPath, abs string) bool {
+	if w.adopt {
+		return false
+	}
 	_, ours := w.own[relPath]
 	return exists(abs) && !ours && w.cfg.OnConflict == config.ConflictSkip
 }
@@ -268,6 +303,15 @@ func (w *Writer) Changed() []string { return w.wrote }
 // "nothing needed doing" and "everything was rewritten identically", which is
 // the number an operator watching a mirror wants.
 func (w *Writer) Unchanged() int { return len(w.made) - len(w.wrote) }
+
+// Adopted lists the paths this run claimed that no previous run had recorded.
+//
+// The set is exactly the paths this build produces that already existed, which
+// is what makes --adopt safe to reason about: it never walks the output root
+// guessing which files look generated, and it can claim nothing the build does
+// not itself write. The caller reports it, because waiving the conflict check
+// is the one thing an operator must not discover afterwards.
+func (w *Writer) Adopted() []string { return w.took }
 
 // Protected lists the paths this run declined to write because a protect: glob
 // covered them. The caller reports the count: a skip is silent by design, and

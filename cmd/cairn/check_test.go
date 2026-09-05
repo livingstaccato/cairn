@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/livingstaccato/cairn/internal/build"
 )
 
 // checkFixture is a tree that carries checksums, so a check has something to
@@ -38,7 +40,7 @@ func checkFixture(t *testing.T) (configPath, root, out string) {
 func TestCheckPassesOnAnIntactTree(t *testing.T) {
 	configPath, _, _ := checkFixture(t)
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", false, &stderr); err != nil {
+	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 	if err := runCheck(context.Background(), configPath, &stderr); err != nil {
@@ -51,7 +53,7 @@ func TestCheckPassesOnAnIntactTree(t *testing.T) {
 func TestCheckFindsATamperedArtifact(t *testing.T) {
 	configPath, root, _ := checkFixture(t)
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", false, &stderr); err != nil {
+	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
 		t.Fatal(err)
 	}
 
@@ -75,7 +77,7 @@ func TestCheckFindsATamperedArtifact(t *testing.T) {
 func TestCheckFindsOutputCairnDoesNotOwn(t *testing.T) {
 	configPath, _, out := checkFixture(t)
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", false, &stderr); err != nil {
+	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
 		t.Fatal(err)
 	}
 

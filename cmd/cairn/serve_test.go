@@ -12,6 +12,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/livingstaccato/cairn/internal/build"
 )
 
 // serve shows what is on disk. It builds nothing first: a command that built
@@ -20,7 +22,7 @@ import (
 func TestServeServesTheOutputDirectory(t *testing.T) {
 	configPath, _ := fixture(t)
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", false, &stderr); err != nil {
+	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 

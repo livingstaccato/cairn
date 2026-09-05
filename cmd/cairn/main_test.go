@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/livingstaccato/cairn/internal/build"
 )
 
 func fixture(t *testing.T) (configPath, out string) {
@@ -33,7 +35,7 @@ func TestRunBuildEndToEnd(t *testing.T) {
 	configPath, out := fixture(t)
 
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", false, &stderr); err != nil {
+	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 	if _, err := os.Stat(filepath.Join(out, "bootstrap", "index.json")); err != nil {
@@ -46,7 +48,7 @@ func TestRunBuildEndToEnd(t *testing.T) {
 
 func TestRunBuildMissingConfigFails(t *testing.T) {
 	var stderr strings.Builder
-	if err := runBuild(filepath.Join(t.TempDir(), "nope.yaml"), "", false, &stderr); err == nil {
+	if err := runBuild(filepath.Join(t.TempDir(), "nope.yaml"), "", build.Options{}, &stderr); err == nil {
 		t.Fatal("missing config must be an error")
 	}
 	if stderr.Len() == 0 {
@@ -62,7 +64,7 @@ func TestRunBuildFailedBuildFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", false, &stderr); err == nil {
+	if err := runBuild(configPath, "", build.Options{}, &stderr); err == nil {
 		t.Fatal("a failing build must be an error")
 	}
 }
@@ -129,7 +131,7 @@ func TestChangedToListsOnlyWhatMoved(t *testing.T) {
 	list := filepath.Join(t.TempDir(), "changed.txt")
 
 	var stderr strings.Builder
-	if err := runBuild(configPath, list, false, &stderr); err != nil {
+	if err := runBuild(configPath, list, build.Options{}, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 	first := lines(t, list)
@@ -138,7 +140,7 @@ func TestChangedToListsOnlyWhatMoved(t *testing.T) {
 	}
 
 	// A second build over an untouched tree changes nothing.
-	if err := runBuild(configPath, list, false, &stderr); err != nil {
+	if err := runBuild(configPath, list, build.Options{}, &stderr); err != nil {
 		t.Fatal(err)
 	}
 	if got := lines(t, list); len(got) != 0 {
@@ -153,7 +155,7 @@ func TestChangedToWritesAnEmptyFileWhenNothingMoved(t *testing.T) {
 	list := filepath.Join(t.TempDir(), "changed.txt")
 	var stderr strings.Builder
 	for range 2 {
-		if err := runBuild(configPath, list, false, &stderr); err != nil {
+		if err := runBuild(configPath, list, build.Options{}, &stderr); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -172,7 +174,7 @@ func TestBuildRejectsAnUnwritableChangedList(t *testing.T) {
 	// reading a stale list would publish the wrong delta, so this fails loudly.
 	dir := t.TempDir()
 	var stderr strings.Builder
-	if err := runBuild(configPath, dir, false, &stderr); err == nil {
+	if err := runBuild(configPath, dir, build.Options{}, &stderr); err == nil {
 		t.Fatal("an unwritable changed-file list must be an error")
 	}
 }
@@ -226,7 +228,7 @@ func TestAbsolutePathsAreNotJoinedToTheConfigDirectory(t *testing.T) {
 	}
 
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", false, &stderr); err != nil {
+	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 	if _, err := os.Stat(filepath.Join(out, "bootstrap", "index.json")); err != nil {

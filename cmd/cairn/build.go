@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -22,7 +23,7 @@ const DefaultConfigFile = "cairn.yaml"
 func newBuildCmd() *cobra.Command {
 	var configPath string
 	var changedTo string
-	var dryRun bool
+	var opts build.Options
 
 	cmd := &cobra.Command{
 		Use:   cmdBuild,
@@ -31,7 +32,7 @@ func newBuildCmd() *cobra.Command {
 			"directory the config covers.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runBuild(configPath, changedTo, dryRun, cmd.ErrOrStderr())
+			return runBuild(configPath, changedTo, opts, cmd.ErrOrStderr())
 		},
 	}
 	// pflag reads a single dash as shorthand, so the stdlib flag package's
@@ -39,9 +40,12 @@ func newBuildCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&configPath, "config", "c", DefaultConfigFile, "path to the root cairn.yaml")
 	cmd.Flags().StringVar(&changedTo, "changed-to", "",
 		"write the outputs this build altered to this file, one per line")
-	cmd.Flags().BoolVar(&dryRun, "dry-run", false,
+	cmd.Flags().BoolVar(&opts.Dry, "dry-run", false,
 		"report what a build would write and remove, and change nothing under out: "+
 			"(--changed-to still writes the file it names)")
+	cmd.Flags().BoolVar(&opts.Adopt, "adopt", false,
+		"claim output paths that already exist and cairn does not own, instead of "+
+			"refusing them; the way back from a lost .cairn-manifest.json")
 	return cmd
 }
 
@@ -50,7 +54,7 @@ func newBuildCmd() *cobra.Command {
 // Diagnostics go to the supplied writer, which is stderr in production: stdout
 // stays clean so a caller can pipe generated output without filtering log lines
 // out of it.
-func runBuild(configPath, changedTo string, dryRun bool, stderr io.Writer) error {
+func runBuild(configPath, changedTo string, opts build.Options, stderr io.Writer) error {
 	ctx := context.Background()
 
 	log, shutdown, err := obs.Setup(ctx, "cairn", stderr)
@@ -69,11 +73,7 @@ func runBuild(configPath, changedTo string, dryRun bool, stderr io.Writer) error
 		return err
 	}
 
-	run := build.Run
-	if dryRun {
-		run = build.RunDry
-	}
-	res, err := run(cfg, rootDir, outDir, log)
+	res, err := build.RunWith(cfg, rootDir, outDir, log, opts)
 	if err != nil {
 		log.Error("build failed", "err", err)
 		return err
@@ -86,16 +86,39 @@ func runBuild(configPath, changedTo string, dryRun bool, stderr io.Writer) error
 
 	// protected is reported even at zero: an operator whose glob is wider than
 	// they meant otherwise sees a directory with no listing and no reason why.
+	reportAdopted(log, res.Adopted, opts.Dry)
+
 	msg := "build complete"
-	if dryRun {
+	if opts.Dry {
 		msg = "dry run complete; nothing was written"
 	}
 	log.Info(msg,
 		"directories", res.Dirs, "files", res.Files, "outputs", len(res.Written),
 		"unchanged", res.Unchanged, "changed", len(res.Changed),
 		"pruned", len(res.Pruned), "protected", res.Protected,
-		"forgot", res.Forgot)
+		"adopted", len(res.Adopted), "forgot", res.Forgot)
 	return nil
+}
+
+// examples caps a sample of paths for a log line. A recovery run on a real
+// mirror adopts hundreds of thousands of paths, and a line each would bury the
+// count that is the actual finding.
+const examples = 3
+
+// reportAdopted says what the conflict check let through, at warning level.
+//
+// It was asked for, so it is not a fault — but it is the one safety property
+// cairn has against overwriting somebody else's files, and waiving it must not
+// be something an operator discovers afterwards from a diff.
+func reportAdopted(log *slog.Logger, adopted []string, dry bool) {
+	if len(adopted) == 0 {
+		return
+	}
+	msg := "claimed output cairn had no record of writing"
+	if dry {
+		msg = "would claim output cairn has no record of writing"
+	}
+	log.Warn(msg, "count", len(adopted), "example", adopted[:min(examples, len(adopted))])
 }
 
 // writeChanged records the outputs this build altered, one per line.

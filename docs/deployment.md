@@ -281,11 +281,11 @@ it did not create. Two consequences worth knowing:
 - **Losing the manifest stops the build.** An `rsync --delete` or a `git clean`
   over the output directory is enough, as is a manifest written by a cairn old
   enough to have recorded output in a shape this one does not read. cairn will
-  not overwrite files it can no longer prove it wrote; run once with
-  `on_conflict: skip`, or clear the output directory, to recover. The run says
-  `the manifest could not be read` before anything else — without that line the
-  conflicts that follow name a path and say it already exists, which is true and
-  points at the wrong thing entirely.
+  not overwrite files it can no longer prove it wrote. Recover with
+  `cairn build --adopt`, below. The run says `the manifest could not be read`
+  before anything else — without that line the conflicts that follow name a path
+  and say it already exists, which is true and points at the wrong thing
+  entirely.
 - **Two configs must not share one output root.** Each would prune the other's
   files, and there is no way to tell that apart from a directory that was
   legitimately removed.
@@ -312,6 +312,35 @@ the run actually rebuilt is swept: a full build sweeps from `root:`, and a
 mirror survive a change instead of being re-computed on the next full build. A
 build that failed sweeps nothing, because it never reached the rest of its
 scope.
+
+### Getting a wedged tree back
+
+```sh
+cairn build --dry-run --adopt   # read what it would take
+cairn build --adopt             # take it
+```
+
+`--adopt` claims output paths that already exist and cairn does not own, instead
+of refusing them. It exists for one state: the manifest is gone or unreadable,
+so every file cairn wrote is a file it no longer claims, and `on_conflict: error`
+refuses all of them.
+
+There was no way out of that before. Deleting the output is not one where `root:`
+and `out:` are the same directory, because that deletes the artifacts. Neither is
+`on_conflict: skip` — it leaves each conflicting path alone, so nothing is
+written and nothing is ever claimed, and the mirror is frozen at whatever it held
+when the manifest was lost.
+
+What it claims is exactly the set of paths this build produces that already
+exist. It never walks `out:` looking for files that seem generated, so it cannot
+take one this build does not itself write, and `protect:` and path containment
+are checked ahead of it and are not affected. Every claim is reported at warning
+level with a count, because waiving the conflict check is not something to
+discover afterwards.
+
+One thing it does not do: output from an earlier config that this build no longer
+generates stays unclaimed, and is therefore never pruned. `cairn check` reports
+those as output cairn does not own; removing them stays your decision.
 
 ### Seeing what a run would do first
 

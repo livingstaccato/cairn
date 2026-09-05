@@ -71,6 +71,7 @@ func RunScoped(cfg *config.Config, rootDir, outDir string, log *slog.Logger, sco
 	r.result.Protected = len(r.writer.Protected())
 	r.result.Unchanged = r.writer.Unchanged()
 	r.result.Changed = r.writer.Changed()
+	r.result.Adopted = r.writer.Adopted()
 	return r.result, err
 }
 

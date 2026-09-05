@@ -208,6 +208,26 @@ mistyped `out:` or a manifest left by a different config makes it delete a lot.
 `--changed-to` still writes the file it names, so a deployment's transfer list
 can be read before anything moves.
 
+## Getting a wedged tree back
+
+If `.cairn-manifest.json` is lost — an `rsync --delete` over the output
+directory does it — every file cairn wrote becomes a file it no longer claims,
+and `on_conflict: error` refuses all of them. `--adopt` claims those paths
+instead of refusing them:
+
+```sh
+go run ./cmd/cairn build --dry-run --adopt --config testdata/example/cairn.yaml
+go run ./cmd/cairn build --adopt --config testdata/example/cairn.yaml
+```
+
+There was no way out of that state before. Deleting the output is not one when
+`root` and `out` are the same directory, and `on_conflict: skip` leaves each
+conflicting path alone, so nothing is written and nothing is claimed and the
+mirror stays frozen. What `--adopt` takes is exactly the paths this build
+produces that already exist — it never walks the output looking for files that
+seem generated — and every claim is reported, because waiving the conflict check
+should not be something you find out about later.
+
 ## Reading it back
 
 `cairn serve` puts the output directory behind a local HTTP server with the

@@ -43,6 +43,11 @@ type Report struct {
 	Altered  []string // cairn's own output, no longer holding what cairn wrote
 	Checked  int      // artifacts re-hashed against a SHA256SUMS
 	Compared int      // generated outputs re-hashed against the manifest
+	// Claims is how many paths the manifest recorded. Zero means cairn owns
+	// nothing — every generated-looking file is then reported as orphaned, which
+	// is a statement about the manifest rather than about the tree, and
+	// RemoveOrphaned refuses to act on it.
+	Claims int
 }
 
 // OK reports whether the mirror is intact.
@@ -160,6 +165,7 @@ func (v *verifier) report() *Report {
 		Altered:  sorted(v.altered),
 		Checked:  v.checked,
 		Compared: v.compared,
+		Claims:   len(v.claimed),
 	}
 }
 

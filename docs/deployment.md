@@ -371,8 +371,11 @@ level with a count, because waiving the conflict check is not something to
 discover afterwards.
 
 One thing it does not do: output from an earlier config that this build no longer
-generates stays unclaimed, and is therefore never pruned. `cairn check` reports
-those as output cairn does not own; removing them stays your decision.
+generates stays unclaimed, and is therefore never pruned — `Prune` only removes
+what the manifest records. `cairn check` reports those as output cairn does not
+own, and `cairn check --remove-orphaned` deletes them once you have read the
+list. That flag refuses while the manifest claims nothing, since everything
+generated looks unowned in that state; adopt first, then remove.
 
 ### Seeing what a run would do first
 

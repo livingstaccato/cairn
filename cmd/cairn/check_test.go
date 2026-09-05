@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/livingstaccato/cairn/internal/build"
+	"github.com/livingstaccato/cairn/internal/emit"
 )
 
 // checkFixture is a tree that carries checksums, so a check has something to
@@ -43,7 +44,7 @@ func TestCheckPassesOnAnIntactTree(t *testing.T) {
 	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
-	if err := runCheck(context.Background(), configPath, &stderr); err != nil {
+	if err := runCheck(context.Background(), configPath, false, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 }
@@ -63,7 +64,7 @@ func TestCheckFindsATamperedArtifact(t *testing.T) {
 	}
 
 	stderr.Reset()
-	err := runCheck(context.Background(), configPath, &stderr)
+	err := runCheck(context.Background(), configPath, false, &stderr)
 	if !errors.Is(err, ErrNotIntact) {
 		t.Fatalf("runCheck = %v, want ErrNotIntact", err)
 	}
@@ -88,7 +89,7 @@ func TestCheckFindsOutputCairnDoesNotOwn(t *testing.T) {
 	}
 
 	stderr.Reset()
-	if err := runCheck(context.Background(), configPath, &stderr); !errors.Is(err, ErrNotIntact) {
+	if err := runCheck(context.Background(), configPath, false, &stderr); !errors.Is(err, ErrNotIntact) {
 		t.Fatalf("runCheck = %v, want ErrNotIntact", err)
 	}
 	if !strings.Contains(stderr.String(), "index.csv") {
@@ -98,7 +99,7 @@ func TestCheckFindsOutputCairnDoesNotOwn(t *testing.T) {
 
 func TestCheckMissingConfigFails(t *testing.T) {
 	var stderr strings.Builder
-	err := runCheck(context.Background(), filepath.Join(t.TempDir(), "nope.yaml"), &stderr)
+	err := runCheck(context.Background(), filepath.Join(t.TempDir(), "nope.yaml"), false, &stderr)
 	if err == nil {
 		t.Fatal("missing config must be an error")
 	}
@@ -120,4 +121,61 @@ func TestRootCommandHasCheck(t *testing.T) {
 		}
 	}
 	t.Error("root command has no check subcommand")
+}
+
+// The end-to-end of the one thing check could report and never act on.
+func TestCheckRemovesOrphanedOutputWhenAsked(t *testing.T) {
+	configPath, out := fixture(t)
+	var stderr strings.Builder
+	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
+		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
+	}
+
+	// index.txt is a name cairn generates but this config does not ask for, so
+	// nothing claims it: the exact case Prune cannot reach.
+	stale := filepath.Join(out, "bootstrap", "index.txt")
+	if err := os.WriteFile(stale, []byte("name,size\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stderr.Reset()
+	if err := runCheck(context.Background(), configPath, false, &stderr); !errors.Is(err, ErrNotIntact) {
+		t.Fatalf("check should report the orphan and fail, got %v", err)
+	}
+	if _, err := os.Lstat(stale); err != nil {
+		t.Fatal("a plain check must not delete anything")
+	}
+
+	stderr.Reset()
+	if err := runCheck(context.Background(), configPath, true, &stderr); err != nil {
+		t.Fatalf("--remove-orphaned should clear the finding: %v\n%s", err, stderr.String())
+	}
+	if _, err := os.Lstat(stale); err == nil {
+		t.Error("the orphan was not removed")
+	}
+	if !strings.Contains(stderr.String(), "removed output cairn does not own") {
+		t.Errorf("the removal was not reported: %q", stderr.String())
+	}
+}
+
+// The guard, from the command's side: a lost manifest makes everything look
+// unowned, and the flag must not turn that into a wipe.
+func TestCheckRefusesToRemoveWhenTheManifestClaimsNothing(t *testing.T) {
+	configPath, out := fixture(t)
+	var stderr strings.Builder
+	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(out, emit.ManifestFile)); err != nil {
+		t.Fatal(err)
+	}
+
+	stderr.Reset()
+	err := runCheck(context.Background(), configPath, true, &stderr)
+	if err == nil {
+		t.Fatal("removing everything because the manifest is gone must be refused")
+	}
+	if _, statErr := os.Lstat(filepath.Join(out, "bootstrap", "index.json")); statErr != nil {
+		t.Error("output was deleted despite the refusal")
+	}
 }

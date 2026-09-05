@@ -23,6 +23,7 @@ var ErrNotIntact = errors.New("the published tree is not intact")
 
 func newCheckCmd() *cobra.Command {
 	var configPath string
+	var removeOrphaned bool
 
 	cmd := &cobra.Command{
 		Use:   cmdCheck,
@@ -31,10 +32,13 @@ func newCheckCmd() *cobra.Command {
 			"claims and the disk no longer has, and finds output cairn does not own.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runCheck(cmd.Context(), configPath, cmd.ErrOrStderr())
+			return runCheck(cmd.Context(), configPath, removeOrphaned, cmd.ErrOrStderr())
 		},
 	}
 	cmd.Flags().StringVarP(&configPath, "config", "c", DefaultConfigFile, "path to the root cairn.yaml")
+	cmd.Flags().BoolVar(&removeOrphaned, "remove-orphaned", false,
+		"delete the output this check reports as unowned; refuses when the manifest "+
+			"claims nothing, since everything looks unowned then")
 	return cmd
 }
 
@@ -43,7 +47,7 @@ func newCheckCmd() *cobra.Command {
 // Nothing is repaired. An operator unsure about a mirror needs to know what
 // changed before anything touches it, and a command that fixes what it finds
 // cannot be run to answer that question.
-func runCheck(ctx context.Context, configPath string, stderr io.Writer) error {
+func runCheck(ctx context.Context, configPath string, removeOrphaned bool, stderr io.Writer) error {
 	log, shutdown, err := obs.Setup(ctx, "cairn", stderr)
 	if err != nil {
 		return err
@@ -72,6 +76,20 @@ func runCheck(ctx context.Context, configPath string, stderr io.Writer) error {
 	report(log, "a file no longer matches its recorded digest", rep.Modified)
 	report(log, "output cairn does not own", rep.Orphaned)
 	report(log, "generated output no longer holds what cairn wrote", rep.Altered)
+
+	if removeOrphaned {
+		removed, err := verify.RemoveOrphaned(outDir, rep)
+		if err != nil {
+			log.Error("could not remove unowned output", "err", err)
+			return err
+		}
+		for _, p := range removed {
+			log.Info("removed output cairn does not own", "path", p)
+		}
+		// Dealt with, so they do not also decide the exit code. What is left is
+		// what an operator still has to act on.
+		rep.Orphaned = nil
+	}
 
 	log.Info("check complete",
 		"checked", rep.Checked, "compared", rep.Compared, "missing", len(rep.Missing),

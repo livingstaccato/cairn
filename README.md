@@ -206,9 +206,21 @@ cairn check
 That last finding is the one nothing else can produce. `sha256sum -c` confirms
 the artifacts a client was told about; only the manifest knows which files cairn
 wrote, so only cairn can tell a current index from one left behind when
-`index_basename` or `outputs:` changed. Nothing is repaired — an operator unsure
-about a mirror needs to know what changed before anything touches it. A failed
-check exits non-zero.
+`index_basename` or `outputs:` changed. A failed check exits non-zero.
+
+A plain check repairs nothing — an operator unsure about a mirror needs to know
+what changed before anything touches it. The one finding you can ask it to act
+on is stale output, because `Prune` structurally cannot: it only removes what
+the manifest records, and a listing left behind by an older config was never
+recorded.
+
+```sh
+cairn check --remove-orphaned
+```
+
+It refuses when the manifest claims nothing. Everything generated then looks
+unowned, so this would delete the whole published tree — that state is a lost
+manifest, and [`build --adopt`](#getting-a-wedged-tree-back) is its repair.
 
 ## Publishing only what moved
 

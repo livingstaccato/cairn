@@ -4,15 +4,48 @@ Static directory-index and artifact-repo generator. A Go binary and a Hugo
 module in one repo, so the data it emits and the templates that render it share
 a single version pin.
 
-> **Status: unreleased.** The engine and the Hugo module are both in place and
-> covered end to end. Track `main`; once a release is tagged, pin `@vX.Y.Z`
-> instead. Pre-1.0, so the config schema and the JSON contract may still change;
-> `version: 1` in `cairn.yaml` is checked and a build refuses a schema it does
-> not understand rather than guessing.
+> **Status: unreleased.** Track `main`; pin `@vX.Y.Z` once a release is tagged.
+> Pre-1.0, so the config schema and the JSON contract may still change —
+> `version: 1` is checked, and a build refuses a schema it does not understand
+> rather than guessing.
+
+## Quickstart
 
 ```sh
 go install github.com/livingstaccato/cairn/cmd/cairn@main
 ```
+
+Put a `cairn.yaml` beside the tree you want indexed:
+
+```yaml
+version: 1
+root: ./tree
+out:  ./site
+
+defaults:
+  present:  bare
+  outputs:  [html, json, csv, txt, sums]
+  checksum: sha256
+```
+
+```sh
+cairn build     # writes ./site
+cairn serve     # read it back at http://127.0.0.1:8173
+```
+
+Both read `./cairn.yaml` unless `--config` says otherwise. Working from a clone
+instead? `cairn build --config testdata/example/cairn.yaml` runs against the
+example tree in this repo.
+
+`present: bare` is the one line worth understanding on day one. It is a real
+autoindex — no JavaScript, no icon font, renders in `lynx` — and it needs
+nothing but the binary. The default is `styled`, which themes with your site but
+needs the Hugo module; asked for without Hugo it writes no HTML and says so.
+
+Run the build a second time and nothing moves. cairn keeps its own output out of
+the listings and records what it wrote in `.cairn-manifest.json`, so a rebuild is
+byte-identical, replaces only what cairn created, and refuses to touch anything
+it did not.
 
 ## What it does
 
@@ -57,7 +90,7 @@ curl -sO http://mirror.internal/bootstrap/linux/SHA256SUMS
 sha256sum -c SHA256SUMS --ignore-missing
 ```
 
-## Design
+## Configuring
 
 Each directory is configured by root defaults, path-glob rules, and an optional
 per-directory override file. Three axes:
@@ -93,41 +126,14 @@ Files that cannot carry frontmatter get metadata from beside them — a
 `_meta.yaml` keyed by filename, or a `<file>.meta.yaml` sidecar — so an ISO can
 have a title and a summary.
 
-## Design principles
+## Where the indexes go
 
-- **Zero external runtime assets.** No CDN, no web fonts, no icon font. Icons
-  are an inline SVG sprite. Works airgapped.
-- **The engine normalizes; templates render once.** One record type, filled by
-  whichever source applies. Sizes stay exact bytes until the moment they are
-  displayed.
-- **Coexists with real package repositories.** `apt-ftparchive` and
-  `createrepo_c` already produce APT and YUM metadata correctly, signing
-  included. cairn indexes and presents around their output, and refuses to
-  write into `dists/` or `repodata/`.
-- **Never dictates a search record shape.** It exposes entries; your site maps
-  them into whatever index it already has. Pagefind needs no integration at
-  all, since the output is real HTML.
-
-## Try it
-
-```sh
-go run ./cmd/cairn build --config testdata/example/cairn.yaml
-find testdata/example/out -type f
-```
-
-Checksums are written relative to the served root, which is the artifact tree —
-the index files and the artifacts are overlaid at the same URL prefix by the web
-server, so verify from the tree side:
-
-```sh
-cd testdata/example/tree/bootstrap && sha256sum -c ../../out/bootstrap/SHA256SUMS
-```
-
-Point `root` and `out` at the same directory and the indexes land beside the
-files they describe — one tree that `rsync`s whole and verifies where it sits.
-Nothing is ever copied. Builds reach a fixed point: cairn excludes its own output
-from the listings, records what it wrote in `.cairn-manifest.json`, and still
-refuses to touch a file it did not create.
+`root` and `out` can name the same directory, and then the indexes land beside
+the files they describe — one tree that `rsync`s whole and verifies where it
+sits. Keep them separate and the artifact tree is never written to, with the web
+server putting both at one URL prefix. A client cannot tell the two apart;
+[Deployment](docs/deployment.md) draws both and says which to pick. Nothing is
+ever copied either way.
 
 ## Watching
 
@@ -154,7 +160,7 @@ listing describes a whole subtree, so a change anywhere beneath one invalidates
 it, and the highest such listing above the change becomes the scope instead.
 
 ```sh
-go run ./cmd/cairn watch --config testdata/example/cairn.yaml
+cairn watch
 ```
 
 The whole tree is registered before the first event is read, and the platform's
@@ -172,7 +178,7 @@ never wakes it — including when `root` and `out` are the same directory.
 page that shows it are one refresh apart:
 
 ```sh
-go run ./cmd/cairn watch --serve --config testdata/example/cairn.yaml
+cairn watch --serve
 ```
 
 The socket opens before the first build — on a large tree that build is minutes
@@ -188,7 +194,7 @@ finds output cairn does not own, and catches its own output being changed after
 it was written.
 
 ```sh
-go run ./cmd/cairn check --config testdata/example/cairn.yaml
+cairn check
 ```
 
 That last finding is the one nothing else can produce. `sha256sum -c` confirms
@@ -217,7 +223,7 @@ what of that differs from what is on disk, and, the reason to reach for it,
 every file `Prune` would delete:
 
 ```sh
-go run ./cmd/cairn build --dry-run --config testdata/example/cairn.yaml
+cairn build --dry-run
 ```
 
 Deleting is the one thing cairn does that running it again cannot undo, and a
@@ -233,8 +239,8 @@ and `on_conflict: error` refuses all of them. `--adopt` claims those paths
 instead of refusing them:
 
 ```sh
-go run ./cmd/cairn build --dry-run --adopt --config testdata/example/cairn.yaml
-go run ./cmd/cairn build --adopt --config testdata/example/cairn.yaml
+cairn build --dry-run --adopt
+cairn build --adopt
 ```
 
 There was no way out of that state before. Deleting the output is not one when
@@ -252,12 +258,27 @@ right media types, so a generated listing can be read in a browser without Hugo
 or nginx. It is the partner to `watch`.
 
 ```sh
-go run ./cmd/cairn serve --config testdata/example/cairn.yaml
+cairn serve
 ```
 
 Loopback only, and a port already in use is an error naming the port rather than
 a silent move to another one — this hands out whatever is in a directory, and a
 half-built mirror is nobody else's to read.
+
+## Design principles
+
+- **Zero external runtime assets.** No CDN, no web fonts, no icon font. Icons
+  are an inline SVG sprite. Works airgapped.
+- **The engine normalizes; templates render once.** One record type, filled by
+  whichever source applies. Sizes stay exact bytes until the moment they are
+  displayed.
+- **Coexists with real package repositories.** `apt-ftparchive` and
+  `createrepo_c` already produce APT and YUM metadata correctly, signing
+  included. cairn indexes and presents around their output, and refuses to
+  write into `dists/` or `repodata/`.
+- **Never dictates a search record shape.** It exposes entries; your site maps
+  them into whatever index it already has. Pagefind needs no integration at
+  all, since the output is real HTML.
 
 ## Environment
 

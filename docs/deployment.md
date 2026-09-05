@@ -1,5 +1,20 @@
 # Deploying a cairn site
 
+A cairn site has two shapes on disk, and a client cannot tell them apart. Which
+one you want follows from who owns the artifact tree: if cairn may write into
+it, use one tree; if it must stay untouched, keep two and let the server put
+them at one URL prefix.
+
+![Two disk layouts producing the same URLs. In the first, root and out name the
+same directory, so /srv/mirror/pool/ holds the artifact and the index.html,
+index.json and SHA256SUMS cairn wrote beside it; it rsyncs whole and sha256sum
+-c works where it sits. In the second, /srv/artifacts/pool/ holds only the
+artifact and /srv/site/public/pool/ holds only what cairn wrote, so the artifact
+tree is never written to. Both serve /pool/ubuntu.iso, /pool/index.html,
+/pool/index.json and /pool/SHA256SUMS.](diagrams/mirror-overlay.svg)
+
+Nothing is ever copied in either shape.
+
 ## Write the indexes into the tree
 
 You never copy the repository. Point `root` and `out` at the same directory and

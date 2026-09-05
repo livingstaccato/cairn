@@ -2,6 +2,12 @@ module github.com/livingstaccato/cairn
 
 go 1.26.0
 
+// Everything published before v0.3.0 is withdrawn. Those tags predate the
+// watcher, the dry run, `check`, `serve` and reproducible output: they do not
+// build the tool this repository documents, and @latest should not resolve to
+// one of them.
+retract [v0.1.0, v0.2.1]
+
 require (
 	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/fsnotify/fsnotify v1.10.1

@@ -12,17 +12,18 @@ directory from one source.
     path = "github.com/livingstaccato/cairn"
 ```
 
-Track `main`. Once a release is tagged, pin that instead — `@vX.Y.Z` in both
-commands, so the templates and the binary that feeds them move together.
+Pin the same tag in both commands, so the templates and the binary that feeds
+them move together.
 
 ```sh
-hugo mod get github.com/livingstaccato/cairn@main
-go install github.com/livingstaccato/cairn/cmd/cairn@main
+hugo mod get github.com/livingstaccato/cairn@v0.3.0
+go install github.com/livingstaccato/cairn/cmd/cairn@v0.3.0
 ```
 
-`hugo mod get` writes the revision it resolved into `go.mod` as a pseudo-version,
-so the templates stay pinned; `go install` takes whatever `main` is at that
-moment. The templates read what the binary writes, so update both together.
+The templates read what the binary writes, so update both together. Tracking
+`main` in either place works, but then only one half is pinned: `hugo mod get`
+writes the revision it resolved into `go.mod` as a pseudo-version, while
+`go install` takes whatever `main` is at that moment.
 
 That is the whole configuration. There are no output formats to declare and no
 media types to register: cairn writes `index.json`, `index.csv`, `index.txt` and

@@ -57,6 +57,7 @@ func RunScoped(cfg *config.Config, rootDir, outDir string, log *slog.Logger, sco
 		cache:  hash.NewCache(filepath.Join(outDir, hash.CacheFile)),
 		writer: emit.NewWriter(cfg, outDir),
 		result: &Result{},
+		outRel: OutRel(rootDir, outDir),
 	}
 	r.warnAboutTheManifest()
 

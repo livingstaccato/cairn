@@ -43,12 +43,11 @@ func NewFilter(cfg *config.Config, rootDir, outDir string, log *slog.Logger) *Fi
 	// A separate output directory inside the tree is skipped whole. Output that
 	// lands in the tree itself has no subtree to skip, and the generated names
 	// are what keep the rebuild from feeding itself.
-	if rel, err := filepath.Rel(rootDir, outDir); err == nil {
-		rel = filepath.ToSlash(rel)
-		if rel != "." && !strings.HasPrefix(rel, "../") && rel != ".." {
-			f.outRel = rel
-		}
-	}
+	//
+	// build.OutRel rather than a second copy of the rule: the walk skips this
+	// same subtree so a build does not index its own output, and the two
+	// deciding it differently is what let that bug exist.
+	f.outRel = build.OutRel(rootDir, outDir)
 	return f
 }
 

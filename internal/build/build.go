@@ -55,6 +55,10 @@ type runner struct {
 	cache  *hash.Cache
 	writer *emit.Writer
 	result *Result
+	// outRel is the output directory relative to the indexed root, when it sits
+	// inside it. See OutRel: the walk has to skip that subtree, or the build
+	// indexes its own output.
+	outRel string
 	// dry suppresses every change to the filesystem while leaving each decision
 	// that leads to one intact.
 	dry bool
@@ -115,6 +119,7 @@ func RunWith(cfg *config.Config, rootDir, outDir string, log *slog.Logger, opts 
 		cache:  hash.NewCache(filepath.Join(outDir, hash.CacheFile)),
 		writer: emit.NewWriterWith(cfg, outDir, emit.Options{Dry: opts.Dry, Adopt: opts.Adopt}),
 		result: &Result{},
+		outRel: OutRel(rootDir, outDir),
 		dry:    opts.Dry,
 	}
 	r.warnAboutTheManifest()
@@ -311,6 +316,9 @@ func (r *runner) dropGenerated(relDir string, entries []model.Entry, s config.Se
 	skip := r.generatedNames()
 	out := entries[:0:0]
 	for _, e := range entries {
+		if r.isOutputDir(relDir, e) {
+			continue
+		}
 		generated := !e.IsDir && skip[e.Name] &&
 			!r.cfg.IsProtected(path.Join(relDir, e.Name))
 		if !generated {
@@ -318,6 +326,25 @@ func (r *runner) dropGenerated(relDir string, entries []model.Entry, s config.Se
 		}
 	}
 	return out
+}
+
+// isOutputDir reports whether this entry is the output directory, sitting
+// inside the tree being indexed.
+//
+// Dropping it here covers both halves at once: entries is what the listing
+// renders and what recurse descends into, so the directory is neither named nor
+// walked. Leaving it listed would publish a link to a page that is never
+// written, and walking it made every build index the previous build's output
+// one level deeper.
+//
+// This is the same exclusion cairn already applies to its own generated
+// filenames, one level up: a directory cairn fills is no more part of the tree
+// it describes than a file cairn wrote.
+func (r *runner) isOutputDir(relDir string, e model.Entry) bool {
+	if !e.IsDir || r.outRel == "" {
+		return false
+	}
+	return path.Join(relDir, e.Name) == r.outRel
 }
 
 // generatedNames is every filename cairn writes into one directory.

@@ -15,6 +15,12 @@ tree is never written to. Both serve /pool/ubuntu.iso, /pool/index.html,
 
 Nothing is ever copied in either shape.
 
+There is a third arrangement: `out` as a subdirectory of `root`. cairn skips
+that subtree whole — it is neither listed nor walked — which is the same
+exclusion it already applies to its own generated filenames, one level up. A
+directory cairn fills is no more part of the tree it describes than a file cairn
+wrote.
+
 ## Write the indexes into the tree
 
 You never copy the repository. Point `root` and `out` at the same directory and

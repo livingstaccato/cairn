@@ -141,6 +141,10 @@ server putting both at one URL prefix. A client cannot tell the two apart;
 [Deployment](docs/deployment.md) draws both and says which to pick. Nothing is
 ever copied either way.
 
+`out` may also be a subdirectory of `root`. cairn skips that subtree whole, so
+the output is neither listed nor walked, and a rebuild stays a fixed point
+instead of indexing the last build one level deeper.
+
 ## Watching
 
 `cairn watch` builds once and then rebuilds only the subtree each change

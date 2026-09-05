@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
 // SPDX-License-Identifier: MIT
 
+// Tests for forget: bounding the hash cache to the region a run actually
+// rebuilt, so a file that left the tree stops being carried forever.
+
 package build
 
 import (

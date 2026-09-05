@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
 // SPDX-License-Identifier: MIT
 
+// Tests for Options.Adopt: the way back from a lost or unreadable manifest,
+// when every file cairn wrote is one it no longer claims.
+
 package build
 
 import (

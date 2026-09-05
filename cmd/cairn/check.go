@@ -71,10 +71,12 @@ func runCheck(ctx context.Context, configPath string, stderr io.Writer) error {
 	report(log, "a file cairn recorded is gone", rep.Missing)
 	report(log, "a file no longer matches its recorded digest", rep.Modified)
 	report(log, "output cairn does not own", rep.Orphaned)
+	report(log, "generated output no longer holds what cairn wrote", rep.Altered)
 
 	log.Info("check complete",
-		"checked", rep.Checked, "missing", len(rep.Missing),
-		"modified", len(rep.Modified), "orphaned", len(rep.Orphaned))
+		"checked", rep.Checked, "compared", rep.Compared, "missing", len(rep.Missing),
+		"modified", len(rep.Modified), "orphaned", len(rep.Orphaned),
+		"altered", len(rep.Altered))
 	if !rep.OK() {
 		return ErrNotIntact
 	}

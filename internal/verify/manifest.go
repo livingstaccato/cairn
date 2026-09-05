@@ -4,7 +4,6 @@
 package verify
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -28,26 +27,22 @@ import (
 // emit.NewWriter tolerates one because the cost there is a conflict error an
 // operator resolves; here the cost is a report that calls every file in the tree
 // an orphan, which is a lie about the tree rather than a finding about it.
-func loadManifest(outDir string) (map[string]bool, error) {
+func loadManifest(outDir string) (map[string]string, error) {
 	p := filepath.Join(outDir, emit.ManifestFile)
 	// #nosec G304 -- composed from the output directory the operator named and a
 	// fixed filename, the same path emit.Writer reads.
 	b, err := os.ReadFile(p)
 	if errors.Is(err, fs.ErrNotExist) {
-		return map[string]bool{}, nil
+		return map[string]string{}, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", p, err)
 	}
-	var claims []string
-	if err := json.Unmarshal(b, &claims); err != nil {
+	claims, err := emit.ParseManifest(b)
+	if err != nil {
 		return nil, fmt.Errorf("parse %s: %w", p, err)
 	}
-	set := make(map[string]bool, len(claims))
-	for _, c := range claims {
-		set[c] = true
-	}
-	return set, nil
+	return claims, nil
 }
 
 // checkMissing reports every claimed path the output tree no longer holds.

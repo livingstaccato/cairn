@@ -94,13 +94,38 @@ func (f *fixture) writeAt(base, rel, body string) {
 }
 
 // manifest records the paths cairn claims, exactly as emit.Writer would.
+//
+// The digest is the file's real one where the file exists. Where it does not —
+// which is most of the missing-path cases — any well-formed digest will do,
+// because a claim with nothing behind it is reported before anything compares
+// bytes.
 func (f *fixture) manifest(paths ...string) {
 	f.t.Helper()
-	b, err := json.Marshal(paths)
+	outputs := map[string]string{}
+	for _, p := range paths {
+		outputs[p] = f.digestOrPlaceholder(p)
+	}
+	b, err := json.Marshal(struct {
+		Version int               `json:"version"`
+		Outputs map[string]string `json:"outputs"`
+	}{Version: 1, Outputs: outputs})
 	if err != nil {
 		f.t.Fatal(err)
 	}
 	f.outFile(emit.ManifestFile, string(b))
+}
+
+// placeholderDigest is well-formed and matches nothing on disk.
+const placeholderDigest = "0000000000000000000000000000000000000000000000000000000000000000"
+
+func (f *fixture) digestOrPlaceholder(rel string) string {
+	f.t.Helper()
+	b, err := os.ReadFile(filepath.Join(f.out, filepath.FromSlash(rel)))
+	if err != nil {
+		return placeholderDigest
+	}
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
 }
 
 // sums writes a SHA256SUMS under out/dir covering names that live under

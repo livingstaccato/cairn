@@ -53,7 +53,8 @@ func generatedNames(cfg *config.Config) map[string]bool {
 // this check asks; a link at a path the manifest does claim is already reported
 // as missing instead.
 func (v *verifier) checkOrphan(rel string) {
-	if !v.names[path.Base(rel)] || v.claimed[rel] || v.cfg.IsProtected(rel) {
+	_, ours := v.claimed[rel]
+	if !v.names[path.Base(rel)] || ours || v.cfg.IsProtected(rel) {
 		return
 	}
 	v.orphaned[rel] = true

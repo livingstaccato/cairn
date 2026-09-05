@@ -295,7 +295,8 @@ it did not create. Two consequences worth knowing:
 
 `cairn check` reads back what a build recorded. It re-hashes every file
 `SHA256SUMS` names, reports what the manifest claims and the disk no longer has,
-and finds output cairn does not own.
+finds output cairn does not own, and catches its own output being changed
+after it was written.
 
 ```sh
 cairn check --config cairn.yaml
@@ -307,6 +308,14 @@ actually wrote, so only cairn can tell a current index from one left behind when
 `index_basename` or `outputs:` changed. Stale output is the dangerous kind — it
 is still served, it still looks authoritative, and it describes a directory as
 it was.
+
+That last one needs the manifest's digests, and nothing else can see it.
+Generated files appear in no `SHA256SUMS` — a listing leaves cairn's own output
+out, or the build would never reach a fixed point — so a hand-edited
+`index.json` is invisible to a client verifying checksums. The watcher cannot
+see it either: it discards events on its own output by name, which is what stops
+a rebuild loop, and a name cannot tell cairn's write from anyone else's. Running
+`build` again repairs it.
 
 Nothing is repaired. An operator unsure about a mirror needs to know what changed
 before anything touches it, and a command that fixes what it finds cannot be run

@@ -138,3 +138,28 @@ func TestBareHTMLCapsRenderedRows(t *testing.T) {
 		t.Error("an untruncated page must not carry a truncation notice")
 	}
 }
+
+// A README is written in lines and has to arrive as lines. HTML collapses
+// newlines, so prose dropped into a div renders as one long paragraph however
+// the author wrote it — every heading, list item and blank line run together.
+//
+// The bare presenter carries no markdown renderer on purpose: it has to work
+// airgapped, with no dependency and nothing to escape unsafely. Preserving the
+// author's own line structure is what it can honestly do.
+func TestBareHTMLKeepsProseLineStructure(t *testing.T) {
+	prose := "# bbsbot\n\nA bot.\n\n- one\n- two\n"
+	b, err := BareHTML(model.Listing{Path: "/x"}, prose, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(b)
+
+	if !strings.Contains(got, "- one\n- two") {
+		t.Error("the prose lost its line breaks before it reached the page")
+	}
+	// The newlines are in the markup either way; without this rule the browser
+	// collapses them and the reader sees one line.
+	if !strings.Contains(got, "white-space:pre-wrap") {
+		t.Error(".prose does not preserve line breaks, so a browser renders it on one line")
+	}
+}

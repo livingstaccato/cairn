@@ -30,8 +30,8 @@ import (
 
 // Report is what one verification found.
 //
-// The three lists are separate because the operator's next move differs with
-// each: restore, investigate, delete. Paths are relative and slash-separated,
+// The four lists are separate because the operator's next move differs with
+// each: restore, investigate, delete, rebuild. Paths are relative and slash-separated,
 // against the root that holds the thing named — cairn's own output against the
 // output directory, an artifact named by SHA256SUMS against the indexed root.
 // In a mirror, which is the deployment this was written for, those are one
@@ -40,7 +40,9 @@ type Report struct {
 	Missing  []string // manifest claims it, disk does not have it
 	Modified []string // SHA256SUMS lists a digest that no longer matches
 	Orphaned []string // a file that looks like cairn output but no manifest claims it
-	Checked  int      // files whose digest was actually recomputed
+	Altered  []string // cairn's own output, no longer holding what cairn wrote
+	Checked  int      // artifacts re-hashed against a SHA256SUMS
+	Compared int      // generated outputs re-hashed against the manifest
 }
 
 // OK reports whether the mirror is intact.
@@ -49,7 +51,8 @@ type Report struct {
 // it has nothing to re-hash and is still intact. Requiring a digest count here
 // would report every unhashed mirror as a failure.
 func (r *Report) OK() bool {
-	return len(r.Missing) == 0 && len(r.Modified) == 0 && len(r.Orphaned) == 0
+	return len(r.Missing) == 0 && len(r.Modified) == 0 &&
+		len(r.Orphaned) == 0 && len(r.Altered) == 0
 }
 
 // verifier carries one run's inputs and the findings as they accumulate. The
@@ -60,14 +63,16 @@ type verifier struct {
 	root    string
 	out     string
 	log     *slog.Logger
-	claimed map[string]bool
+	claimed map[string]string
 	names   map[string]bool
 	cache   *hash.Cache
 
 	missing  map[string]bool
 	modified map[string]bool
 	orphaned map[string]bool
+	altered  map[string]bool
 	checked  int
+	compared int
 }
 
 // Run verifies the output under outDir against what cairn recorded.
@@ -98,9 +103,11 @@ func Run(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Report,
 		missing:  map[string]bool{},
 		modified: map[string]bool{},
 		orphaned: map[string]bool{},
+		altered:  map[string]bool{},
 	}
 
 	v.checkMissing()
+	v.checkAltered()
 	if err := v.walkOut(); err != nil {
 		return nil, err
 	}
@@ -150,7 +157,9 @@ func (v *verifier) report() *Report {
 		Missing:  sorted(v.missing),
 		Modified: sorted(v.modified),
 		Orphaned: sorted(v.orphaned),
+		Altered:  sorted(v.altered),
 		Checked:  v.checked,
+		Compared: v.compared,
 	}
 }
 

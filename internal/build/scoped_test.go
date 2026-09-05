@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/livingstaccato/cairn/internal/config"
+	"github.com/livingstaccato/cairn/internal/emit"
 	"github.com/livingstaccato/cairn/internal/model"
 	"github.com/livingstaccato/cairn/internal/obs"
 )
@@ -161,12 +162,12 @@ func TestScopedRebuildKeepsOwnershipOfTheRestOfTheTree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var owned []string
-	if err := json.Unmarshal(b, &owned); err != nil {
+	owned, err := emit.ParseManifest(b)
+	if err != nil {
 		t.Fatal(err)
 	}
 	var found bool
-	for _, p := range owned {
+	for p := range owned {
 		if strings.Contains(p, "docs/index.json") {
 			found = true
 		}

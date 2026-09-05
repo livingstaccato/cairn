@@ -9,6 +9,8 @@ package emit
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -23,6 +25,58 @@ import (
 // ManifestFile records the paths cairn generated, so a later run can tell its
 // own output apart from content that was already there.
 const ManifestFile = ".cairn-manifest.json"
+
+// manifestVersion is stamped into every manifest so a later shape can be told
+// apart from this one without guessing.
+const manifestVersion = 1
+
+// manifest is what cairn owns under one output root, and what it put there.
+//
+// The digest is why the shape changed. A path alone answers "may cairn replace
+// this", which is all a build needs; it cannot answer "does this still hold what
+// cairn wrote", which is what an operator asks of a mirror they are unsure
+// about. Generated output appears in no SHA256SUMS — a listing excludes cairn's
+// own files — so without this nothing records it at all.
+type manifest struct {
+	Version int               `json:"version"`
+	Outputs map[string]string `json:"outputs"`
+}
+
+// ParseManifest reads a manifest and returns each claimed path with the digest
+// recorded for it.
+func ParseManifest(b []byte) (map[string]string, error) { return parseManifest(b) }
+
+func parseManifest(b []byte) (map[string]string, error) {
+	// Decoded through a pointer so an absent "outputs" is distinguishable from
+	// an empty one. A JSON object that is not a manifest would otherwise parse
+	// as cairn claiming nothing, and every file in the tree would then be
+	// reported as output cairn does not own — a lie about the tree rather than
+	// a finding about it.
+	var m struct {
+		Version int                `json:"version"`
+		Outputs *map[string]string `json:"outputs"`
+	}
+	if err := json.Unmarshal(b, &m); err != nil {
+		return nil, err
+	}
+	if m.Outputs == nil {
+		return nil, fmt.Errorf("no outputs recorded; not a cairn manifest")
+	}
+	for claim, sum := range *m.Outputs {
+		if !isHex64(sum) {
+			return nil, fmt.Errorf("output %s carries no usable digest", claim)
+		}
+	}
+	return *m.Outputs, nil
+}
+
+// digestOf is the SHA-256 of one output body, hex encoded — the same form
+// SHA256SUMS uses, so a person comparing the two by eye is comparing like
+// with like.
+func digestOf(body []byte) string {
+	sum := sha256.Sum256(body)
+	return hex.EncodeToString(sum[:])
+}
 
 // Output permissions. These are deliberately looser than gosec's defaults:
 // cairn writes a static site that a web server reads as a different user, so
@@ -42,29 +96,26 @@ const (
 type Writer struct {
 	cfg   *config.Config
 	root  string
-	own   map[string]bool // paths this run may overwrite, from the previous run
-	made  []string        // paths written by this run
-	prot  []string        // paths a protect: glob kept this run from writing
-	wrote []string        // paths whose bytes this run actually changed
+	own   map[string]string // paths this run may overwrite, and what they held
+	made  []string          // paths written by this run
+	prot  []string          // paths a protect: glob kept this run from writing
+	wrote []string          // paths whose bytes this run actually changed
+	sums  map[string]string // what this run put at each path
 }
 
 // NewWriter loads the previous run's manifest, if any. A missing or unreadable
 // manifest yields an empty one: the cost is a conflict error the operator can
 // resolve, never a silent overwrite.
 func NewWriter(cfg *config.Config, outRoot string) *Writer {
-	w := &Writer{cfg: cfg, root: outRoot, own: map[string]bool{}}
+	w := &Writer{cfg: cfg, root: outRoot, own: map[string]string{}, sums: map[string]string{}}
 	// #nosec G304 -- composed from the configured output directory and a fixed
 	// filename.
 	b, err := os.ReadFile(filepath.Join(outRoot, ManifestFile))
 	if err != nil {
 		return w
 	}
-	var prev []string
-	if err := json.Unmarshal(b, &prev); err != nil {
-		return w
-	}
-	for _, p := range prev {
-		w.own[p] = true
+	if own, err := parseManifest(b); err == nil {
+		w.own = own
 	}
 	return w
 }
@@ -94,6 +145,10 @@ func (w *Writer) Write(relPath string, body []byte) error {
 	if w.skipped(relPath, abs) {
 		return nil
 	}
+	// Recorded whether or not the bytes are written, because the manifest has to
+	// say what stands at the path, not what this particular run happened to move.
+	w.sums[relPath] = digestOf(body)
+
 	if unchanged(abs, body) {
 		// Recorded as written even though nothing was written. The manifest is
 		// what stops the next run's Prune from deleting it, and a file skipped
@@ -127,7 +182,7 @@ func (w *Writer) checkConflict(relPath, abs string) error {
 	if !exists(abs) {
 		return nil
 	}
-	if w.own[relPath] {
+	if _, ours := w.own[relPath]; ours {
 		return nil // cairn wrote it last run; overwriting is the whole point
 	}
 	if w.cfg.OnConflict == config.ConflictSkip {
@@ -162,7 +217,8 @@ func unchanged(abs string, body []byte) bool {
 
 // skipped reports whether an existing, unowned path should be left alone.
 func (w *Writer) skipped(relPath, abs string) bool {
-	return exists(abs) && !w.own[relPath] && w.cfg.OnConflict == config.ConflictSkip
+	_, ours := w.own[relPath]
+	return exists(abs) && !ours && w.cfg.OnConflict == config.ConflictSkip
 }
 
 // exists reports whether anything occupies p — including a symlink, dangling or
@@ -337,7 +393,20 @@ func (w *Writer) SavePartial() error {
 }
 
 func (w *Writer) save(paths []string) error {
-	b, err := json.Marshal(paths)
+	m := manifest{Version: manifestVersion, Outputs: make(map[string]string, len(paths))}
+	for _, p := range paths {
+		// This run's digest where it has one, the previous run's for a path
+		// carried forward by a scoped or partial save. A path with neither
+		// stays claimed with an empty digest: ownership is not in doubt, only
+		// what the file should hold.
+		if sum, ok := w.sums[p]; ok {
+			m.Outputs[p] = sum
+			continue
+		}
+		m.Outputs[p] = w.own[p]
+	}
+
+	b, err := json.Marshal(m)
 	if err != nil {
 		return fmt.Errorf("marshal manifest: %w", err)
 	}

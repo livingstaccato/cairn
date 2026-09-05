@@ -155,7 +155,8 @@ never wakes it — including when `root` and `out` are the same directory.
 
 `cairn check` reads back what a build recorded: it re-hashes every file
 `SHA256SUMS` names, reports what the manifest claims and the disk no longer has,
-and finds output cairn does not own.
+finds output cairn does not own, and catches its own output being changed after
+it was written.
 
 ```sh
 go run ./cmd/cairn check --config testdata/example/cairn.yaml

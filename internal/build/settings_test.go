@@ -54,3 +54,21 @@ func TestOutRelResolvesBeforeComparing(t *testing.T) {
 		})
 	}
 }
+
+// OutRel is the one place that decides whether the output lies inside the tree.
+// The builder and the watcher both ask it, so they cannot drift.
+func TestOutRel(t *testing.T) {
+	cases := []struct{ root, out, want string }{
+		{"/srv/tree", "/srv/tree/site", "site"},
+		{"/srv/tree", "/srv/tree/a/b", "a/b"},
+		{"/srv/tree", "/srv/tree", ""},     // the mirror: nothing to skip
+		{"/srv/tree", "/srv/site", ""},     // separate trees
+		{"/srv/tree", "/srv", ""},          // out holds root
+		{"/srv/tree", "/srv/tree-old", ""}, // a sibling sharing a prefix
+	}
+	for _, c := range cases {
+		if got := OutRel(c.root, c.out); got != c.want {
+			t.Errorf("OutRel(%q, %q) = %q, want %q", c.root, c.out, got, c.want)
+		}
+	}
+}

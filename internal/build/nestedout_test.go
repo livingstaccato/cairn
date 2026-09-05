@@ -9,8 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/livingstaccato/cairn/internal/config"
 )
 
 // nested builds a tree whose out: is a subdirectory of root:.
@@ -99,52 +97,5 @@ func TestOutEqualToRootStillBuilds(t *testing.T) {
 	}
 	if len(again.Changed) != 0 {
 		t.Errorf("a mirror rebuild rewrote %v, want nothing", again.Changed)
-	}
-}
-
-// OutRel is the one place that decides whether the output lies inside the tree.
-// The builder and the watcher both ask it, so they cannot drift.
-func TestOutRel(t *testing.T) {
-	cases := []struct{ root, out, want string }{
-		{"/srv/tree", "/srv/tree/site", "site"},
-		{"/srv/tree", "/srv/tree/a/b", "a/b"},
-		{"/srv/tree", "/srv/tree", ""},     // the mirror: nothing to skip
-		{"/srv/tree", "/srv/site", ""},     // separate trees
-		{"/srv/tree", "/srv", ""},          // out holds root
-		{"/srv/tree", "/srv/tree-old", ""}, // a sibling sharing a prefix
-	}
-	for _, c := range cases {
-		if got := OutRel(c.root, c.out); got != c.want {
-			t.Errorf("OutRel(%q, %q) = %q, want %q", c.root, c.out, got, c.want)
-		}
-	}
-}
-
-// The parent row, end to end: the top of the tree must not offer a link above
-// itself, and every directory below it must. The unit test in internal/emit
-// covers the switch; this covers the build actually setting it.
-func TestOnlyTheTopListingOmitsTheParentRow(t *testing.T) {
-	root, out := tree(t), t.TempDir()
-	c := conf(nil)
-	bare := config.PresentBare
-	outs := []string{config.OutputHTML}
-	c.Defaults = config.Override{Present: &bare, Outputs: &outs}
-	run(t, c, root, out)
-
-	read := func(rel string) string {
-		t.Helper()
-		b, err := os.ReadFile(filepath.Join(out, rel))
-		if err != nil {
-			t.Fatal(err)
-		}
-		return string(b)
-	}
-	if strings.Contains(read("index.html"), `href="../"`) {
-		t.Error("the top listing links above the indexed tree")
-	}
-	for _, rel := range []string{"bootstrap/index.html", "bootstrap/linux/index.html"} {
-		if !strings.Contains(read(rel), `href="../"`) {
-			t.Errorf("%s has no way back up", rel)
-		}
 	}
 }

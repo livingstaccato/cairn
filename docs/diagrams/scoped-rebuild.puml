@@ -1,0 +1,23 @@
+@startwbs
+' SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
+' SPDX-License-Identifier: MIT
+'
+' Rendered to scoped-rebuild.svg by 'make diagrams'. GitHub does not render
+' PlantUML, so the SVG beside this file is what README.md shows; regenerate
+' it in the same commit as any edit here.
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 13
+skinparam shadowing false
+skinparam dpi 160
+skinparam ArrowColor #666666
+
+*[#E3ECF5] **/**\nlisting refreshed, not recursed
+**[#E3ECF5] **bootstrap/**\nlisting refreshed, not recursed
+***[#F6DFC8] **linux/** — a file changed here\nrebuilt, and recursed into
+****[#F6DFC8] **deb/**\nrebuilt
+****[#F6DFC8] **rpm/**\nrebuilt
+***[#F0F0F0] **bsd/**\nuntouched
+**[#F0F0F0] **docs/**\nuntouched
+***[#F0F0F0] **guides/**\nuntouched
+@endwbs

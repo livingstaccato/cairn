@@ -136,6 +136,23 @@ affects, which is what makes it usable against a tree of tens of thousands of
 files: a change three directories down re-emits that directory, refreshes the
 listings above it that name it, and leaves the rest alone.
 
+![A directory tree showing what one change causes. A file changed in
+bootstrap/linux/, so linux/ is rebuilt and recursed into, and its children deb/
+and rpm/ are rebuilt with it. The directories above it, bootstrap/ and the root,
+have their own listings refreshed but are not recursed into. Everything else —
+bootstrap/bsd/, docs/ and docs/guides/ — is
+untouched.](docs/diagrams/scoped-rebuild.svg)
+
+The ancestors are the part that is easy to miss: a parent's entry for a
+directory carries that directory's child count and modification time, so a file
+added three levels down changes what every listing above it should say. Each one
+is re-emitted without recursing, since its other children have not moved — which
+is why `bsd/` above keeps the page it already had.
+
+The changed directory is not always where the rebuild starts. A `recursive: true`
+listing describes a whole subtree, so a change anywhere beneath one invalidates
+it, and the highest such listing above the change becomes the scope instead.
+
 ```sh
 go run ./cmd/cairn watch --config testdata/example/cairn.yaml
 ```

@@ -151,6 +151,48 @@ fine.
 rebuild. Directories the build hides are not watched, and cairn's own output
 never wakes it — including when `root` and `out` are the same directory.
 
+## Verifying
+
+`cairn check` reads back what a build recorded: it re-hashes every file
+`SHA256SUMS` names, reports what the manifest claims and the disk no longer has,
+and finds output cairn does not own.
+
+```sh
+go run ./cmd/cairn check --config testdata/example/cairn.yaml
+```
+
+That last finding is the one nothing else can produce. `sha256sum -c` confirms
+the artifacts a client was told about; only the manifest knows which files cairn
+wrote, so only cairn can tell a current index from one left behind when
+`index_basename` or `outputs:` changed. Nothing is repaired — an operator unsure
+about a mirror needs to know what changed before anything touches it. A failed
+check exits non-zero.
+
+## Publishing only what moved
+
+Two builds of an unchanged tree produce identical bytes. Writes of identical
+content are skipped, and `generated` in each listing holds the newest
+modification time among its entries rather than the build clock, so nothing
+depends on when the build ran or which timezone it ran in.
+
+`--changed-to` writes the outputs whose bytes actually moved, in rsync's
+`--files-from` format, so a mirror republishes the handful of listings that
+changed instead of all of them.
+
+## Reading it back
+
+`cairn serve` puts the output directory behind a local HTTP server with the
+right media types, so a generated listing can be read in a browser without Hugo
+or nginx. It is the partner to `watch`.
+
+```sh
+go run ./cmd/cairn serve --config testdata/example/cairn.yaml
+```
+
+Loopback only, and a port already in use is an error naming the port rather than
+a silent move to another one — this hands out whatever is in a directory, and a
+half-built mirror is nobody else's to read.
+
 ## Environment
 
 `CAIRN_ENVIRONMENT` labels the build in cairn's log output. It defaults to

@@ -291,6 +291,56 @@ it did not create. Two consequences worth knowing:
   that the partial output would belong to nobody and `on_conflict: error` would
   refuse every later run until someone deleted the files by hand.
 
+## Verifying a published mirror
+
+`cairn check` reads back what a build recorded. It re-hashes every file
+`SHA256SUMS` names, reports what the manifest claims and the disk no longer has,
+and finds output cairn does not own.
+
+```sh
+cairn check --config cairn.yaml
+```
+
+The third finding is the one nothing else can produce. `sha256sum -c` confirms
+the artifacts a client was told about; only the manifest knows which files cairn
+actually wrote, so only cairn can tell a current index from one left behind when
+`index_basename` or `outputs:` changed. Stale output is the dangerous kind — it
+is still served, it still looks authoritative, and it describes a directory as
+it was.
+
+Nothing is repaired. An operator unsure about a mirror needs to know what changed
+before anything touches it, and a command that fixes what it finds cannot be run
+to answer that question. A check that fails exits non-zero, so a deploy can
+refuse to publish.
+
+Two things it deliberately does not do. It never consults `.cairn-cache.json`:
+that cache is keyed by path, size and mtime, all three of which survive a
+same-size edit with the timestamp restored, so it is the wrong oracle for a
+tamper check. And it never follows a symlink — one standing where a file is
+claimed is a finding, not something to hash through.
+
+## Publishing only what moved
+
+A rebuild of an unchanged tree writes nothing: identical output is skipped, and
+`Listing.generated` holds the newest modification time among the entries rather
+than the build clock, so two builds of one tree produce identical bytes.
+
+That makes a delta deploy possible, and `--changed-to` is how a deployment finds
+out which files those are:
+
+```sh
+cairn build --config cairn.yaml --changed-to /tmp/changed.txt
+rsync -a --files-from=/tmp/changed.txt out/ mirror:/srv/mirror/
+```
+
+The format is rsync's `--files-from`: paths relative to the output directory,
+one per line. A build that changed nothing writes an empty file rather than no
+file, so a script can tell "nothing moved" from "the build never ran".
+
+Deletions are not in the list. `Prune` has already removed them from the output
+directory, so a sync of that directory carries them — a `--files-from` transfer
+does not, and needs its own `--delete` pass.
+
 ## When the indexed tree is not the web root
 
 `Entry.path` is rooted at cairn's `root:`. That is the site root only when the

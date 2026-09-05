@@ -47,6 +47,19 @@ func mustBytes(b []byte, err error) []byte {
 	return b
 }
 
+// An empty JSON array is not evidence of authorship, because it is what an
+// empty listing of anything looks like — and search-index.json is not an
+// unusual name to have chosen: static-search plugins with no connection to
+// cairn use exactly this filename. An orphan reaching provenOurs is by
+// definition unclaimed, and cairn's own writes are always claimed regardless
+// of content, so a real empty search index cairn wrote never reaches this
+// function in the first place; there was nothing for the carve-out to protect.
+func TestProvenOursRejectsAnEmptySearchIndex(t *testing.T) {
+	if provenOurs(writeTemp(t, emit.SearchFile, []byte("[]\n"))) {
+		t.Error("an empty array was accepted as proof of authorship")
+	}
+}
+
 // The formats whose bytes identify themselves. These are what --remove-orphaned
 // is allowed to delete.
 func TestProvenOursAcceptsCairnsOwnOutput(t *testing.T) {

@@ -118,8 +118,13 @@ func isListing(b []byte) bool {
 // isSearchIndex reports whether these bytes are the standalone search index.
 //
 // A bare array of records, because that is what a browser search library takes
-// directly. An empty array is accepted: SearchFile is a fixed, unusual name, and
-// a directory whose listing is empty publishes an empty index.
+// directly. An empty array proves nothing: it is what an empty listing of
+// anything looks like, search-index.json is not an unusual name — static-search
+// plugins with no connection to cairn use exactly it — and there is no real case
+// for the empty carve-out to protect. checkOrphan only ever reaches an unclaimed
+// file, and emit.Writer claims every path it handles regardless of the bytes, so
+// a real empty search index cairn wrote is never unclaimed and never arrives
+// here in the first place.
 func isSearchIndex(b []byte) bool {
 	if len(b) == 0 {
 		return false
@@ -131,6 +136,9 @@ func isSearchIndex(b []byte) bool {
 		IsDir *bool   `json:"is_dir"`
 	}
 	if err := json.Unmarshal(b, &records); err != nil {
+		return false
+	}
+	if len(records) == 0 {
 		return false
 	}
 	for _, r := range records {

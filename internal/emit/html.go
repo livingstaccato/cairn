@@ -66,6 +66,22 @@ type bareData struct {
 	Prose   string
 	Shown   []model.Entry
 	Total   int
+	AtRoot  bool
+}
+
+// BarePage is one directory's bare rendering. A struct rather than four
+// positional arguments, and for the same reason HugoPage is one: the last of
+// them would be an unlabelled bool at every call site.
+type BarePage struct {
+	Listing model.Listing
+	Prose   string
+	// MaxRendered bounds the rows the template renders; 0 renders every one.
+	MaxRendered int
+	// AtRoot suppresses the parent row. The top of the indexed tree has no
+	// parent cairn knows anything about: under base_path that link leaves the
+	// mirror, and from file:// it walks out of the tree. Everywhere else it is
+	// the only way back up.
+	AtRoot bool
 }
 
 // BareHTML renders a listing as a self-contained, script-free autoindex page.
@@ -76,15 +92,18 @@ type bareData struct {
 // maxRendered bounds the rows that reach the page; 0 renders every entry. The
 // machine formats are never capped — a directory of fifty thousand packages is
 // a 34 MB page and a perfectly ordinary index.json.
-func BareHTML(l model.Listing, prose string, maxRendered int) ([]byte, error) {
-	shown := l.Entries
-	if maxRendered > 0 && len(shown) > maxRendered {
-		shown = shown[:maxRendered]
+func BareHTML(p BarePage) ([]byte, error) {
+	shown := p.Listing.Entries
+	if p.MaxRendered > 0 && len(shown) > p.MaxRendered {
+		shown = shown[:p.MaxRendered]
 	}
 	var buf bytes.Buffer
-	data := bareData{Listing: l, Prose: prose, Shown: shown, Total: len(l.Entries)}
+	data := bareData{
+		Listing: p.Listing, Prose: p.Prose, Shown: shown,
+		Total: len(p.Listing.Entries), AtRoot: p.AtRoot,
+	}
 	if err := bareTmpl.Execute(&buf, data); err != nil {
-		return nil, fmt.Errorf("render bare html for %s: %w", l.Path, err)
+		return nil, fmt.Errorf("render bare html for %s: %w", p.Listing.Path, err)
 	}
 	return buf.Bytes(), nil
 }

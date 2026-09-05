@@ -31,7 +31,7 @@ func TestHumanSize(t *testing.T) {
 }
 
 func TestBareHTMLHasNoScriptOrExternalAssets(t *testing.T) {
-	b, err := BareHTML(sample(), "", 0)
+	b, err := BareHTML(BarePage{Listing: sample(), Prose: "", MaxRendered: 0})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestBareHTMLHasNoScriptOrExternalAssets(t *testing.T) {
 }
 
 func TestBareHTMLListsEntries(t *testing.T) {
-	b, err := BareHTML(sample(), "", 0)
+	b, err := BareHTML(BarePage{Listing: sample(), Prose: "", MaxRendered: 0})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestBareHTMLEscapes(t *testing.T) {
 	l := sample()
 	l.Entries[1].Title = `<script>alert(1)</script>`
 	l.Entries[1].Name = `a&b.txt`
-	b, err := BareHTML(l, "", 0)
+	b, err := BareHTML(BarePage{Listing: l, Prose: "", MaxRendered: 0})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestBareHTMLEscapes(t *testing.T) {
 }
 
 func TestBareHTMLIncludesProse(t *testing.T) {
-	b, err := BareHTML(sample(), "Base images for PXE installs.", 0)
+	b, err := BareHTML(BarePage{Listing: sample(), Prose: "Base images for PXE installs.", MaxRendered: 0})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestBareHTMLIncludesProse(t *testing.T) {
 }
 
 func TestBareHTMLShowsTruncatedDigest(t *testing.T) {
-	b, err := BareHTML(sample(), "", 0)
+	b, err := BareHTML(BarePage{Listing: sample(), Prose: "", MaxRendered: 0})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,11 +111,11 @@ func TestBareHTMLCapsRenderedRows(t *testing.T) {
 	}
 	l := model.Listing{Path: "/pool", Count: len(entries), Entries: entries}
 
-	full, err := BareHTML(l, "", 0) // 0 means every row
+	full, err := BareHTML(BarePage{Listing: l, Prose: "", MaxRendered: 0}) // 0 means every row
 	if err != nil {
 		t.Fatal(err)
 	}
-	capped, err := BareHTML(l, "", 100)
+	capped, err := BareHTML(BarePage{Listing: l, Prose: "", MaxRendered: 100})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func TestBareHTMLCapsRenderedRows(t *testing.T) {
 // author's own line structure is what it can honestly do.
 func TestBareHTMLKeepsProseLineStructure(t *testing.T) {
 	prose := "# bbsbot\n\nA bot.\n\n- one\n- two\n"
-	b, err := BareHTML(model.Listing{Path: "/x"}, prose, 100)
+	b, err := BareHTML(BarePage{Listing: model.Listing{Path: "/x"}, Prose: prose, MaxRendered: 100})
 	if err != nil {
 		t.Fatal(err)
 	}

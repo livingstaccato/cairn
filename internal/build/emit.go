@@ -233,7 +233,14 @@ func (r *runner) emitHTML(c emitCtx) error {
 		}
 		return nil
 	}
-	b, err := emit.BareHTML(c.listing, c.prose, c.settings.MaxRendered)
+	b, err := emit.BareHTML(emit.BarePage{
+		Listing:     c.listing,
+		Prose:       c.prose,
+		MaxRendered: c.settings.MaxRendered,
+		// The top of the indexed tree, where a parent link would point at
+		// something cairn never wrote.
+		AtRoot: c.relDir == ".",
+	})
 	if err != nil {
 		return err
 	}

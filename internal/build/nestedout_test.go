@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/livingstaccato/cairn/internal/config"
 )
 
 // nested builds a tree whose out: is a subdirectory of root:.
@@ -114,6 +116,35 @@ func TestOutRel(t *testing.T) {
 	for _, c := range cases {
 		if got := OutRel(c.root, c.out); got != c.want {
 			t.Errorf("OutRel(%q, %q) = %q, want %q", c.root, c.out, got, c.want)
+		}
+	}
+}
+
+// The parent row, end to end: the top of the tree must not offer a link above
+// itself, and every directory below it must. The unit test in internal/emit
+// covers the switch; this covers the build actually setting it.
+func TestOnlyTheTopListingOmitsTheParentRow(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	c := conf(nil)
+	bare := config.PresentBare
+	outs := []string{config.OutputHTML}
+	c.Defaults = config.Override{Present: &bare, Outputs: &outs}
+	run(t, c, root, out)
+
+	read := func(rel string) string {
+		t.Helper()
+		b, err := os.ReadFile(filepath.Join(out, rel))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	if strings.Contains(read("index.html"), `href="../"`) {
+		t.Error("the top listing links above the indexed tree")
+	}
+	for _, rel := range []string{"bootstrap/index.html", "bootstrap/linux/index.html"} {
+		if !strings.Contains(read(rel), `href="../"`) {
+			t.Errorf("%s has no way back up", rel)
 		}
 	}
 }

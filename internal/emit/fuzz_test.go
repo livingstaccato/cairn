@@ -137,9 +137,12 @@ func FuzzBareHTMLEscapesNames(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, name string) {
-		body, err := BareHTML(model.Listing{Path: "/x", Entries: []model.Entry{
-			{Name: name, Path: "/x/" + name},
-		}}, "", 100)
+		body, err := BareHTML(BarePage{
+			Listing: model.Listing{Path: "/x", Entries: []model.Entry{
+				{Name: name, Path: "/x/" + name},
+			}},
+			MaxRendered: 100,
+		})
 		if err != nil {
 			return
 		}

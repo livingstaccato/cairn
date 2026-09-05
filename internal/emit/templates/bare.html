@@ -19,7 +19,7 @@ td.size{text-align:right}
 <table>
 <thead><tr><th>Name</th><th>Size</th><th>Modified</th><th>SHA-256</th></tr></thead>
 <tbody>
-<tr><td><a href="../">../</a></td><td></td><td></td><td></td></tr>
+{{ if not .AtRoot }}<tr><td><a href="../">../</a></td><td></td><td></td><td></td></tr>{{ end }}
 {{ range .Shown }}
 <tr>
   <td><a href="{{ .Path }}">{{ .Name }}{{ if .IsDir }}/{{ end }}</a>{{ with .Title }} — {{ . }}{{ end }}</td>

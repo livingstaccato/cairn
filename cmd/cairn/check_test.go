@@ -219,3 +219,67 @@ func TestCheckKeepsOrphansItCannotProveAreCairnsOwn(t *testing.T) {
 		t.Errorf("keeping it was not reported: %q", stderr.String())
 	}
 }
+
+// A removal that succeeded is not an error, and must not be logged as a stream
+// of them.
+//
+// The findings were reported before the removal ran, so a --remove-orphaned run
+// that cleaned up perfectly emitted one ERROR per orphan, then one INFO per
+// removal, then exited zero. Any log-based alerting keyed on severity pages
+// somebody for a tidy-up that worked, and the exit code says the opposite of
+// what the log says.
+func TestCheckDoesNotReportRemovedOrphansAsErrors(t *testing.T) {
+	configPath, out := fixture(t)
+	var stderr strings.Builder
+	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
+		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
+	}
+
+	stale := filepath.Join(out, "bootstrap", "tree.csv")
+	header := strings.Join(emit.CSVHeader, ",") + "\n"
+	if err := os.WriteFile(stale, []byte(header), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stderr.Reset()
+	if err := runCheck(context.Background(), configPath, true, &stderr); err != nil {
+		t.Fatalf("the tree is intact once the orphan is gone: %v\n%s", err, stderr.String())
+	}
+	if strings.Contains(stderr.String(), "level=ERROR") {
+		t.Errorf("a clean removal logged an error and then exited zero:\n%s", stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "removed output cairn does not own") {
+		t.Errorf("the removal was not reported: %q", stderr.String())
+	}
+}
+
+// A directory the sweep took is reported like every other thing removed. It
+// disappeared silently before, and in a mirror that is a directory of the
+// published artifact tree.
+func TestCheckReportsDirectoriesTheSweepRemoved(t *testing.T) {
+	configPath, out := fixture(t)
+	var stderr strings.Builder
+	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
+		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
+	}
+
+	nested := filepath.Join(out, "gone", "deeper")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	header := strings.Join(emit.CSVHeader, ",") + "\n"
+	if err := os.WriteFile(filepath.Join(nested, "index.csv"), []byte(header), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stderr.Reset()
+	if err := runCheck(context.Background(), configPath, true, &stderr); err != nil {
+		t.Fatalf("%v\n%s", err, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "removed a directory the removals left empty") {
+		t.Errorf("the emptied directories were removed without a word:\n%s", stderr.String())
+	}
+	if _, err := os.Lstat(filepath.Join(out, "gone")); err == nil {
+		t.Error("the sweep stopped at the immediate parent")
+	}
+}

@@ -7,8 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
+	"path"
 	"sort"
+	"strings"
 )
 
 // ErrNoClaims is why removal refuses on a tree whose manifest records nothing.
@@ -17,8 +18,26 @@ var ErrNoClaims = errors.New(
 		"lost manifest rather than a tree of foreign files — repair it with " +
 		"cairn build --adopt before removing anything")
 
-// RemoveOrphaned deletes the output a report found unowned, and returns the
-// paths it removed, sorted.
+// Removal is what RemoveOrphaned deleted, and what it refused to.
+//
+// Kept is not a weaker Removed. It is the set the report named and the content
+// test would not vouch for, and every path in it is still a finding an operator
+// has to settle by hand — so it stays in the report and still decides the exit
+// code. Counting it as dealt with is the behaviour that lost files.
+type Removal struct {
+	Removed []string
+	Kept    []string
+	// RemovedDirs are the directories the removals left holding nothing.
+	//
+	// Returned rather than swept silently, for the reason check states about
+	// every other finding: a directory that disappears with no record anywhere
+	// is one nobody can account for afterwards, and in a mirror it is a
+	// directory of the published artifact tree.
+	RemovedDirs []string
+}
+
+// RemoveOrphaned deletes the output a report found unowned and returns what it
+// took and what it left.
 //
 // check could always name stale output and nothing could act on it. Prune only
 // ever removes what the manifest records, by design, so output from an earlier
@@ -42,17 +61,6 @@ var ErrNoClaims = errors.New(
 // cairn generates are the most ordinary names in the tree. Every deletion here
 // is gated on provenOurs, so a file is removed only when its own bytes say cairn
 // wrote it. The rest come back in Kept.
-// Removal is what RemoveOrphaned deleted, and what it refused to.
-//
-// Kept is not a weaker Removed. It is the set the report named and the content
-// test would not vouch for, and every path in it is still a finding an operator
-// has to settle by hand — so it stays in the report and still decides the exit
-// code. Counting it as dealt with is the behaviour that lost files.
-type Removal struct {
-	Removed []string
-	Kept    []string
-}
-
 func RemoveOrphaned(outDir string, rep *Report) (*Removal, error) {
 	res := &Removal{}
 	if len(rep.Orphaned) == 0 {
@@ -79,28 +87,57 @@ func RemoveOrphaned(outDir string, rep *Report) (*Removal, error) {
 	}
 	sort.Strings(res.Removed)
 	sort.Strings(res.Kept)
-	removeEmptyDirs(outDir, res.Removed)
+	res.RemovedDirs = removeEmptyDirs(outDir, res.Removed)
 	return res, nil
 }
 
-// removeEmptyDirs clears directories the removals left holding nothing.
+// removeEmptyDirs clears the directories the removals left holding nothing, and
+// reports which ones went.
 //
-// Deepest first, and best effort: os.Remove refuses a directory that still has
-// anything in it, which is exactly the test wanted, so a failure here means the
+// Every ancestor, not only the immediate parent. Taking a/b/c/index.csv empties
+// a/b/c, and once that goes it empties a/b, and then a — a sweep that stopped at
+// the first level left the rest of the chain standing, which is the litter it
+// exists to clear.
+//
+// Deepest first, so a parent is only ever tried after its children have had
+// their turn. Best effort past that: os.Remove refuses a directory that still
+// holds anything, which is exactly the test wanted, so a failure here means the
 // directory was still in use and should stay.
-func removeEmptyDirs(outDir string, removed []string) {
-	dirs := make([]string, 0, len(removed))
+//
+// The output root is never a candidate. path.Dir stops at ".", and the root is
+// not litter however empty a removal leaves it.
+func removeEmptyDirs(outDir string, removed []string) []string {
+	seen := map[string]bool{}
+	var dirs []string
 	for _, rel := range removed {
-		if d := filepath.Dir(rel); d != "." {
-			dirs = append(dirs, d)
+		for d := path.Dir(rel); d != "." && d != "/"; d = path.Dir(d) {
+			if !seen[d] {
+				seen[d] = true
+				dirs = append(dirs, d)
+			}
 		}
 	}
-	sort.Sort(sort.Reverse(sort.StringSlice(dirs)))
+
+	// Deepest first by segment count; name order only breaks ties, so that a
+	// sibling never comes between a directory and its own parent.
+	sort.Slice(dirs, func(i, j int) bool {
+		di, dj := strings.Count(dirs[i], "/"), strings.Count(dirs[j], "/")
+		if di != dj {
+			return di > dj
+		}
+		return dirs[i] < dirs[j]
+	})
+
+	var gone []string
 	for _, d := range dirs {
 		abs, err := containedPath(outDir, d)
 		if err != nil {
 			continue
 		}
-		_ = os.Remove(abs)
+		if os.Remove(abs) == nil {
+			gone = append(gone, d)
+		}
 	}
+	sort.Strings(gone)
+	return gone
 }

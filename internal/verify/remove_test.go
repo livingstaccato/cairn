@@ -220,3 +220,57 @@ func TestRemoveOrphanedStillRemovesCairnsOwnStaleOutput(t *testing.T) {
 		t.Errorf("Kept = %v, want nothing: every one of these is cairn's", res.Kept)
 	}
 }
+
+// The sweep has to report what it did and finish what it started.
+//
+// It returned nothing, so a directory vanished with no record anywhere that
+// anything had removed it — and in a mirror that is a directory of the published
+// artifact tree. It also swept only immediate parents, so removing
+// a/b/c/index.csv took a/b/c and left a/b and a standing empty behind it.
+func TestRemoveOrphanedReportsAndFullySweepsEmptiedDirectories(t *testing.T) {
+	f := mirror(t)
+	l := sampleListing()
+	f.outFile("keep/index.json", "{}")
+	f.outFile("a/b/c/index.csv", string(mustBytes(emit.CSV(l))))
+	f.manifest("keep/index.json")
+
+	res, err := RemoveOrphaned(f.out, f.run())
+	if err != nil {
+		t.Fatalf("RemoveOrphaned: %v", err)
+	}
+	if !slices.Equal(res.Removed, []string{"a/b/c/index.csv"}) {
+		t.Fatalf("Removed = %v, want [a/b/c/index.csv]", res.Removed)
+	}
+	want := []string{"a", "a/b", "a/b/c"}
+	if !slices.Equal(res.RemovedDirs, want) {
+		t.Errorf("RemovedDirs = %v, want %v", res.RemovedDirs, want)
+	}
+	for _, d := range want {
+		if f.exists(d) {
+			t.Errorf("%s was left standing empty", d)
+		}
+	}
+	// The sweep stops at anything still holding something.
+	if !f.exists("keep") || !f.exists("keep/index.json") {
+		t.Error("the sweep removed a directory that still had something in it")
+	}
+}
+
+// The output root is never swept away, however empty the removals leave it.
+func TestRemoveOrphanedNeverSweepsTheOutputRoot(t *testing.T) {
+	f := mirror(t)
+	f.outFile("index.csv", string(mustBytes(emit.CSV(sampleListing()))))
+	f.outFile("index.json", "{}")
+	f.manifest("index.json")
+
+	res, err := RemoveOrphaned(f.out, f.run())
+	if err != nil {
+		t.Fatalf("RemoveOrphaned: %v", err)
+	}
+	if len(res.RemovedDirs) != 0 {
+		t.Errorf("RemovedDirs = %v, want nothing: the only parent is the root", res.RemovedDirs)
+	}
+	if _, err := os.Lstat(f.out); err != nil {
+		t.Fatal("the output root itself was removed")
+	}
+}

@@ -75,28 +75,20 @@ func runCheck(ctx context.Context, configPath string, removeOrphaned bool, stder
 	// something is wrong and nothing about which file to look at.
 	report(log, "a file cairn recorded is gone", rep.Missing)
 	report(log, "a file no longer matches its recorded digest", rep.Modified)
-	report(log, "output cairn does not own", rep.Orphaned)
+	// Orphans are reported after the removal when one was asked for, so what is
+	// logged as an error is what an operator still has to act on. Reporting them
+	// first made a --remove-orphaned run that cleaned up perfectly emit one
+	// error per orphan and then exit zero, so severity and exit status said
+	// opposite things about the same run.
+	if !removeOrphaned {
+		report(log, "output cairn does not own", rep.Orphaned)
+	}
 	report(log, "generated output no longer holds what cairn wrote", rep.Altered)
 
 	if removeOrphaned {
-		res, err := verify.RemoveOrphaned(outDir, rep)
-		// Before the error check: a removal that failed part way through has
-		// already deleted files, and the operator needs the list of them more
-		// than they need the error on its own.
-		for _, p := range res.Removed {
-			log.Info("removed output cairn does not own", "path", p)
-		}
-		for _, p := range res.Kept {
-			log.Warn("kept: nothing in its content shows cairn wrote it", "path", p)
-		}
-		if err != nil {
-			log.Error("could not remove unowned output", "err", err)
+		if err := removeAndReport(log, outDir, rep); err != nil {
 			return err
 		}
-		// Only what was actually deleted is dealt with. A kept path is still a
-		// finding: the name says cairn could have written it and the bytes say
-		// nothing did, which is exactly the collision a person has to settle.
-		rep.Orphaned = res.Kept
 	}
 
 	log.Info("check complete",
@@ -106,6 +98,36 @@ func runCheck(ctx context.Context, configPath string, removeOrphaned bool, stder
 	if !rep.OK() {
 		return ErrNotIntact
 	}
+	return nil
+}
+
+// removeAndReport deletes the unowned output and says what became of it.
+//
+// Everything it removed is named, including the directories the removals left
+// empty: a directory that disappears with no record is one nobody can account
+// for afterwards, and in a mirror it is part of the published artifact tree.
+//
+// What it kept is reported as an error, because a kept path still fails the
+// check. The name says cairn could have written it and the bytes say nothing
+// did, which is a collision only a person can settle.
+func removeAndReport(log *slog.Logger, outDir string, rep *verify.Report) error {
+	res, err := verify.RemoveOrphaned(outDir, rep)
+	// Logged before the error is handled: a removal that failed part way through
+	// has already deleted files, and an operator needs that list more than they
+	// need the error on its own.
+	for _, p := range res.Removed {
+		log.Info("removed output cairn does not own", "path", p)
+	}
+	for _, p := range res.RemovedDirs {
+		log.Info("removed a directory the removals left empty", "path", p)
+	}
+	report(log, "kept: nothing in its content shows cairn wrote it", res.Kept)
+	if err != nil {
+		log.Error("could not remove unowned output", "err", err)
+		return err
+	}
+	// Only what was actually deleted is dealt with.
+	rep.Orphaned = res.Kept
 	return nil
 }
 

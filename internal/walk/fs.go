@@ -202,7 +202,17 @@ func withinRoot(root, target string) bool {
 	if err != nil {
 		return false
 	}
-	resolved, err := filepath.EvalSymlinks(target)
+	// Absolute before resolving, and not for tidiness. EvalSymlinks returns a
+	// relative path when given one, and filepath.Rel cannot relate that to the
+	// absolute root above — it errors, and this function's error path is
+	// indistinguishable from a real escape. Every config cairn documents uses a
+	// relative root:, so follow_symlinks refused every symlink it was given,
+	// including ones plainly inside the tree, and said they escaped it.
+	targetAbs, err := filepath.Abs(target)
+	if err != nil {
+		return false
+	}
+	resolved, err := filepath.EvalSymlinks(targetAbs)
 	if err != nil {
 		return false
 	}

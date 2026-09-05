@@ -9,7 +9,13 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/livingstaccato/cairn/internal/config"
 )
+
+// These cover the rule generated.go owns: cairn's own output is not content, so
+// neither the output directory nor a generated filename belongs in a listing or
+// in the walk that produces one.
 
 // nested builds a tree whose out: is a subdirectory of root:.
 func nested(t *testing.T) (root, out string) {
@@ -97,5 +103,28 @@ func TestOutEqualToRootStillBuilds(t *testing.T) {
 	}
 	if len(again.Changed) != 0 {
 		t.Errorf("a mirror rebuild rewrote %v, want nothing", again.Changed)
+	}
+}
+
+// hugo mode writes its own page into the tree it indexes, so the same exclusion
+// has to cover it.
+
+// Hugo mode writes _index.md into the tree in the same arrangement, and must
+// not list it either.
+func TestRunInPlaceHugoExcludesItsPage(t *testing.T) {
+	root := tree(t)
+	c := conf(nil)
+	c.Mode = config.ModeHugo
+	outs := []string{config.OutputText}
+	c.Defaults = config.Override{Outputs: &outs}
+	run(t, c, root, root)
+	run(t, c, root, root)
+
+	b, err := os.ReadFile(filepath.Join(root, "bootstrap", "index.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), "_index.md") {
+		t.Errorf("listing includes the page cairn generated: %q", b)
 	}
 }

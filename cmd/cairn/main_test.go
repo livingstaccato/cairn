@@ -189,3 +189,64 @@ func lines(t *testing.T, p string) []string {
 	}
 	return strings.Split(s, "\n")
 }
+
+// An absolute root: or out: is taken as it stands.
+//
+// filepath.Join does not honour an absolute second argument — it concatenates —
+// so "root: /srv/mirror" under a config in /etc resolved to "/etc/srv/mirror"
+// and the build failed with an ENOENT naming a path the operator never wrote.
+func TestAbsolutePathsAreNotJoinedToTheConfigDirectory(t *testing.T) {
+	tree := t.TempDir()
+	out := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tree, "bootstrap"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tree, "bootstrap", "boot.sh"),
+		[]byte("#!/bin/sh\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// The config lives somewhere else entirely, which is the case that broke.
+	configPath := filepath.Join(t.TempDir(), "cairn.yaml")
+	body := "version: 1\nroot: " + filepath.ToSlash(tree) +
+		"\nout: " + filepath.ToSlash(out) + "\ndefaults:\n  outputs: [json]\n"
+	if err := os.WriteFile(configPath, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, gotRoot, gotOut, err := loadPaths(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotRoot != tree {
+		t.Errorf("root = %q, want %q", gotRoot, tree)
+	}
+	if gotOut != out {
+		t.Errorf("out = %q, want %q", gotOut, out)
+	}
+
+	var stderr strings.Builder
+	if err := runBuild(configPath, "", &stderr); err != nil {
+		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(out, "bootstrap", "index.json")); err != nil {
+		t.Errorf("nothing written under the absolute out: %v", err)
+	}
+}
+
+// A relative path still resolves against the config's own directory, so a build
+// behaves the same wherever it is invoked from.
+func TestRelativePathsStillFollowTheConfig(t *testing.T) {
+	configPath, out := fixture(t)
+	_, gotRoot, gotOut, err := loadPaths(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := filepath.Dir(configPath)
+	if want := filepath.Join(base, "tree"); gotRoot != want {
+		t.Errorf("root = %q, want %q", gotRoot, want)
+	}
+	if gotOut != out {
+		t.Errorf("out = %q, want %q", gotOut, out)
+	}
+}

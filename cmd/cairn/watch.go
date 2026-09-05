@@ -89,17 +89,26 @@ func runWatch(ctx context.Context, configPath string, settle time.Duration, stde
 }
 
 // loadPaths reads the config and resolves the two directories a run needs.
-//
-// root and out are resolved against the config's own directory, so a run
-// behaves the same wherever it is invoked from.
 func loadPaths(configPath string) (*config.Config, string, string, error) {
 	cfg, err := config.Load(configPath)
 	if err != nil {
 		return nil, "", "", err
 	}
 	base := filepath.Dir(configPath)
-	return cfg,
-		filepath.Join(base, filepath.FromSlash(cfg.Root)),
-		filepath.Join(base, filepath.FromSlash(cfg.Out)),
-		nil
+	return cfg, resolveDir(base, cfg.Root), resolveDir(base, cfg.Out), nil
+}
+
+// resolveDir interprets a directory named in the config.
+//
+// A relative one is resolved against the config's own directory, so a run
+// behaves the same wherever it is invoked from. An absolute one is taken as it
+// stands — filepath.Join does not honour an absolute second argument, it
+// concatenates, so "root: /srv/mirror" under a config in /etc resolved to
+// /etc/srv/mirror and the build died with an ENOENT naming a path nobody wrote.
+func resolveDir(base, p string) string {
+	p = filepath.FromSlash(p)
+	if filepath.IsAbs(p) {
+		return p
+	}
+	return filepath.Join(base, p)
 }

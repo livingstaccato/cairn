@@ -1,0 +1,41 @@
+@startuml
+' SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
+' SPDX-License-Identifier: MIT
+'
+' Rendered to ownership.svg by 'make diagrams'. GitHub does not render
+' PlantUML, so the SVG beside this file is what docs/deployment.md shows;
+' regenerate it in the same commit as any edit here.
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 14
+skinparam shadowing false
+skinparam dpi 160
+skinparam ArrowColor #444444
+skinparam ArrowFontSize 13
+hide empty description
+
+skinparam state {
+  BorderColor #444444
+  FontColor #111111
+  BackgroundColor<<good>> #E8F2E4
+  BorderColor<<good>> #4C7A34
+  BackgroundColor<<bad>> #FBEDE7
+  BorderColor<<bad>> #A8452A
+  BackgroundColor<<dead>> #F0F0F0
+  BorderColor<<dead>> #999999
+  FontColor<<dead>> #444444
+}
+
+state "**Owned**\nthe manifest records every file cairn wrote" as Owned <<good>>
+state "**Unclaimed**\nthe output is still there, the manifest is not" as Unclaimed <<bad>>
+state "build refused\non the first file" as Refused <<dead>>
+state "nothing written,\nnothing claimed" as Frozen <<dead>>
+
+[*] --> Owned : first build
+Owned --> Unclaimed : rsync --delete, git clean, or a\nmanifest this cairn cannot parse
+Unclaimed --> Refused : build
+Unclaimed --> Frozen : build, on_conflict skip
+Refused -[dashed]-> Unclaimed : neither one\nchanges the tree
+Frozen -[dashed]-> Unclaimed
+Unclaimed --> Owned : build --adopt
+@enduml

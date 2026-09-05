@@ -3,7 +3,7 @@
 
 GO_COVER_MIN ?= 90.0
 
-.PHONY: templates pageweight gate lint security test cover example bench fuzz tools act act-job clean
+.PHONY: templates pageweight gate lint security test cover example bench fuzz tools act act-job diagrams clean
 
 gate: private lint security test ## Everything a commit must pass
 
@@ -49,6 +49,9 @@ tools: ## Install the gate's binaries
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
 	go install github.com/securego/gosec/v2/cmd/gosec@v2.29.0
 	go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
+
+diagrams: ## Re-render docs/diagrams/*.puml to SVG (needs plantuml)
+	plantuml -tsvg docs/diagrams/*.puml
 
 clean:
 	rm -f coverage.out

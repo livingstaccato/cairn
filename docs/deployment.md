@@ -317,25 +317,20 @@ scope.
 
 Ownership has two states, and one edge leads back out of the bad one.
 
-```mermaid
-stateDiagram-v2
-    Owned: Owned — the manifest records every file cairn wrote
-    Unclaimed: Unclaimed — the output is still there, the manifest is not
-    Refused: refused on the first file
-    Frozen: nothing written, nothing claimed
-
-    [*] --> Owned: first build
-    Owned --> Unclaimed: rsync --delete, git clean,<br/>or a manifest this cairn cannot parse
-    Unclaimed --> Refused: build
-    Unclaimed --> Frozen: build, on_conflict skip
-    Refused --> Unclaimed
-    Frozen --> Unclaimed
-    Unclaimed --> Owned: build --adopt
-```
+![A state diagram. A first build reaches Owned, where the manifest records every
+file cairn wrote. An rsync --delete, a git clean, or a manifest this cairn cannot
+parse moves it to Unclaimed, where the output is still there and the manifest is
+not. From Unclaimed a plain build is refused on the first file, and a build with
+on_conflict skip writes nothing and claims nothing; both return to Unclaimed
+without changing the tree. Only build --adopt leads from Unclaimed back to
+Owned.](diagrams/ownership.svg)
 
 The two boxes along the bottom are the trap. They are what the first two
 remedies an operator reaches for actually do, and both loop straight back:
 nothing about the tree has changed.
+
+The diagram is generated — `docs/diagrams/ownership.puml` is the source, and
+`make diagrams` re-renders it.
 
 ```sh
 cairn build --dry-run --adopt   # read what it would take

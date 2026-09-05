@@ -3,7 +3,7 @@
 
 GO_COVER_MIN ?= 90.0
 
-.PHONY: templates pageweight gate lint security test cover example bench tools act act-job clean
+.PHONY: templates pageweight gate lint security test cover example bench fuzz tools act act-job clean
 
 gate: private lint security test ## Everything a commit must pass
 
@@ -41,6 +41,9 @@ pageweight: ## Assert a directory's page does not grow with the directory
 
 bench: ## Measure one directory at 1k, 10k and 50k entries
 	ci/bench.sh
+
+fuzz: ## Run every fuzz target; FUZZTIME=300 for a longer hunt
+	ci/fuzz.sh
 
 tools: ## Install the gate's binaries
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2

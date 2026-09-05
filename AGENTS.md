@@ -138,14 +138,21 @@ implement. A test that has never failed has never been verified.
 - Golden-file tests per emitter — fixture tree in, exact bytes out.
 - Table-driven cases for anything with boundaries (sizes, precedence, globs).
 - Hostile input is a test case, not a review note.
+- **Fuzz what a filename reaches.** Names in a mirror are attacker-influenced,
+  so every guard standing between a scanned tree and what cairn writes has a
+  property over all inputs, not a table of the cases somebody thought of:
+  `SHA256SUMS` escaping, `containedPath`, CSV formula neutralisation, HTML and
+  PEP 503 escaping, and the server's containment. `make fuzz` runs them all;
+  `FUZZTIME=300 make fuzz` for a real hunt. A failing input is committed under
+  `testdata/fuzz/` so it can never come back.
 - `make cover` floors coverage at 90% over `./internal/...`. A
   declaration-only package reports "no statements" and passes — that is
   intentional and distinguished from 0% of real statements.
 
 ## CI
 
-Four jobs in `.github/workflows/ci.yml`: `test` (3 OSes), `lint`, `security`,
-`hygiene`. Every step has a comment saying what it does. **No `run:` block
+Five jobs in `.github/workflows/ci.yml`: `test` (3 OSes), `lint`, `security`,
+`fuzz`, `hygiene`. Every step has a comment saying what it does. **No `run:` block
 exceeds three lines** — anything longer is a script in `ci/`.
 
 Run it locally before pushing:

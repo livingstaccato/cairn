@@ -98,6 +98,21 @@ jobs:
       - name: Scan
         run: ci/security.sh
 
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.26"
+      # Every fuzz target, briefly. The point on this budget is not to find new
+      # bugs: it is that each target still runs, its seed corpus still passes,
+      # and any input committed under testdata/fuzz/ after a past failure stays
+      # fixed — Go replays the whole corpus before it generates anything, so a
+      # regression fails in the first second.
+      - name: Fuzz
+        run: ci/fuzz.sh
+
   private:
     runs-on: ubuntu-latest
     steps:

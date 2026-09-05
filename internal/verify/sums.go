@@ -118,6 +118,14 @@ func (v *verifier) checkDigest(target, want string) {
 // one would skip a line a client verifies successfully and leave a file counted
 // as unchecked when nothing is wrong with it.
 func parseSumsLine(line string) (sum, name string, ok bool) {
+	// A leading backslash says the name was escaped because it holds a
+	// backslash, a newline or a carriage return. cairn writes those lines, so
+	// cairn has to read them: without this every such file is reported missing
+	// while the artifact sits there intact.
+	escaped := strings.HasPrefix(line, `\`)
+	if escaped {
+		line = line[1:]
+	}
 	if len(line) < digestLen+len(sumsSeparator)+1 {
 		return "", "", false
 	}
@@ -127,10 +135,46 @@ func parseSumsLine(line string) (sum, name string, ok bool) {
 	if !isHex(sum) || (sep != sumsSeparator && sep != binarySeparator) {
 		return "", "", false
 	}
+	if escaped {
+		if name, ok = unescapeSumsName(name); !ok {
+			return "", "", false
+		}
+	}
 	if name == "." || name == ".." {
 		return "", "", false
 	}
 	return sum, name, true
+}
+
+// unescapeSumsName undoes the escaping a leading backslash announces.
+//
+// An unknown escape is a malformed line rather than something to pass through.
+// Guessing would turn a corrupt checksum file into a name that resolves to some
+// other file, which is the substitution verification exists to prevent.
+func unescapeSumsName(name string) (string, bool) {
+	var b strings.Builder
+	b.Grow(len(name))
+	for i := 0; i < len(name); i++ {
+		if name[i] != '\\' {
+			b.WriteByte(name[i])
+			continue
+		}
+		i++
+		if i == len(name) {
+			return "", false
+		}
+		switch name[i] {
+		case '\\':
+			b.WriteByte('\\')
+		case 'n':
+			b.WriteByte('\n')
+		case 'r':
+			b.WriteByte('\r')
+		default:
+			return "", false
+		}
+	}
+	return b.String(), true
 }
 
 // isHex reports whether s is nothing but hex digits.

@@ -6,8 +6,11 @@ package verify
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/livingstaccato/cairn/internal/emit"
 )
 
 func (f *fixture) exists(rel string) bool {
@@ -23,16 +26,18 @@ func TestRemoveOrphanedDeletesWhatWasReported(t *testing.T) {
 	f := mirror(t)
 	f.file("pool/nginx.deb", "deb\n")
 	f.outFile("pool/index.json", "{}")
-	f.outFile("pool/index.csv", "name,size\n") // csv left outputs: a release ago
+	// csv left outputs: a release ago. Cairn's own bytes, because that is what
+	// makes it removable — a file merely named index.csv is kept.
+	f.outFile("pool/index.csv", string(mustBytes(emit.CSV(sampleListing()))))
 	f.manifest("pool/index.json")
 
 	rep := f.run()
-	removed, err := RemoveOrphaned(f.out, rep)
+	res, err := RemoveOrphaned(f.out, rep)
 	if err != nil {
 		t.Fatalf("RemoveOrphaned: %v", err)
 	}
-	if len(removed) != 1 || removed[0] != "pool/index.csv" {
-		t.Errorf("removed = %v, want [pool/index.csv]", removed)
+	if len(res.Removed) != 1 || res.Removed[0] != "pool/index.csv" {
+		t.Errorf("Removed = %v, want [pool/index.csv]", res.Removed)
 	}
 	if f.exists("pool/index.csv") {
 		t.Error("the orphan is still there")
@@ -59,15 +64,15 @@ func TestRemoveOrphanedRefusesWhenTheManifestClaimsNothing(t *testing.T) {
 	if len(rep.Orphaned) != 2 {
 		t.Fatalf("Orphaned = %v, want both files: the premise of this test", rep.Orphaned)
 	}
-	removed, err := RemoveOrphaned(f.out, rep)
+	res, err := RemoveOrphaned(f.out, rep)
 	if err == nil {
 		t.Fatal("removing every output because the manifest was lost must be refused")
 	}
 	if !strings.Contains(err.Error(), "--adopt") {
 		t.Errorf("the refusal should point at the recovery: %v", err)
 	}
-	if len(removed) != 0 {
-		t.Errorf("removed %v despite refusing", removed)
+	if len(res.Removed) != 0 {
+		t.Errorf("removed %v despite refusing", res.Removed)
 	}
 	if !f.exists("pool/index.json") || !f.exists("pool/index.csv") {
 		t.Error("files were deleted despite the refusal")
@@ -103,12 +108,12 @@ func TestRemoveOrphanedOnACleanTreeDoesNothing(t *testing.T) {
 	f.outFile("pool/index.json", "{}")
 	f.manifest("pool/index.json")
 
-	removed, err := RemoveOrphaned(f.out, f.run())
+	res, err := RemoveOrphaned(f.out, f.run())
 	if err != nil {
 		t.Fatalf("a clean tree must not error: %v", err)
 	}
-	if len(removed) != 0 {
-		t.Errorf("removed = %v, want nothing", removed)
+	if len(res.Removed) != 0 {
+		t.Errorf("Removed = %v, want nothing", res.Removed)
 	}
 }
 
@@ -119,11 +124,99 @@ func TestRemoveOrphanedWithNothingToDoDoesNotTripTheGuard(t *testing.T) {
 	f := mirror(t)
 	f.file("pool/nginx.deb", "deb\n")
 
-	removed, err := RemoveOrphaned(f.out, f.run())
+	res, err := RemoveOrphaned(f.out, f.run())
 	if err != nil {
 		t.Fatalf("an unbuilt tree has nothing to remove and must not error: %v", err)
 	}
-	if len(removed) != 0 {
-		t.Errorf("removed = %v, want nothing", removed)
+	if len(res.Removed) != 0 {
+		t.Errorf("Removed = %v, want nothing", res.Removed)
+	}
+}
+
+// The data-loss case, end to end.
+//
+// A mirror is root and out in one directory, so nearly every file in it is
+// somebody's artifact, and the names cairn generates are the most ordinary
+// names in a published tree. GeneratedNames covers all four extensions whatever
+// outputs: is set, so cairn need never have written HTML into this tree — which
+// also means emit.Writer's conflict check, the guard that stops cairn walking
+// over a file it did not write, never fires on these paths.
+//
+// Reported: correct, and the report is what a person reads. Deleted: a mirrored
+// package index and an extracted documentation tree, gone, with the command
+// logging success and exiting zero.
+func TestRemoveOrphanedKeepsForeignFilesWearingGeneratedNames(t *testing.T) {
+	f := mirror(t)
+	f.file("simple/requests/index.html", "<a href='requests-2.0.tar.gz'>requests</a>\n")
+	f.file("docs/api/index.html", "<h1>API reference</h1>\n")
+	// Real cairn output in the same tree, so the manifest is not empty and the
+	// claims guard does not fire. A normal mirror has thousands of these.
+	f.outFile("simple/requests/index.json", "{}")
+	f.manifest("simple/requests/index.json")
+
+	rep := f.run()
+	foreign := []string{"docs/api/index.html", "simple/requests/index.html"}
+	for _, rel := range foreign {
+		if !slices.Contains(rep.Orphaned, rel) {
+			t.Fatalf("Orphaned = %v, want it to report %s: the premise of this test",
+				rep.Orphaned, rel)
+		}
+	}
+
+	res, err := RemoveOrphaned(f.out, rep)
+	if err != nil {
+		t.Fatalf("RemoveOrphaned: %v", err)
+	}
+	if len(res.Removed) != 0 {
+		t.Errorf("deleted %v; nothing in this tree is cairn's", res.Removed)
+	}
+	if !slices.Equal(res.Kept, foreign) {
+		t.Errorf("Kept = %v, want %v", res.Kept, foreign)
+	}
+	for _, rel := range foreign {
+		if _, err := os.Lstat(filepath.Join(f.root, filepath.FromSlash(rel))); err != nil {
+			t.Errorf("deleted a foreign artifact: %s", rel)
+		}
+	}
+}
+
+// A kept path is still a finding. Reporting it and then removing it from the
+// report would tell an operator the tree is intact when a name collision they
+// have to settle is sitting in it.
+func TestKeptOrphansAreStillReported(t *testing.T) {
+	f := mirror(t)
+	f.file("simple/requests/index.html", "<a href='x'>x</a>\n")
+	f.outFile("simple/requests/index.json", "{}")
+	f.manifest("simple/requests/index.json")
+
+	res, err := RemoveOrphaned(f.out, f.run())
+	if err != nil {
+		t.Fatalf("RemoveOrphaned: %v", err)
+	}
+	if len(res.Kept) == 0 {
+		t.Fatal("the collision was neither removed nor kept, so nothing reports it")
+	}
+}
+
+// Stale output cairn really did write is still removed: the feature exists for
+// exactly this, and a fix that only ever refuses would be a fix that broke it.
+func TestRemoveOrphanedStillRemovesCairnsOwnStaleOutput(t *testing.T) {
+	f := mirror(t)
+	l := sampleListing()
+	f.outFile("pool/index.json", "{}")
+	f.outFile("pool/tree.csv", string(mustBytes(emit.CSV(l))))
+	f.outFile("pool/index.html", string(mustBytes(emit.BareHTML(emit.BarePage{Listing: l}))))
+	f.manifest("pool/index.json")
+
+	res, err := RemoveOrphaned(f.out, f.run())
+	if err != nil {
+		t.Fatalf("RemoveOrphaned: %v", err)
+	}
+	want := []string{"pool/index.html", "pool/tree.csv"}
+	if !slices.Equal(res.Removed, want) {
+		t.Errorf("Removed = %v, want %v", res.Removed, want)
+	}
+	if len(res.Kept) != 0 {
+		t.Errorf("Kept = %v, want nothing: every one of these is cairn's", res.Kept)
 	}
 }

@@ -52,6 +52,21 @@ func DigestPreview(sum string) string {
 	return sum[:digestPreview] + "…"
 }
 
+// GeneratorMarker is the line that identifies a page cairn rendered.
+//
+// HTML is the one generated format whose bytes are otherwise anonymous. JSON
+// carries a listing's own shape, CSV carries CSVHeader, and _index.md carries
+// its frontmatter — each says who wrote it. An autoindex page does not, and
+// "index.html" is the single most likely name for a file in a mirror that cairn
+// did not write: a package index, an extracted documentation tree, a generated
+// API reference. --remove-orphaned needs to tell those apart from cairn's own
+// stale output before it deletes anything, and this is what lets it.
+//
+// A meta tag rather than a comment because it is the standard place to say
+// this, and it survives a formatter that strips comments. It does not make the
+// page depend on anything external, which the bare presenter must not do.
+const GeneratorMarker = `<meta name="generator" content="cairn">`
+
 var bareTmpl = template.Must(template.New("bare").
 	Funcs(template.FuncMap{"humanSize": HumanSize, "digest": DigestPreview}).
 	Parse(bareTemplate))

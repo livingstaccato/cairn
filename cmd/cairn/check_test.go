@@ -131,10 +131,13 @@ func TestCheckRemovesOrphanedOutputWhenAsked(t *testing.T) {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 
-	// index.txt is a name cairn generates but this config does not ask for, so
-	// nothing claims it: the exact case Prune cannot reach.
-	stale := filepath.Join(out, "bootstrap", "index.txt")
-	if err := os.WriteFile(stale, []byte("name,size\n"), 0o644); err != nil {
+	// tree.csv is a name cairn generates but this config does not ask for, so
+	// nothing claims it: the exact case Prune cannot reach. It carries cairn's
+	// own column header, which is what allows removal to delete it — a file that
+	// only wore the name would be kept.
+	stale := filepath.Join(out, "bootstrap", "tree.csv")
+	header := strings.Join(emit.CSVHeader, ",") + "\n"
+	if err := os.WriteFile(stale, []byte(header), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -177,5 +180,42 @@ func TestCheckRefusesToRemoveWhenTheManifestClaimsNothing(t *testing.T) {
 	}
 	if _, statErr := os.Lstat(filepath.Join(out, "bootstrap", "index.json")); statErr != nil {
 		t.Error("output was deleted despite the refusal")
+	}
+}
+
+// The narrowing, from the command's side. A file that only wears a generated
+// name is kept, still reported, and still fails the check — so an operator is
+// told about the collision instead of losing the file to it.
+//
+// index.txt is one filename per line, which is what a listing of anything looks
+// like; SHA256SUMS is coreutils format, which every publisher's is. Neither can
+// show who wrote it, so neither is ever deleted on the strength of its name.
+func TestCheckKeepsOrphansItCannotProveAreCairnsOwn(t *testing.T) {
+	configPath, out := fixture(t)
+	var stderr strings.Builder
+	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
+		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
+	}
+
+	foreign := filepath.Join(out, "bootstrap", "index.txt")
+	body := []byte("a-real-artifact.tar.gz\nanother.tar.gz\n")
+	if err := os.WriteFile(foreign, body, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stderr.Reset()
+	err := runCheck(context.Background(), configPath, true, &stderr)
+	if !errors.Is(err, ErrNotIntact) {
+		t.Fatalf("a kept orphan is still a finding and must fail the check, got %v", err)
+	}
+	got, readErr := os.ReadFile(foreign)
+	if readErr != nil {
+		t.Fatalf("--remove-orphaned deleted a file nothing showed was cairn's: %v", readErr)
+	}
+	if string(got) != string(body) {
+		t.Errorf("the file was modified: %q", got)
+	}
+	if !strings.Contains(stderr.String(), "kept: nothing in its content shows cairn wrote it") {
+		t.Errorf("keeping it was not reported: %q", stderr.String())
 	}
 }

@@ -35,28 +35,52 @@ var ErrNoClaims = errors.New(
 // Containment is re-checked per path rather than trusted. A Report is data, and
 // a caller that built or edited one must not be able to reach outside the
 // output root through it.
-func RemoveOrphaned(outDir string, rep *Report) ([]string, error) {
+//
+// What it deletes is narrower than what check reports. A report answers "could
+// cairn have written a file with this name", which is the right question to put
+// in front of a person and the wrong one to hand to rm: in a mirror the names
+// cairn generates are the most ordinary names in the tree. Every deletion here
+// is gated on provenOurs, so a file is removed only when its own bytes say cairn
+// wrote it. The rest come back in Kept.
+// Removal is what RemoveOrphaned deleted, and what it refused to.
+//
+// Kept is not a weaker Removed. It is the set the report named and the content
+// test would not vouch for, and every path in it is still a finding an operator
+// has to settle by hand — so it stays in the report and still decides the exit
+// code. Counting it as dealt with is the behaviour that lost files.
+type Removal struct {
+	Removed []string
+	Kept    []string
+}
+
+func RemoveOrphaned(outDir string, rep *Report) (*Removal, error) {
+	res := &Removal{}
 	if len(rep.Orphaned) == 0 {
-		return nil, nil
+		return res, nil
 	}
 	if rep.Claims == 0 {
-		return nil, ErrNoClaims
+		return res, ErrNoClaims
 	}
 
-	removed := make([]string, 0, len(rep.Orphaned))
 	for _, rel := range rep.Orphaned {
 		abs, err := containedPath(outDir, rel)
 		if err != nil {
-			return removed, err
+			return res, err
+		}
+		// The name got it reported; only the content gets it deleted.
+		if !provenOurs(abs) {
+			res.Kept = append(res.Kept, rel)
+			continue
 		}
 		if err := os.Remove(abs); err != nil && !os.IsNotExist(err) {
-			return removed, fmt.Errorf("remove %s: %w", rel, err)
+			return res, fmt.Errorf("remove %s: %w", rel, err)
 		}
-		removed = append(removed, rel)
+		res.Removed = append(res.Removed, rel)
 	}
-	sort.Strings(removed)
-	removeEmptyDirs(outDir, removed)
-	return removed, nil
+	sort.Strings(res.Removed)
+	sort.Strings(res.Kept)
+	removeEmptyDirs(outDir, res.Removed)
+	return res, nil
 }
 
 // removeEmptyDirs clears directories the removals left holding nothing.

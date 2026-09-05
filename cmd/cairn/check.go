@@ -37,8 +37,9 @@ func newCheckCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVarP(&configPath, "config", "c", DefaultConfigFile, "path to the root cairn.yaml")
 	cmd.Flags().BoolVar(&removeOrphaned, "remove-orphaned", false,
-		"delete the output this check reports as unowned; refuses when the manifest "+
-			"claims nothing, since everything looks unowned then")
+		"delete unowned output whose content shows cairn wrote it; a file that only "+
+			"wears a generated name is kept and still reported. Refuses outright when "+
+			"the manifest claims nothing, since everything looks unowned then")
 	return cmd
 }
 
@@ -78,17 +79,24 @@ func runCheck(ctx context.Context, configPath string, removeOrphaned bool, stder
 	report(log, "generated output no longer holds what cairn wrote", rep.Altered)
 
 	if removeOrphaned {
-		removed, err := verify.RemoveOrphaned(outDir, rep)
+		res, err := verify.RemoveOrphaned(outDir, rep)
+		// Before the error check: a removal that failed part way through has
+		// already deleted files, and the operator needs the list of them more
+		// than they need the error on its own.
+		for _, p := range res.Removed {
+			log.Info("removed output cairn does not own", "path", p)
+		}
+		for _, p := range res.Kept {
+			log.Warn("kept: nothing in its content shows cairn wrote it", "path", p)
+		}
 		if err != nil {
 			log.Error("could not remove unowned output", "err", err)
 			return err
 		}
-		for _, p := range removed {
-			log.Info("removed output cairn does not own", "path", p)
-		}
-		// Dealt with, so they do not also decide the exit code. What is left is
-		// what an operator still has to act on.
-		rep.Orphaned = nil
+		// Only what was actually deleted is dealt with. A kept path is still a
+		// finding: the name says cairn could have written it and the bytes say
+		// nothing did, which is exactly the collision a person has to settle.
+		rep.Orphaned = res.Kept
 	}
 
 	log.Info("check complete",

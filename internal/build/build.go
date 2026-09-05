@@ -459,6 +459,12 @@ func (r *runner) warn(ws []walk.Warning) {
 // dirOverride reads a directory's .cairn.yaml, if present. An unreadable or
 // malformed one is ignored rather than fatal — it is a local preference, not
 // authored content whose loss would make the index wrong.
+//
+// Deliberately not decoded with KnownFields, unlike the root cairn.yaml. The
+// same file is read twice by two decoders: this one takes the settings, and
+// walk.Manifest takes entries: from it when source: manifest. Each has to
+// ignore what the other owns, so strictness here would refuse every authored
+// manifest in the repository.
 func (r *runner) dirOverride(absDir string) *config.Override {
 	p := filepath.Join(absDir, ".cairn.yaml")
 	// #nosec G304 -- p is a directory cairn was configured to scan plus a fixed

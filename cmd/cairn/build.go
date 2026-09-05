@@ -67,7 +67,7 @@ func runBuild(configPath, changedTo string, opts build.Options, stderr io.Writer
 		}
 	}()
 
-	cfg, rootDir, outDir, err := loadPaths(configPath)
+	cfg, rootDir, outDir, err := loadPathsForBuild(configPath)
 	if err != nil {
 		log.Error("could not load config", "err", err)
 		return err

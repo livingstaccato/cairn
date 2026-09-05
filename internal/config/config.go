@@ -4,7 +4,10 @@
 package config
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"strings"
@@ -68,7 +71,16 @@ func Load(p string) (*Config, error) {
 		return nil, fmt.Errorf("read config %s: %w", p, err)
 	}
 	var c Config
-	if err := yaml.Unmarshal(b, &c); err != nil {
+	dec := yaml.NewDecoder(bytes.NewReader(b))
+	// Strict. A key this build does not recognise is a typo, and the decoder's
+	// default is to drop it without a word — so the build runs with defaults the
+	// operator never asked for and reports success. checksum: sha-256 wrote no
+	// SHA256SUMS at all and exited zero; a rule whose match: was mistyped
+	// matched nothing. Refusing costs one clear error naming the line.
+	dec.KnownFields(true)
+	// io.EOF is an empty document, not a failure to parse. It falls through to
+	// validate, which refuses it for the version it does not declare.
+	if err := dec.Decode(&c); err != nil && !errors.Is(err, io.EOF) {
 		return nil, fmt.Errorf("parse config %s: %w", p, err)
 	}
 	c.applyPolicyDefaults()
@@ -125,6 +137,9 @@ func (c *Config) validate(p string) error {
 	if err := validateHide(p, c.Defaults, c.Rules); err != nil {
 		return err
 	}
+	if err := validateChecksums(p, c.Defaults, c.Rules); err != nil {
+		return err
+	}
 	if c.Mode != ModeDirect && c.Mode != ModeHugo {
 		return fmt.Errorf("config %s: mode must be %s or %s, got %q",
 			p, ModeDirect, ModeHugo, c.Mode)
@@ -132,21 +147,11 @@ func (c *Config) validate(p string) error {
 	return nil
 }
 
-// validateSources rejects an unknown source anywhere in the config. Without
-// this a typo falls through to the fs default and silently indexes the wrong
-// thing, which is worse than refusing to start.
-func validateSources(p string, defaults Override, rules []Rule) error {
-	check := func(o Override) error {
-		if o.Source == nil {
-			return nil
-		}
-		switch *o.Source {
-		case SourceFS, SourcePages, SourceManifest:
-			return nil
-		}
-		return fmt.Errorf("config %s: source must be %s, %s or %s, got %q",
-			p, SourceFS, SourcePages, SourceManifest, *o.Source)
-	}
+// eachOverride runs check against the root defaults and every rule. The three
+// validators below all ask the same question in two places, and writing the
+// walk once is what stops one of them growing a third place to look and the
+// others not.
+func eachOverride(defaults Override, rules []Rule, check func(Override) error) error {
 	if err := check(defaults); err != nil {
 		return err
 	}
@@ -156,6 +161,44 @@ func validateSources(p string, defaults Override, rules []Rule) error {
 		}
 	}
 	return nil
+}
+
+// validateChecksums rejects an unknown digest anywhere in the config.
+//
+// This was the one setting nothing checked, and it fails in the worst possible
+// direction: with outputs: [sums] and a mistyped algorithm, no entry is ever
+// given a digest, so SHA256SUMS is not written at all and the build reports
+// success. A mirror serving no integrity when it was configured for integrity
+// is the failure this project exists to prevent.
+func validateChecksums(p string, defaults Override, rules []Rule) error {
+	return eachOverride(defaults, rules, func(o Override) error {
+		if o.Checksum == nil {
+			return nil
+		}
+		switch *o.Checksum {
+		case ChecksumNone, ChecksumSHA256:
+			return nil
+		}
+		return fmt.Errorf("config %s: checksum must be %s or %s, got %q",
+			p, ChecksumNone, ChecksumSHA256, *o.Checksum)
+	})
+}
+
+// validateSources rejects an unknown source anywhere in the config. Without
+// this a typo falls through to the fs default and silently indexes the wrong
+// thing, which is worse than refusing to start.
+func validateSources(p string, defaults Override, rules []Rule) error {
+	return eachOverride(defaults, rules, func(o Override) error {
+		if o.Source == nil {
+			return nil
+		}
+		switch *o.Source {
+		case SourceFS, SourcePages, SourceManifest:
+			return nil
+		}
+		return fmt.Errorf("config %s: source must be %s, %s or %s, got %q",
+			p, SourceFS, SourcePages, SourceManifest, *o.Source)
+	})
 }
 
 // Resolve returns the effective Settings for relDir. Precedence, lowest first:
@@ -189,7 +232,7 @@ func (c *Config) IsProtected(relPath string) bool {
 // validateHide rejects a config that cannot mean what it says: a glob that will
 // never compile, or the removed hidden: key.
 func validateHide(p string, defaults Override, rules []Rule) error {
-	check := func(o Override) error {
+	return eachOverride(defaults, rules, func(o Override) error {
 		if o.Hidden != nil {
 			return fmt.Errorf("config %s: hidden: has been replaced by hide:, "+
 				"a list of globs matched against the path relative to root "+
@@ -204,16 +247,7 @@ func validateHide(p string, defaults Override, rules []Rule) error {
 			}
 		}
 		return nil
-	}
-	if err := check(defaults); err != nil {
-		return err
-	}
-	for _, r := range rules {
-		if err := check(r.Override); err != nil {
-			return err
-		}
-	}
-	return nil
+	})
 }
 
 // matchDir reports whether a rule glob covers a directory. A glob such as

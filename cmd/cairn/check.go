@@ -54,7 +54,7 @@ func runCheck(ctx context.Context, configPath string, stderr io.Writer) error {
 		}
 	}()
 
-	cfg, rootDir, outDir, err := loadPaths(configPath)
+	cfg, rootDir, outDir, err := loadPathsForBuild(configPath)
 	if err != nil {
 		log.Error("could not load config", "err", err)
 		return err

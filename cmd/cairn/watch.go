@@ -81,7 +81,7 @@ func runWatch(ctx context.Context, o watchOpts, stderr io.Writer) error {
 		}
 	}()
 
-	cfg, rootDir, outDir, err := loadPaths(o.configPath)
+	cfg, rootDir, outDir, err := loadPathsForBuild(o.configPath)
 	if err != nil {
 		log.Error("could not load config", "err", err)
 		return err
@@ -163,6 +163,49 @@ func startServer(ctx context.Context, o watchOpts, outDir string, log *slog.Logg
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
+}
+
+// loadPathsForBuild is loadPaths for the commands that read the indexed tree —
+// build, check and watch. serve does not: it hands out a directory that was
+// built earlier, and the source tree may not be on that machine at all.
+func loadPathsForBuild(configPath string) (*config.Config, string, string, error) {
+	cfg, rootDir, outDir, err := loadPaths(configPath)
+	if err != nil {
+		return nil, "", "", err
+	}
+	if err := checkRoot(cfg.Root, rootDir); err != nil {
+		return nil, "", "", err
+	}
+	return cfg, rootDir, outDir, nil
+}
+
+// checkRoot refuses a root: that is not a directory, before the walk reaches it.
+//
+// The walk's own message was "read dir .: open /abs/path: no such file or
+// directory", which names neither the setting at fault nor the value as it was
+// written, and opens with the "." of the directory it was about to read — which
+// looks like part of the mistake. This is the first error a new config
+// produces, so it should say which line to edit.
+func checkRoot(configured, resolved string) error {
+	fi, err := os.Stat(resolved)
+	if err != nil {
+		return fmt.Errorf("root: %s does not exist%s", configured, resolvedAs(configured, resolved))
+	}
+	if !fi.IsDir() {
+		return fmt.Errorf("root: %s is not a directory%s", configured, resolvedAs(configured, resolved))
+	}
+	return nil
+}
+
+// resolvedAs names where a relative root: landed, and says nothing when that is
+// the same string the config already showed.
+func resolvedAs(configured, resolved string) string {
+	// Cleaned, because "./tree" and "tree" are the same directory and repeating
+	// it back differently reads like a second, different path.
+	if filepath.Clean(configured) == filepath.Clean(resolved) {
+		return ""
+	}
+	return fmt.Sprintf(" (resolved to %s)", resolved)
 }
 
 // loadPaths reads the config and resolves the two directories a run needs.

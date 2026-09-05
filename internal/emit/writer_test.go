@@ -6,8 +6,10 @@ package emit
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/livingstaccato/cairn/internal/config"
 )
@@ -494,4 +496,145 @@ func TestSaveScopedKeepsOwnershipOutsideTheScope(t *testing.T) {
 	if err := w3.Write("other/index.json", []byte("z")); err != nil {
 		t.Errorf("output outside the scope was disowned: %v", err)
 	}
+}
+
+// Rewriting an identical file moves its modification time. In a mirror that is
+// a change the parent's listing records and a watcher reacts to, so a build
+// that writes the same bytes twice never settles.
+func TestWriteLeavesAnIdenticalFileAlone(t *testing.T) {
+	out := t.TempDir()
+	body := []byte(`{"entries":[]}`)
+
+	w := NewWriter(cfg(t, config.ConflictError), out)
+	if err := w.Write("docs/index.json", body); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Save(); err != nil {
+		t.Fatal(err)
+	}
+	abs := filepath.Join(out, "docs", "index.json")
+	before := modTime(t, abs)
+
+	// A second run, as the watcher would do it.
+	time.Sleep(10 * time.Millisecond)
+	w2 := NewWriter(cfg(t, config.ConflictError), out)
+	if err := w2.Write("docs/index.json", body); err != nil {
+		t.Fatal(err)
+	}
+	if got := modTime(t, abs); !got.Equal(before) {
+		t.Errorf("the file was rewritten: mtime moved from %v to %v", before, got)
+	}
+	if w2.Unchanged() != 1 {
+		t.Errorf("Unchanged = %d, want 1", w2.Unchanged())
+	}
+}
+
+// The regression that would be silent: a skipped write is still a file this run
+// owns. Left out of the manifest, the next run's Prune deletes it — a build
+// that settles by removing its own output.
+func TestAnUnchangedFileStaysOwned(t *testing.T) {
+	out := t.TempDir()
+	body := []byte("same")
+
+	w := NewWriter(cfg(t, config.ConflictError), out)
+	if err := w.Write("index.json", body); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	w2 := NewWriter(cfg(t, config.ConflictError), out)
+	if err := w2.Write("index.json", body); err != nil {
+		t.Fatal(err)
+	}
+	if got := w2.Written(); !slices.Contains(got, "index.json") {
+		t.Fatalf("Written = %v, want the unchanged path recorded", got)
+	}
+	pruned, err := w2.Prune()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pruned) != 0 {
+		t.Errorf("pruned %v; an unchanged file was treated as stale", pruned)
+	}
+	if _, err := os.Stat(filepath.Join(out, "index.json")); err != nil {
+		t.Errorf("the unchanged file was deleted: %v", err)
+	}
+}
+
+func TestWriteReplacesAChangedFile(t *testing.T) {
+	out := t.TempDir()
+	w := NewWriter(cfg(t, config.ConflictError), out)
+	if err := w.Write("index.json", []byte("first")); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	w2 := NewWriter(cfg(t, config.ConflictError), out)
+	if err := w2.Write("index.json", []byte("second")); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(filepath.Join(out, "index.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "second" {
+		t.Errorf("file holds %q, want %q", got, "second")
+	}
+	if w2.Unchanged() != 0 {
+		t.Errorf("Unchanged = %d, want 0", w2.Unchanged())
+	}
+}
+
+// Same length, different bytes. A size check alone is a cheap first pass, not
+// the answer.
+func TestUnchangedComparesContentNotLength(t *testing.T) {
+	out := t.TempDir()
+	abs := filepath.Join(out, "f")
+	if err := os.WriteFile(abs, []byte("aaaa"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if unchanged(abs, []byte("bbbb")) {
+		t.Error("two different four-byte files compared equal")
+	}
+	if !unchanged(abs, []byte("aaaa")) {
+		t.Error("identical content compared unequal")
+	}
+}
+
+// A symlink at an output path is something someone else put there. Comparing
+// through it would read the target's bytes and then leave the link standing —
+// the one outcome this package exists to prevent.
+func TestUnchangedRefusesToCompareThroughASymlink(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target")
+	if err := os.WriteFile(target, []byte("same"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(dir, "link")
+	if err := os.Symlink(target, link); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if unchanged(link, []byte("same")) {
+		t.Error("compared through a symlink instead of treating it as unowned")
+	}
+}
+
+// A path with nothing at it has nothing to compare.
+func TestUnchangedIsFalseForAMissingFile(t *testing.T) {
+	if unchanged(filepath.Join(t.TempDir(), "nope"), []byte("")) {
+		t.Error("a missing path compared equal")
+	}
+}
+
+func modTime(t *testing.T, p string) time.Time {
+	t.Helper()
+	fi, err := os.Stat(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return fi.ModTime()
 }

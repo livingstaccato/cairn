@@ -8,6 +8,7 @@
 package emit
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -44,6 +45,7 @@ type Writer struct {
 	own  map[string]bool // paths this run may overwrite, from the previous run
 	made []string        // paths written by this run
 	prot []string        // paths a protect: glob kept this run from writing
+	same int             // paths already holding what this run would write
 }
 
 // NewWriter loads the previous run's manifest, if any. A missing or unreadable
@@ -92,6 +94,14 @@ func (w *Writer) Write(relPath string, body []byte) error {
 	if w.skipped(relPath, abs) {
 		return nil
 	}
+	if unchanged(abs, body) {
+		// Recorded as written even though nothing was written. The manifest is
+		// what stops the next run's Prune from deleting it, and a file skipped
+		// here is still a file this run owns.
+		w.made = append(w.made, relPath)
+		w.same++
+		return nil
+	}
 
 	// #nosec G301 -- see outDirMode: the served tree must be traversable by the
 	// web server's user.
@@ -128,6 +138,28 @@ func (w *Writer) checkConflict(relPath, abs string) error {
 		relPath, config.ConflictSkip)
 }
 
+// unchanged reports whether abs already holds exactly body.
+//
+// Rewriting an identical file is not free. It moves the modification time, and
+// in a mirror — root and out the same directory — a moved mtime is a change the
+// parent's listing records and a watcher reacts to. Leaving identical files
+// alone is what makes a build reach a fixed point on the filesystem rather than
+// only in its own output.
+//
+// Only a regular file qualifies. A symlink standing at an output path is
+// something someone else put there: reading through it would compare the
+// target's bytes and then leave the link in place, which is the one outcome
+// this package exists to prevent.
+func unchanged(abs string, body []byte) bool {
+	fi, err := os.Lstat(abs)
+	if err != nil || !fi.Mode().IsRegular() || fi.Size() != int64(len(body)) {
+		return false
+	}
+	// #nosec G304 -- abs is an output path Write has already contained.
+	have, err := os.ReadFile(abs)
+	return err == nil && bytes.Equal(have, body)
+}
+
 // skipped reports whether an existing, unowned path should be left alone.
 func (w *Writer) skipped(relPath, abs string) bool {
 	return exists(abs) && !w.own[relPath] && w.cfg.OnConflict == config.ConflictSkip
@@ -143,6 +175,12 @@ func exists(p string) bool {
 
 // Written returns the paths this run produced.
 func (w *Writer) Written() []string { return w.made }
+
+// Unchanged counts the paths that already held what this run would have
+// written. The caller reports it: on a rebuild it is the difference between
+// "nothing needed doing" and "everything was rewritten identically", which is
+// the number an operator watching a mirror wants.
+func (w *Writer) Unchanged() int { return w.same }
 
 // Protected lists the paths this run declined to write because a protect: glob
 // covered them. The caller reports the count: a skip is silent by design, and

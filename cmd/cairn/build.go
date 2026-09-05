@@ -70,6 +70,6 @@ func runBuild(configPath string, stderr io.Writer) error {
 	// they meant otherwise sees a directory with no listing and no reason why.
 	log.Info("build complete",
 		"directories", res.Dirs, "files", res.Files, "outputs", len(res.Written),
-		"pruned", res.Pruned, "protected", res.Protected)
+		"unchanged", res.Unchanged, "pruned", res.Pruned, "protected", res.Protected)
 	return nil
 }

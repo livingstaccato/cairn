@@ -9,7 +9,6 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/livingstaccato/cairn/internal/config"
 	"github.com/livingstaccato/cairn/internal/emit"
@@ -57,7 +56,6 @@ func RunScoped(cfg *config.Config, rootDir, outDir string, log *slog.Logger, sco
 		log:    log,
 		cache:  hash.NewCache(filepath.Join(outDir, hash.CacheFile)),
 		writer: emit.NewWriter(cfg, outDir),
-		now:    time.Now().UTC(),
 		result: &Result{},
 	}
 
@@ -70,6 +68,7 @@ func RunScoped(cfg *config.Config, rootDir, outDir string, log *slog.Logger, sco
 	}
 	r.result.Written = r.writer.Written()
 	r.result.Protected = len(r.writer.Protected())
+	r.result.Unchanged = r.writer.Unchanged()
 	return r.result, err
 }
 

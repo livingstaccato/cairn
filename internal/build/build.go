@@ -34,6 +34,8 @@ type Result struct {
 	Written   []string
 	Pruned    int
 	Protected int
+	// Unchanged counts outputs that already held what this run would write.
+	Unchanged int
 }
 
 // runner carries the values every step of a build needs.
@@ -44,7 +46,6 @@ type runner struct {
 	log    *slog.Logger
 	cache  *hash.Cache
 	writer *emit.Writer
-	now    time.Time
 	result *Result
 	// warnedStyled keeps the styled-in-direct-mode diagnostic to one line per
 	// run rather than one per directory.
@@ -63,7 +64,6 @@ func Run(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Result,
 		log:    log,
 		cache:  hash.NewCache(filepath.Join(outDir, hash.CacheFile)),
 		writer: emit.NewWriter(cfg, outDir),
-		now:    time.Now().UTC(),
 		result: &Result{},
 	}
 
@@ -80,6 +80,7 @@ func Run(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Result,
 	}
 	r.result.Written = r.writer.Written()
 	r.result.Protected = len(r.writer.Protected())
+	r.result.Unchanged = r.writer.Unchanged()
 	return r.result, err
 }
 
@@ -271,9 +272,40 @@ func (r *runner) listing(relDir string, entries []model.Entry) model.Listing {
 		p = "/"
 	}
 	return model.Listing{
-		Path: p, Generated: r.now, Count: len(entries),
+		Path: p, Generated: r.newest(relDir, entries), Count: len(entries),
 		Entries: r.rebase(entries),
 	}
+}
+
+// newest is the most recent modification time in a listing.
+//
+// Not the build clock. A wall-clock stamp makes every index.json differ from
+// the last one even when nothing in the directory moved, so no build ever
+// settles — and in a mirror, where cairn writes into the tree it indexes, that
+// rewrite moves the file's own mtime, which is itself a change the parent
+// listing records. Derived from the content, two builds of one tree produce the
+// same bytes, and the field answers the more useful question anyway: as of when
+// is this listing accurate.
+//
+// Entry times arrive already in UTC and truncated to the second, so a listing
+// built in two timezones is byte-identical.
+func (r *runner) newest(relDir string, entries []model.Entry) time.Time {
+	var t time.Time
+	for _, e := range entries {
+		if e.ModTime.After(t) {
+			t = e.ModTime
+		}
+	}
+	if !t.IsZero() {
+		return t
+	}
+	// An empty directory, or a source carrying no times of its own. The
+	// directory's own stamp is still derived from the tree rather than the run.
+	fi, err := os.Stat(filepath.Join(r.root, filepath.FromSlash(relDir)))
+	if err != nil {
+		return time.Time{}
+	}
+	return fi.ModTime().UTC().Truncate(time.Second)
 }
 
 // rebase moves every entry path under base_path.

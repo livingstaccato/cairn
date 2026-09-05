@@ -32,7 +32,10 @@ type Entry struct {
 
 // Listing is the envelope written to index.json and tree.json.
 type Listing struct {
-	Path      string    `json:"path"      yaml:"path"`
+	Path string `json:"path"      yaml:"path"`
+	// Generated is the most recent modification time among Entries — when this
+	// listing became accurate, not when the build ran. Derived from the content
+	// so that two builds of an unchanged tree produce identical bytes.
 	Generated time.Time `json:"generated" yaml:"generated"`
 	Count     int       `json:"count"     yaml:"count"`
 	Entries   []Entry   `json:"entries"   yaml:"entries"`

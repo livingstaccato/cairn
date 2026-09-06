@@ -1,3 +1,5 @@
+![cairndex](https://raw.githubusercontent.com/livingstaccato/cairndex/main/docs/images/brand/cairndex-banner.png)
+
 # cairndex
 
 Static directory-index and artifact-repo generator. A Go binary and a Hugo

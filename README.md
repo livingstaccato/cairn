@@ -1,4 +1,4 @@
-![Cairndex banner: illustrated beavers, a badger, and crows building a glowing stepped stone pyramid at a crane-worked quarry, with a gear-driven machine sorting gems and inscribed tablets into place](docs/images/brand/cairndex-banner.png)
+![Cairndex](https://raw.githubusercontent.com/livingstaccato/cairndex/main/docs/images/brand/cairndex-banner.png)
 
 # Cairndex
 

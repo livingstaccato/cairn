@@ -2,7 +2,7 @@
 
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/), and
 versions follow [SemVer](https://semver.org/) once tagged. See the
-`--version` flag for the version currently embedded in `main`.
+`--version` flag for the version currently embedded in the default branch.
 
 ## main
 

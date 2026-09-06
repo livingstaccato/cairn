@@ -41,7 +41,7 @@ defaults:
 ```nginx
 server {
     root /srv/mirror;
-    autoindex off;      # cairndex's index.html *is* the autoindex
+    autoindex off;      # Cairndex's index.html *is* the autoindex
     index index.html;
 }
 ```
@@ -215,7 +215,7 @@ server {
     listen 80;
     root /srv/site/public;
 
-    # cairndex's index.html *is* the autoindex, and it is static.
+    # Cairndex's index.html *is* the autoindex, and it is static.
     autoindex off;
     index index.html;
 

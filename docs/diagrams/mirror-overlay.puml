@@ -13,9 +13,9 @@ skinparam dpi 160
 skinparam ArrowColor #444444
 skinparam ArrowFontSize 13
 
-rectangle "**One tree** — root and out name the same directory\n\n""/srv/mirror/pool/""\n""   ubuntu.iso     the artifact""\n""   index.html     cairndex wrote it""\n""   index.json     cairndex wrote it""\n""   SHA256SUMS     cairndex wrote it""\n\nrsyncs whole; sha256sum -c works where it sits" as InPlace #F7F7F5;line:444444
+rectangle "**One tree** — root and out name the same directory\n\n""/srv/mirror/pool/""\n""   ubuntu.iso     the artifact""\n""   index.html     Cairndex wrote it""\n""   index.json     Cairndex wrote it""\n""   SHA256SUMS     Cairndex wrote it""\n\nrsyncs whole; sha256sum -c works where it sits" as InPlace #F7F7F5;line:444444
 
-rectangle "**Two trees** — the web server overlays them\n\n""/srv/artifacts/pool/""\n""   ubuntu.iso     the artifact""\n\n""/srv/site/public/pool/""\n""   index.html     cairndex wrote it""\n""   index.json     cairndex wrote it""\n""   SHA256SUMS     cairndex wrote it""\n\nthe artifact tree is never written to" as Split #F7F7F5;line:444444
+rectangle "**Two trees** — the web server overlays them\n\n""/srv/artifacts/pool/""\n""   ubuntu.iso     the artifact""\n\n""/srv/site/public/pool/""\n""   index.html     Cairndex wrote it""\n""   index.json     Cairndex wrote it""\n""   SHA256SUMS     Cairndex wrote it""\n\nthe artifact tree is never written to" as Split #F7F7F5;line:444444
 
 rectangle "**What a client sees** — the same URLs either way\n\n""/pool/ubuntu.iso""\n""/pool/index.html""\n""/pool/index.json""\n""/pool/SHA256SUMS""" as URLs #E3ECF5;line:2F5D8C
 

@@ -26,13 +26,13 @@ skinparam state {
   FontColor<<dead>> #444444
 }
 
-state "**Owned**\nthe manifest records every file cairndex wrote" as Owned <<good>>
+state "**Owned**\nthe manifest records every file Cairndex wrote" as Owned <<good>>
 state "**Unclaimed**\nthe output is still there, the manifest is not" as Unclaimed <<bad>>
 state "build refused\non the first file" as Refused <<dead>>
 state "nothing written,\nnothing claimed" as Frozen <<dead>>
 
 [*] --> Owned : first build
-Owned --> Unclaimed : rsync --delete, git clean, or a\nmanifest this cairndex cannot parse
+Owned --> Unclaimed : rsync --delete, git clean, or a\nmanifest this Cairndex cannot parse
 Unclaimed --> Refused : build
 Unclaimed --> Frozen : build, on_conflict skip
 Refused -[dashed]-> Unclaimed : neither one\nchanges the tree

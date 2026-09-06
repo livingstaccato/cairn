@@ -114,6 +114,25 @@ func TestCorruptCacheIsNotFatal(t *testing.T) {
 	}
 }
 
+func TestNullCacheIsNotFatal(t *testing.T) {
+	dir := t.TempDir()
+	cp := filepath.Join(dir, CacheFile)
+	// "null" is valid JSON that unmarshals into a nil map, not an empty one.
+	if err := os.WriteFile(cp, []byte("null"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p := filepath.Join(dir, "f.bin")
+	if err := os.WriteFile(p, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fi, _ := os.Stat(p)
+
+	c := NewCache(cp) // must not panic with "assignment to entry in nil map"
+	if _, err := c.Sum(p, fi.Size(), fi.ModTime().Unix()); err != nil {
+		t.Fatalf("a null cache must be discarded, not fatal: %v", err)
+	}
+}
+
 func TestSumMissingFileErrors(t *testing.T) {
 	c := NewCache(filepath.Join(t.TempDir(), CacheFile))
 	if _, err := c.Sum(filepath.Join(t.TempDir(), "absent"), 1, 1); err == nil {

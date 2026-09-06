@@ -278,3 +278,32 @@ func TestRunUnwritableOutputFails(t *testing.T) {
 		})
 	}
 }
+
+// A panic mid-build must not leave what it already wrote unclaimed:
+// safeBuild converts it to an error, which takes the same SavePartial path as
+// any other build failure. buildStep is a var, like atomicfile's rename,
+// because a panic mid-build is a failure this package otherwise has no way to
+// produce in a test.
+func TestPanicMidBuildStillClaimsPartialOutput(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+
+	orig := buildStep
+	t.Cleanup(func() { buildStep = orig })
+	buildStep = func(r *runner) error {
+		if err := r.writer.Write("index.json", []byte(`{"entries":[]}`)); err != nil {
+			t.Fatal(err)
+		}
+		panic("simulated panic mid-build")
+	}
+	if _, err := Run(conf(nil), root, out, obs.Discard()); err == nil {
+		t.Fatal("expected the recovered panic to surface as an error")
+	}
+	buildStep = orig
+
+	// A second, ordinary build must find index.json already claimed by the
+	// panicked run — proof SavePartial ran on the panic path too, not only the
+	// returned-error one.
+	if _, err := Run(conf(nil), root, out, obs.Discard()); err != nil {
+		t.Fatalf("a later build must own what the panicked run wrote, got: %v", err)
+	}
+}

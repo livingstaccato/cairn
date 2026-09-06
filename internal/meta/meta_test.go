@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/livingstaccato/cairndex/internal/model"
 )
@@ -219,6 +220,26 @@ func TestSourceIsCapped(t *testing.T) {
 	}
 	if len(got.Text) != SourceMaxBytes {
 		t.Errorf("len = %d, want %d", len(got.Text), SourceMaxBytes)
+	}
+}
+
+// A multi-byte rune landing exactly on the cap must not be split: yaml.v3
+// encodes invalid UTF-8 as base64 (!!binary) instead of a plain scalar, which
+// would turn a readable description into an unreadable blob.
+func TestSourceCapDoesNotSplitARune(t *testing.T) {
+	dir := t.TempDir()
+	// "é" is two bytes (0xC3 0xA9); placed so the cap falls between them.
+	body := strings.Repeat("a", SourceMaxBytes-1) + "é" + strings.Repeat("b", 100)
+	write(t, dir, DirFile, body)
+	got, err := Source(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !utf8.ValidString(got.Text) {
+		t.Fatalf("Text is not valid UTF-8: %q", got.Text)
+	}
+	if len(got.Text) != SourceMaxBytes-1 {
+		t.Errorf("len = %d, want %d (the split rune dropped entirely)", len(got.Text), SourceMaxBytes-1)
 	}
 }
 

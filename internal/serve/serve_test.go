@@ -80,7 +80,14 @@ func write(t *testing.T, dir, rel, body string) {
 // every test in the file also asserts the shutdown path.
 func start(t *testing.T, dir string) (*Server, string) {
 	t.Helper()
-	s := &Server{Dir: dir, Addr: anyPort, Log: obs.Discard(), Ready: make(chan struct{})}
+	return startIndexed(t, dir, "")
+}
+
+// startIndexed is start with a configured index_basename's HTML file, for a
+// server answering directory requests with something other than index.html.
+func startIndexed(t *testing.T, dir, index string) (*Server, string) {
+	t.Helper()
+	s := &Server{Dir: dir, Addr: anyPort, Log: obs.Discard(), Index: index, Ready: make(chan struct{})}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() { done <- s.Run(ctx) }()

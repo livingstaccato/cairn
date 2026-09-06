@@ -114,5 +114,5 @@ const (
 // meant to download them. What describes a listing is not part of it, under any
 // hidden policy.
 func IsSidecar(name string) bool {
-	return name == DirFile || strings.HasSuffix(name, SidecarSuffix)
+	return name == DirFile || name == DirConfigFile || strings.HasSuffix(name, SidecarSuffix)
 }

@@ -106,7 +106,7 @@ type HugoPage struct {
 func HugoContent(p HugoPage) ([]byte, error) {
 	l := p.Listing
 	fm := hugoFrontmatter{
-		Title:  titleFor(l.Path),
+		Title:  titleFor(l.Path, p.AtRoot),
 		Layout: HugoLayout,
 		Cairndex: cairndexParam{
 			Present:     p.Present,
@@ -139,11 +139,14 @@ func HugoContent(p HugoPage) ([]byte, error) {
 }
 
 // titleFor names a directory page from its path.
-func titleFor(p string) string {
-	base := path.Base(strings.TrimSuffix(p, "/"))
-	switch base {
-	case "", ".", "/":
+//
+// atRoot decides it, not a string match against p: BasePath prepends a prefix
+// to l.Path before this ever runs, so a configured base_path leaves the root
+// directory's path looking like any other and a match against "", ".", "/"
+// misses it.
+func titleFor(p string, atRoot bool) string {
+	if atRoot {
 		return rootTitle
 	}
-	return base
+	return path.Base(strings.TrimSuffix(p, "/"))
 }

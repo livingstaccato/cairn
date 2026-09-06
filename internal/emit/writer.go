@@ -373,17 +373,11 @@ func (w *Writer) prune(scope string) ([]string, error) {
 
 	var removed []string
 	for p := range w.own {
-		if wrote[p] || !underScope(p, scope) {
+		if wrote[p] || !underScope(p, scope) || w.cfg.IsProtected(p) {
 			continue
 		}
-		abs, err := containedPath(w.root, p)
-		if err != nil {
+		if err := w.removeOwned(p); err != nil {
 			return removed, err
-		}
-		if !w.dry {
-			if err := os.Remove(abs); err != nil && !os.IsNotExist(err) {
-				return removed, fmt.Errorf("prune %s: %w", p, err)
-			}
 		}
 		removed = append(removed, p)
 	}
@@ -392,6 +386,22 @@ func (w *Writer) prune(scope string) ([]string, error) {
 		w.pruneEmptyDirs(removed)
 	}
 	return removed, nil
+}
+
+// removeOwned deletes the on-disk file for an unclaimed owned path. A dry run
+// reports the path as removed without touching the filesystem.
+func (w *Writer) removeOwned(p string) error {
+	abs, err := containedPath(w.root, p)
+	if err != nil {
+		return err
+	}
+	if w.dry {
+		return nil
+	}
+	if err := os.Remove(abs); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("prune %s: %w", p, err)
+	}
+	return nil
 }
 
 // pruneEmptyDirs removes directories left holding nothing after a prune.

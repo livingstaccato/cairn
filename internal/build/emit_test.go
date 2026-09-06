@@ -106,6 +106,83 @@ func TestTreeListingReachesAFixedPoint(t *testing.T) {
 	}
 }
 
+// A sidecar's hidden: has to be honoured by the recursive listing exactly as
+// it is by the per-directory one — collect runs meta.Load/meta.Apply, and
+// emitTree used to reach the tree through walk.Tree directly, which never
+// merged a sidecar at all.
+func TestTreeListingHonoursSidecarHidden(t *testing.T) {
+	root := t.TempDir()
+	mk := func(rel, body string) {
+		p := filepath.Join(root, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mk("docs/public.txt", "keep\n")
+	mk("docs/secret.txt", "hide me\n")
+	mk("docs/_meta.yaml", "secret.txt:\n  hidden: true\n")
+
+	out := t.TempDir()
+	run(t, recursing(), root, out)
+
+	for _, e := range treeEntries(t, filepath.Join(out, "tree.json")) {
+		if e.Name == "secret.txt" {
+			t.Errorf("tree.json lists a file its own directory's sidecar hides: %+v", e)
+		}
+	}
+}
+
+// The recursive listing has to dispatch on each directory's own configured
+// Source, exactly as the per-directory listing does — emitTree used to reach
+// every directory through a raw filesystem walk regardless of source:,
+// showing source: pages content as raw disk files and failing outright on
+// source: manifest content that does not exist on disk.
+func TestTreeListingDispatchesConfiguredSource(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	pages, manifest := config.SourcePages, config.SourceManifest
+
+	if err := os.MkdirAll(filepath.Join(root, "external"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "external", ".cairndex.yaml"),
+		[]byte("entries:\n  - name: upstream.iso\n    path: https://example.invalid/upstream.iso\n    title: Fetched elsewhere\n"),
+		0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	yes := true
+	outs := []string{config.OutputJSON}
+	c := conf([]config.Rule{
+		{Match: "docs/**", Override: config.Override{Source: &pages}},
+		{Match: "external/**", Override: config.Override{Source: &manifest}},
+	})
+	c.Defaults.Recursive = &yes
+	c.Defaults.Outputs = &outs
+	run(t, c, root, out)
+
+	var foundPage, foundManifestEntry bool
+	for _, e := range treeEntries(t, filepath.Join(out, "tree.json")) {
+		if strings.Contains(e.Path, "docs/intro.md") {
+			t.Errorf("tree.json read docs/ off the filesystem, ignoring source: pages: %+v", e)
+		}
+		if e.Name == "intro" && e.Path == "/docs/intro/" {
+			foundPage = true
+		}
+		if e.Name == "upstream.iso" {
+			foundManifestEntry = true
+		}
+	}
+	if !foundPage {
+		t.Error("tree.json did not dispatch docs/ through the pages producer")
+	}
+	if !foundManifestEntry {
+		t.Error("tree.json did not dispatch external/ through the manifest producer")
+	}
+}
+
 // The parent row, end to end: the top of the tree must not offer a link above
 // itself, and every directory below it must. The unit test in internal/emit
 // covers the switch; this covers the build actually setting it.

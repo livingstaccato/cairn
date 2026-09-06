@@ -6,6 +6,7 @@ package build
 import (
 	"fmt"
 	"path"
+	"path/filepath"
 
 	"github.com/livingstaccato/cairndex/internal/config"
 	"github.com/livingstaccato/cairndex/internal/emit"
@@ -24,12 +25,69 @@ const treeBasename = "tree"
 
 // emitTree renders the recursive listing for a directory.
 func (r *runner) emitTree(relDir string, s config.Settings, prose string, src meta.FileSource) error {
-	all, warns, err := walk.Tree(r.root, relDir, s, r.cfg.TreeMaxEntries, r.treeFilter())
+	all, err := r.treeEntries(relDir)
 	if err != nil {
 		return err
 	}
-	r.warn(warns)
 	return r.emitFor(relDir, treeBasename, r.listing(relDir, all), s, prose, src)
+}
+
+// treeEntries collects every descendant of relDir for the recursive listing,
+// each resolved through the same pipeline as its own per-directory listing:
+// settings resolved per directory, source dispatched on it, generated output
+// dropped, and a sidecar's hidden/weight/title/url applied. Without this the
+// recursive listing and the per-directory ones disagree about what a
+// directory contains — a file a sidecar hides stays out of index.json but
+// still appears in tree.json, and source: manifest or source: pages content
+// is invisible to it entirely.
+//
+// Depth counts from relDir, matching Dir's convention, so it is set here
+// rather than trusted from collect: every producer's Depth answers "how deep
+// under the directory I was asked to list", which for a producer called at
+// relDir="a/b/c" is always relative to c, not to relDir.
+func (r *runner) treeEntries(relDir string) ([]model.Entry, error) {
+	var out []model.Entry
+	seen := map[string]bool{}
+
+	var recurse func(rel string, depth int) error
+	recurse = func(rel string, depth int) error {
+		absDir := filepath.Join(r.root, filepath.FromSlash(rel))
+		s := r.cfg.Resolve(rel, r.dirOverride(absDir))
+		entries, err := r.collect(rel, absDir, s)
+		if err != nil {
+			return err
+		}
+		for i := range entries {
+			entries[i].Depth = depth
+		}
+		for _, e := range entries {
+			out = append(out, e)
+			if len(out) > r.cfg.TreeMaxEntries {
+				return fmt.Errorf("tree under %q exceeds tree_max_entries (%d); "+
+					"raise the cap or set recursive: false for this rule", relDir, r.cfg.TreeMaxEntries)
+			}
+			if !e.IsDir {
+				continue
+			}
+			child := path.Join(rel, e.Name)
+			if resolved, err := filepath.EvalSymlinks(filepath.Join(r.root, filepath.FromSlash(child))); err == nil {
+				if seen[resolved] {
+					r.warn([]walk.Warning{{Path: child, Err: fmt.Errorf("symlink loop, skipped")}})
+					continue
+				}
+				seen[resolved] = true
+			}
+			if err := recurse(child, depth+1); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	if err := recurse(relDir, 1); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 // emitCtx is one directory's rendering job, bundled so the format handlers

@@ -86,6 +86,10 @@ func GeneratedNames(cfg *config.Config) map[string]bool {
 			names[base+ext] = true
 		}
 	}
+	// PEP 503 mandates the literal filename "index.html" regardless of
+	// index_basename: a rule using both a custom basename and pep503 output
+	// would otherwise leave its own PEP 503 page unrecognized as generated.
+	names["index.html"] = true
 	if cfg.Mode == config.ModeHugo {
 		names[emit.HugoContentFile] = true
 	}

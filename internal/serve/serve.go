@@ -86,6 +86,10 @@ type Server struct {
 	// Dir is the tree to serve, and the boundary of what can be reached. It
 	// must exist and be a directory before the socket is opened.
 	Dir string
+	// Index is the filename that answers a directory request, e.g.
+	// "home.html" for a config using index_basename: home. Empty falls back
+	// to IndexFile, so a caller that only has a directory still works.
+	Index string
 	// Addr is where to listen, host and port. Empty means DefaultAddr. A port
 	// of 0 asks the kernel to choose, which BoundAddr then reports.
 	Addr string
@@ -191,7 +195,7 @@ func (s *Server) bind() (net.Listener, error) {
 // diagnostic-by-print problem arriving through a side door.
 func (s *Server) server() *http.Server {
 	return &http.Server{
-		Handler:           &files{root: http.Dir(s.Dir), log: s.Log},
+		Handler:           &files{root: http.Dir(s.Dir), log: s.Log, index: s.Index},
 		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       readTimeout,
 		IdleTimeout:       idleTimeout,

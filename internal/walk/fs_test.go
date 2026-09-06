@@ -248,6 +248,42 @@ func TestDirFollowsContainedSymlink(t *testing.T) {
 	for _, e := range got {
 		if e.Name == "alias" {
 			found = true
+			if !e.IsDir {
+				t.Error("a followed symlink to a directory must report IsDir, or it is never recursed into")
+			}
+		}
+	}
+	if !found {
+		t.Errorf("a symlink inside the root should be listed: %v", names(got))
+	}
+}
+
+// A followed symlink to a file must report the target's own size, not the
+// symlink's — de.Info() is an Lstat and describes the link itself, which
+// would otherwise key the hash cache on values that never change when the
+// target's content does.
+func TestDirFollowedSymlinkToFileReportsTargetSize(t *testing.T) {
+	root := fixture(t)
+	if err := os.Symlink(filepath.Join(root, "bootstrap", "ubuntu.iso"),
+		filepath.Join(root, "bootstrap", "iso-alias")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	s := config.Defaults()
+	s.FollowSymlinks = true
+	got, _, err := Dir(root, "bootstrap", s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found bool
+	for _, e := range got {
+		if e.Name == "iso-alias" {
+			found = true
+			if e.IsDir {
+				t.Error("a followed symlink to a file must not report IsDir")
+			}
+			if e.Size != 4096 {
+				t.Errorf("Size = %d, want the target's size 4096, not the symlink's own", e.Size)
+			}
 		}
 	}
 	if !found {

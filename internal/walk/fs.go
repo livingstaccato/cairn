@@ -164,11 +164,11 @@ func (sc *scanner) entry(relDir string, de os.DirEntry, depth int) (model.Entry,
 		}
 	}
 
-	info, err := de.Info()
+	info, err := sc.statEntry(de, rel)
 	if err != nil {
 		return model.Entry{}, []Warning{{Path: rel, Err: err}}, false
 	}
-	isDir := de.IsDir() || (info.Mode()&os.ModeDir != 0)
+	isDir := info.IsDir()
 	kind, mimeType := KindOf(name, isDir)
 	e := model.Entry{
 		Name:    name,
@@ -189,6 +189,20 @@ func (sc *scanner) entry(relDir string, de os.DirEntry, depth int) (model.Entry,
 	count, warns := sc.countChildren(rel)
 	e.Count = count
 	return e, warns, true
+}
+
+// statEntry reports the size, mtime and kind an entry describes.
+//
+// de.Info() is an Lstat on a symlink: it describes the link itself, not what
+// it points at, so a followed symlink to a directory would never report
+// ModeDir, and a followed symlink to a file would carry the link's own size
+// and mtime forever — a hash-cache key that never changes when the target
+// does. Followed, the entry has to be Stat'd through the link instead.
+func (sc *scanner) statEntry(de os.DirEntry, rel string) (os.FileInfo, error) {
+	if de.Type()&os.ModeSymlink != 0 && sc.s.FollowSymlinks {
+		return os.Stat(filepath.Join(sc.root, filepath.FromSlash(rel)))
+	}
+	return de.Info()
 }
 
 // countChildren counts a directory's visible children for the listing's

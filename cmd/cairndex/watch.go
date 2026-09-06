@@ -95,13 +95,19 @@ func runWatch(ctx context.Context, o watchOpts, stderr io.Writer) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	served, err := startServer(ctx, o, outDir, log)
+	served, err := startServer(ctx, o, outDir, cfg.IndexBasename+".html", log)
 	if err != nil {
 		return err
 	}
 
 	if _, err := build.Run(cfg, rootDir, outDir, log); err != nil {
 		log.Error("the initial build failed", "err", err)
+		// Same shutdown as the watcher's own exit path: cancel to start the
+		// server's graceful drain, then wait for it, so a client mid-request
+		// gets its ShutdownGrace window even though the build never reached
+		// the watch loop. main's os.Exit(1) on our returned error would
+		// otherwise kill the process the instant this function returns.
+		drainServer(cancel, served)
 		return err
 	}
 
@@ -119,10 +125,7 @@ func runWatch(ctx context.Context, o watchOpts, stderr io.Writer) error {
 	// here: there is no second half to wait on.
 	select {
 	case err = <-watched:
-		cancel()
-		if served != nil {
-			<-served
-		}
+		drainServer(cancel, served)
 	case err = <-served:
 		cancel()
 		<-watched
@@ -134,6 +137,15 @@ func runWatch(ctx context.Context, o watchOpts, stderr io.Writer) error {
 	return nil
 }
 
+// drainServer cancels the shared context and, if a server is running, waits
+// for its graceful shutdown to finish before returning.
+func drainServer(cancel context.CancelFunc, served <-chan error) {
+	cancel()
+	if served != nil {
+		<-served
+	}
+}
+
 // startServer opens the socket before the first build, or returns nil when
 // --serve was not asked for.
 //
@@ -142,7 +154,7 @@ func runWatch(ctx context.Context, o watchOpts, stderr io.Writer) error {
 // has stopped watching. The output directory is created here for the same
 // reason: the server refuses a directory that does not exist, and on a first
 // run nothing has made it yet.
-func startServer(ctx context.Context, o watchOpts, outDir string, log *slog.Logger) (chan error, error) {
+func startServer(ctx context.Context, o watchOpts, outDir, index string, log *slog.Logger) (chan error, error) {
 	if !o.serve {
 		return nil, nil
 	}
@@ -152,7 +164,7 @@ func startServer(ctx context.Context, o watchOpts, outDir string, log *slog.Logg
 		return nil, fmt.Errorf("create output directory %s: %w", outDir, err)
 	}
 
-	s := &serve.Server{Dir: outDir, Addr: o.addr, Log: log, Ready: make(chan struct{})}
+	s := &serve.Server{Dir: outDir, Addr: o.addr, Log: log, Index: index, Ready: make(chan struct{})}
 	served := make(chan error, 1)
 	go func() { served <- s.Run(ctx) }()
 

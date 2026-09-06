@@ -5,6 +5,7 @@
 package build
 
 import (
+	"fmt"
 	"log/slog"
 	"path/filepath"
 
@@ -116,7 +117,7 @@ func RunWith(cfg *config.Config, rootDir, outDir string, log *slog.Logger, opts 
 	}
 	r.warnAboutTheManifest()
 
-	err := r.build()
+	err := r.safeBuild()
 	if err != nil {
 		// Claim what this run managed to write before it died. Without this the
 		// partial output belongs to nobody, and on_conflict: error refuses every
@@ -134,6 +135,28 @@ func RunWith(cfg *config.Config, rootDir, outDir string, log *slog.Logger, opts 
 	r.result.Adopted = r.writer.Adopted()
 	return r.result, err
 }
+
+// safeBuild runs build and turns a panic into an error, so a panic mid-walk
+// takes the same path out as any other build failure.
+//
+// Without this a panic propagates straight out of RunWith and SavePartial
+// never runs: the files this run already wrote are left claimed by nobody,
+// and on_conflict: error then refuses all of them on the next run — the
+// "mirror that cannot be rebuilt without manual cleanup" SavePartial exists to
+// prevent, reached by a path that skipped it.
+func (r *runner) safeBuild() (err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			err = fmt.Errorf("panic: %v", p)
+		}
+	}()
+	return buildStep(r)
+}
+
+// buildStep runs one build. A var, like atomicfile's rename, because a panic
+// mid-build is a failure this package otherwise has no way to produce in a
+// test.
+var buildStep = (*runner).build
 
 // build runs the walk, the prune and the manifest save for a successful run.
 func (r *runner) build() error {

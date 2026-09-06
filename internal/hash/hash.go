@@ -71,7 +71,9 @@ func NewCache(path string) *Cache {
 	if err := json.Unmarshal(b, &loaded); err != nil {
 		return c
 	}
-	c.entries = loaded
+	if loaded != nil {
+		c.entries = loaded
+	}
 	return c
 }
 

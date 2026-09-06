@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 
 	"gopkg.in/yaml.v3"
 
@@ -243,9 +244,26 @@ func Source(absDir string) (FileSource, error) {
 		return FileSource{}, err
 	}
 	if len(b) > SourceMaxBytes {
-		b = b[:SourceMaxBytes]
+		b = b[:validUTF8Prefix(b[:SourceMaxBytes])]
 	}
 	return FileSource{Name: name, Text: string(b)}, nil
+}
+
+// validUTF8Prefix backs a byte-offset cut off the nearest rune boundary at or
+// before it, so truncating never splits a multi-byte character in the middle.
+// yaml.v3 encodes a scalar containing invalid UTF-8 as base64 (!!binary)
+// instead of plain text, so a split rune here would silently turn a directory
+// description unreadable in the rendered page.
+func validUTF8Prefix(b []byte) int {
+	cut := len(b)
+	for cut > 0 {
+		r, size := utf8.DecodeLastRune(b[:cut])
+		if r != utf8.RuneError || size != 1 {
+			break
+		}
+		cut--
+	}
+	return cut
 }
 
 // FileSource is the authored file describing a directory, shown inline.

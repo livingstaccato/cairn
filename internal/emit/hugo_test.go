@@ -69,11 +69,30 @@ func TestHugoContentFrontmatter(t *testing.T) {
 func TestHugoContentRootTitle(t *testing.T) {
 	l := sample()
 	l.Path = "/"
-	b, err := HugoContent(HugoPage{Listing: l, Present: "bare"})
+	b, err := HugoContent(HugoPage{Listing: l, Present: "bare", AtRoot: true})
 	if err != nil {
 		t.Fatal(err)
 	}
 	fm, _ := split(t, b)
+	if fm.Title == "" || fm.Title == "/" || fm.Title == "." {
+		t.Errorf("root title = %q, want a readable name", fm.Title)
+	}
+}
+
+// A configured base_path prepends its prefix to every Listing.Path, root
+// included, before HugoContent ever sees it — so the root's title has to come
+// from AtRoot, not from matching the path string against "/".
+func TestHugoContentRootTitleWithBasePath(t *testing.T) {
+	l := sample()
+	l.Path = "/mirror"
+	b, err := HugoContent(HugoPage{Listing: l, Present: "bare", AtRoot: true, BasePath: "/mirror"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fm, _ := split(t, b)
+	if fm.Title == "mirror" {
+		t.Errorf("root title = %q, base_path leaked into the title", fm.Title)
+	}
 	if fm.Title == "" || fm.Title == "/" || fm.Title == "." {
 		t.Errorf("root title = %q, want a readable name", fm.Title)
 	}

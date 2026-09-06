@@ -93,3 +93,21 @@ func TestHiddenByGlob(t *testing.T) {
 		}
 	}
 }
+
+func TestIsSidecar(t *testing.T) {
+	cases := []struct {
+		name string
+		want bool
+	}{
+		{DirFile, true},
+		{DirConfigFile, true},
+		{"ubuntu.iso.meta.yaml", true},
+		{"readme.md", false},
+		{"index.html", false},
+	}
+	for _, c := range cases {
+		if got := IsSidecar(c.name); got != c.want {
+			t.Errorf("IsSidecar(%q) = %v, want %v", c.name, got, c.want)
+		}
+	}
+}

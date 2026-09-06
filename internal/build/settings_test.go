@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/livingstaccato/cairndex/internal/config"
 )
 
 // OutRel has to answer the same way whether the two directories arrive as
@@ -70,5 +72,16 @@ func TestOutRel(t *testing.T) {
 		if got := OutRel(c.root, c.out); got != c.want {
 			t.Errorf("OutRel(%q, %q) = %q, want %q", c.root, c.out, got, c.want)
 		}
+	}
+}
+
+// PEP 503 always writes the literal "index.html", regardless of
+// index_basename — GeneratedNames has to recognize it as cairndex's own even
+// when a rule also uses a custom basename for its other formats.
+func TestGeneratedNamesIncludesPEP503IndexRegardlessOfBasename(t *testing.T) {
+	cfg := &config.Config{IndexBasename: "home", TreeMaxEntries: 1000}
+	names := GeneratedNames(cfg)
+	if !names["index.html"] {
+		t.Error(`GeneratedNames must include "index.html" for PEP 503, even with a custom index_basename`)
 	}
 }

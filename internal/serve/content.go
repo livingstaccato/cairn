@@ -11,7 +11,8 @@ import (
 	"strings"
 )
 
-// IndexFile is the only thing a directory request is ever answered with.
+// IndexFile is what a directory request is answered with when the server is
+// not told a config's own index_basename.
 //
 // http.FileServer would fall back to a listing it generates itself when this is
 // missing. That fallback is off here and stays off: a directory with no cairndex
@@ -74,6 +75,18 @@ var byName = map[string]string{
 type files struct {
 	root http.FileSystem
 	log  *slog.Logger
+	// index is the filename that answers a directory request, e.g.
+	// "home.html" for a config using index_basename: home. Empty falls back
+	// to IndexFile, so a caller that only has a directory still works.
+	index string
+}
+
+// indexName is the file this directory request is answered with.
+func (h *files) indexName() string {
+	if h.index == "" {
+		return IndexFile
+	}
+	return h.index
 }
 
 func (h *files) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -127,7 +140,7 @@ func (h *files) target(name string) (string, bool, error) {
 	if !fi.IsDir() {
 		return name, false, nil
 	}
-	return path.Join(name, IndexFile), true, nil
+	return path.Join(name, h.indexName()), true, nil
 }
 
 // send writes the file out with the type cairndex chose for it.

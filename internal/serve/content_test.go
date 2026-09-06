@@ -158,6 +158,22 @@ func TestDirectoryIsAnsweredByItsIndex(t *testing.T) {
 	}
 }
 
+// A config using index_basename: home writes home.html, not index.html, per
+// directory — the server has to be told, or every directory 404s.
+func TestDirectoryIsAnsweredByItsConfiguredIndex(t *testing.T) {
+	out := t.TempDir()
+	write(t, out, "home.html", "<h1>root index</h1>\n")
+
+	_, base := startIndexed(t, out, "home.html")
+	resp, body := get(t, base+"/")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /: status %d, want 200", resp.StatusCode)
+	}
+	if !strings.Contains(body, "root index") {
+		t.Errorf("GET / returned %q, want the configured index", body)
+	}
+}
+
 func TestDirectoryWithoutAnIndexIsNotListed(t *testing.T) {
 	_, base := start(t, tree(t))
 

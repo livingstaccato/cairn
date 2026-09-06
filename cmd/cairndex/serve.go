@@ -52,12 +52,12 @@ func runServe(ctx context.Context, configPath, addr string, stderr io.Writer) er
 		}
 	}()
 
-	_, _, outDir, err := loadPaths(configPath)
+	cfg, _, outDir, err := loadPaths(configPath)
 	if err != nil {
 		log.Error("could not load config", "err", err)
 		return err
 	}
 
-	s := &serve.Server{Dir: outDir, Addr: addr, Log: log}
+	s := &serve.Server{Dir: outDir, Addr: addr, Log: log, Index: cfg.IndexBasename + ".html"}
 	return s.Run(ctx)
 }

@@ -12,12 +12,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/livingstaccato/cairn/internal/obs"
+	"github.com/livingstaccato/cairndex/internal/obs"
 )
 
 // The property the whole mirror deployment rests on: a second build over an
 // unchanged tree touches nothing on disk. Without it every rebuild moves every
-// index file's mtime, which in a mirror is a change to the tree cairn indexes.
+// index file's mtime, which in a mirror is a change to the tree cairndex indexes.
 func TestSecondBuildRewritesNothing(t *testing.T) {
 	root, out := tree(t), t.TempDir()
 	c := conf(nil)

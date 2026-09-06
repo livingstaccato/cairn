@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/livingstaccato/cairn/internal/config"
+	"github.com/livingstaccato/cairndex/internal/config"
 )
 
 func cfg(t *testing.T, onConflict string) *config.Config {
@@ -39,7 +39,7 @@ func TestWriteOverwritesItsOwnOutput(t *testing.T) {
 	// A generator that cannot run twice is not finished.
 	w2 := NewWriter(c, out)
 	if err := w2.Write("bootstrap/index.json", []byte("second")); err != nil {
-		t.Fatalf("re-running must overwrite cairn's own output: %v", err)
+		t.Fatalf("re-running must overwrite cairndex's own output: %v", err)
 	}
 	got, _ := os.ReadFile(filepath.Join(out, "bootstrap/index.json"))
 	if string(got) != "second" {
@@ -68,7 +68,7 @@ func TestWriteStillRefusesForeignFileAfterAManifestExists(t *testing.T) {
 	}
 	got, _ := os.ReadFile(foreign)
 	if string(got) != "mirrored artifact" {
-		t.Error("a file cairn did not create was overwritten")
+		t.Error("a file cairndex did not create was overwritten")
 	}
 }
 
@@ -255,7 +255,7 @@ func TestPruneRemovesOnlyLastRunsOutput(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// A file cairn never wrote, sharing the tree.
+	// A file cairndex never wrote, sharing the tree.
 	foreign := filepath.Join(out, "b", "ubuntu.iso")
 	if err := os.WriteFile(foreign, []byte("artifact"), 0o644); err != nil {
 		t.Fatal(err)
@@ -284,11 +284,11 @@ func TestPruneRemovesOnlyLastRunsOutput(t *testing.T) {
 		t.Errorf("a live output was pruned: %v", err)
 	}
 	if _, err := os.Stat(foreign); err != nil {
-		t.Errorf("pruning touched a file cairn did not write: %v", err)
+		t.Errorf("pruning touched a file cairndex did not write: %v", err)
 	}
 }
 
-// A directory that held only cairn's output is itself stale; one still holding
+// A directory that held only cairndex's output is itself stale; one still holding
 // an artifact is not.
 func TestPruneRemovesEmptiedDirectories(t *testing.T) {
 	out := t.TempDir()
@@ -402,7 +402,7 @@ func TestSavePartialKeepsPriorOwnership(t *testing.T) {
 	}
 
 	// b/index.json must still be claimed. Dropping it would make the next run
-	// refuse a file cairn itself created.
+	// refuse a file cairndex itself created.
 	third := NewWriter(c, out)
 	for _, p := range []string{"a/index.json", "b/index.json"} {
 		if err := third.Write(p, []byte("{}")); err != nil {
@@ -598,7 +598,7 @@ func modTime(t *testing.T, p string) time.Time {
 	return fi.ModTime()
 }
 
-// Written is what cairn owns; Changed is what moved. A deploy needs the second,
+// Written is what cairndex owns; Changed is what moved. A deploy needs the second,
 // and until the writer tracked it there was no way to ask.
 func TestChangedListsOnlyWhatMoved(t *testing.T) {
 	out := t.TempDir()
@@ -629,7 +629,7 @@ func TestChangedListsOnlyWhatMoved(t *testing.T) {
 		t.Errorf("Changed = %v, want [b.json]", got)
 	}
 	if got := w2.Written(); !slices.Equal(got, []string{"a.json", "b.json"}) {
-		t.Errorf("Written = %v, want both — cairn owns them either way", got)
+		t.Errorf("Written = %v, want both — cairndex owns them either way", got)
 	}
 	if w2.Unchanged() != 1 {
 		t.Errorf("Unchanged = %d, want 1", w2.Unchanged())

@@ -19,7 +19,7 @@ large=8000
 # the cap fails. Uncapped, 8000 entries is well over a megabyte.
 ceiling=$((900 * 1024))
 
-go build -o "$work/cairn" ./cmd/cairn
+go build -o "$work/cairndex" ./cmd/cairndex
 
 page_bytes() {
   local n="$1"
@@ -28,7 +28,7 @@ page_bytes() {
   for i in $(seq 1 "$n"); do
     printf 'payload %d\n' "$i" > "$dir/tree/pool/pkg_$(printf '%06d' "$i").deb"
   done
-  cat > "$dir/cairn.yaml" <<YAML
+  cat > "$dir/cairndex.yaml" <<YAML
 version: 1
 mode: direct
 root: ./tree
@@ -37,7 +37,7 @@ defaults:
   present: bare
   outputs: [html, json]
 YAML
-  (cd "$dir" && "$work/cairn" build --config cairn.yaml >/dev/null 2>&1)
+  (cd "$dir" && "$work/cairndex" build --config cairndex.yaml >/dev/null 2>&1)
   wc -c < "$dir/out/pool/index.html" | tr -d ' '
 }
 

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairndex/internal/model"
 )
 
 func TestSumsFormat(t *testing.T) {

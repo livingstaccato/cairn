@@ -1,0 +1,354 @@
+/* SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
+   SPDX-License-Identifier: MIT */
+
+/* cairndex listing.
+ *
+ * Two rules shape everything here:
+ *
+ * No webfonts. This renders on airgapped mirrors, so the type decision is
+ * treatment rather than family — the sans stack is chrome (labels, uppercase,
+ * tracked) and the mono stack is data (names, sizes, dates, digests). A
+ * filesystem's vernacular is monospace; the split marks what is content.
+ *
+ * One accent. Verdigris is reserved for verification state and nothing else,
+ * so a digest is the only colored thing on the page. On a plain-HTTP mirror it
+ * is the only thing standing between a reader and a bad artifact, and every
+ * other directory listing renders it as grey filler.
+ *
+ * Colors defer to the host theme's custom properties where it defines them. */
+
+.cairndex {
+  --c-ink: var(--text-1, #16181d);
+  --c-slate: var(--text-2, #5b6270);
+  --c-paper: var(--bg-1, #fbfbfa);
+  --c-raise: var(--bg-2, #f3f3f1);
+  --c-rule: var(--bg-3, #e2e2de);
+  --c-signal: var(--accent, #2f7d5d);
+
+  --c-mono: ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Mono", Menlo, Consolas, monospace;
+  --c-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+
+  color: var(--c-ink);
+  font-family: var(--c-sans);
+}
+
+@media (prefers-color-scheme: dark) {
+  .cairndex {
+    --c-ink: var(--text-1, #e6e7e9);
+    --c-slate: var(--text-2, #8b93a1);
+    --c-paper: var(--bg-1, #16181d);
+    --c-raise: var(--bg-2, #1d2026);
+    --c-rule: var(--bg-3, #2b2f37);
+    --c-signal: var(--accent, #5fbf92);
+  }
+}
+
+/* ── Masthead ─────────────────────────────────────────────────────────────
+   The path is the title. Nothing else deserves the top of the page. */
+
+/* ── Masthead ─────────────────────────────────────────────────────────────
+   The path owns its own line. Pairing a 17px mono path with an 11px tracked
+   label on one baseline was alignment by accident — the two elements that share
+   a line now are the two that are the same size. */
+
+.cairndex-head { margin-bottom: 1.75rem; }
+
+.cairndex-head-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  margin-top: 0.5rem;
+}
+
+.cairndex-head-count {
+  margin: 0;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--c-slate);
+}
+
+.cairndex-head-count .sep { color: var(--c-rule); }
+
+/* A switcher that names the format you are reading and opens onto the others.
+   It explains itself, so it needs no caption. */
+.cairndex-formats { position: relative; font-family: var(--c-mono); font-size: 0.75rem; }
+
+.cairndex-formats > summary {
+  cursor: pointer;
+  padding: 0.15rem 0.5rem;
+  color: var(--c-slate);
+  background: var(--c-raise);
+  border: 1px solid var(--c-rule);
+  border-radius: 3px;
+  list-style: none;
+  white-space: nowrap;
+}
+
+.cairndex-formats > summary::-webkit-details-marker { display: none; }
+.cairndex-formats > summary::after { content: " \25BE"; color: var(--c-rule); }
+.cairndex-formats[open] > summary::after { content: " \25B4"; }
+.cairndex-formats > summary:hover { color: var(--c-ink); border-color: var(--c-slate); }
+.cairndex-formats > summary:focus-visible { outline: 2px solid var(--c-signal); outline-offset: 1px; }
+
+.cairndex-formats > ul {
+  position: absolute;
+  right: 0;
+  z-index: 2;
+  min-width: 16rem;
+  margin: 0.25rem 0 0;
+  padding: 0.25rem;
+  list-style: none;
+  background: var(--c-paper);
+  border: 1px solid var(--c-rule);
+  border-radius: 3px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
+}
+
+.cairndex-formats > ul a {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.3rem 0.5rem;
+  color: var(--c-ink);
+  text-decoration: none;
+  border-radius: 2px;
+}
+
+.cairndex-formats > ul a:hover { background: var(--c-raise); }
+.cairndex-formats > ul a:focus-visible { outline: 2px solid var(--c-signal); outline-offset: -2px; }
+.cairndex-formats > ul span { font-family: var(--c-sans); color: var(--c-slate); }
+
+.cairndex-authored {
+  margin: 0 0 1.75rem;
+  padding-left: 1rem;
+  border-left: 2px solid var(--c-rule);
+  color: var(--c-slate);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  max-width: 62ch;
+}
+
+.cairndex-authored p { margin: 0 0 0.5rem; }
+.cairndex-authored p:last-child { margin-bottom: 0; }
+.cairndex-authored code { font-family: var(--c-mono); font-size: 0.8125rem; }
+
+/* Provenance for the authored strings, next to the other authored thing. */
+.cairndex-provenance { margin-top: 0.75rem; }
+
+.cairndex-provenance > summary {
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--c-slate);
+  list-style: none;
+}
+
+.cairndex-provenance > summary::-webkit-details-marker { display: none; }
+.cairndex-provenance > summary::after { content: " \203A"; }
+.cairndex-provenance[open] > summary::after { content: " \2039"; }
+.cairndex-provenance > summary:hover { color: var(--c-signal); }
+.cairndex-provenance > summary:focus-visible { outline: 2px solid var(--c-signal); outline-offset: 2px; }
+
+.cairndex-provenance pre {
+  margin: 0.6rem 0 0;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  background: var(--c-raise);
+  font-family: var(--c-mono);
+  font-size: 0.75rem;
+  line-height: 1.55;
+  color: var(--c-slate);
+}
+
+/* ── Toolbar ──────────────────────────────────────────────────────────── */
+
+.cairndex-toolbar { margin-bottom: 0.75rem; }
+.cairndex-toolbar[hidden] { display: none; }
+
+.cairndex-filter {
+  width: 100%;
+  max-width: 22rem;
+  padding: 0.4rem 0.6rem;
+  font-family: var(--c-mono);
+  font-size: 0.8125rem;
+  color: var(--c-ink);
+  background: var(--c-raise);
+  border: 1px solid var(--c-rule);
+  border-radius: 3px;
+}
+
+.cairndex-filter:focus-visible { outline: 2px solid var(--c-signal); outline-offset: 1px; }
+
+/* ── Listing ──────────────────────────────────────────────────────────────
+   Hairlines, no card. The rows are the object; a container around them would
+   just be a box drawn around a box. */
+
+.cairndex-listing-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0 0.5rem 0.5rem;
+  border-bottom: 1px solid var(--c-ink);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--c-slate);
+}
+
+.cairndex-listing-head a { color: inherit; text-decoration: none; }
+.cairndex-listing-head a:hover { color: var(--c-signal); text-decoration: underline; }
+.cairndex-listing-head [data-sort] { cursor: pointer; user-select: none; }
+.cairndex-listing-head [data-sort]:hover { color: var(--c-ink); }
+.cairndex-listing-head [data-sort]:focus-visible { outline: 2px solid var(--c-signal); outline-offset: 2px; }
+.cairndex-listing-head [aria-sort="ascending"] { color: var(--c-ink); }
+.cairndex-listing-head [aria-sort="ascending"]::after { content: " \2191"; }
+.cairndex-listing-head [aria-sort="descending"] { color: var(--c-ink); }
+.cairndex-listing-head [aria-sort="descending"]::after { content: " \2193"; }
+
+/* Column widths are declared once and used by both the header and the rows.
+   Two sets of numbers meaning the same thing is how columns drift. */
+.cairndex { --col-icon: 1rem; --col-meta: 5.5rem; --col-date: 5.5rem; --col-sum: 8.5rem; }
+
+.col-icon, .cairndex-icon { flex: 0 0 var(--col-icon); }
+.col-name { flex: 1 1 auto; min-width: 0; }
+.col-meta, .cairndex-item-meta { flex: 0 0 var(--col-meta); text-align: right; }
+.col-date, .cairndex-item-date { flex: 0 0 var(--col-date); text-align: right; }
+.col-sum, .cairndex-sum { flex: 0 0 var(--col-sum); text-align: right; }
+
+
+.cairndex-row { border-bottom: 1px solid var(--c-rule); }
+.cairndex-row[hidden] { display: none; }
+
+.cairndex-row > a {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  color: var(--c-ink);
+  text-decoration: none;
+}
+
+.cairndex-row > a:hover { background: var(--c-raise); }
+.cairndex-row > a:focus-visible { outline: 2px solid var(--c-signal); outline-offset: -2px; }
+
+.cairndex-icon { align-self: center; color: var(--c-slate); }
+.cairndex-row > a:hover .cairndex-icon { color: var(--c-ink); }
+
+.cairndex-item-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--c-mono);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.cairndex-item-count {
+  display: block;
+  margin-top: 0.15rem;
+  font-family: var(--c-sans);
+  font-size: 0.75rem;
+  color: var(--c-slate);
+}
+
+.cairndex-item-summary {
+  display: block;
+  margin-top: 0.15rem;
+  font-family: var(--c-sans);
+  font-size: 0.75rem;
+  color: var(--c-slate);
+}
+
+.cairndex-item-meta, .cairndex-item-date {
+  font-family: var(--c-mono);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-slate);
+  white-space: nowrap;
+}
+
+
+
+/* ── The digest ───────────────────────────────────────────────────────────
+   The one loud thing. Without TLS this is the only guarantee a reader gets,
+   so it is the only element on the page allowed to use the accent. The first
+   eight characters carry the weight because that is what anyone actually
+   compares by eye; the rest trails off. */
+
+.cairndex-sum {
+  font-family: var(--c-mono);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.cairndex-sum-head { color: var(--c-signal); font-weight: 600; }
+.cairndex-sum-tail { color: var(--c-slate); }
+.cairndex-sum-none { color: var(--c-rule); }
+
+/* No padding: the button sits in a column whose header has none, and any it
+   carried showed up as the digest being a few pixels out of line. */
+.cairndex-sum-copy {
+  font: inherit;
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.cairndex-sum-copy:hover .cairndex-sum-tail { color: var(--c-ink); }
+.cairndex-sum-copy:hover .cairndex-sum-head { text-decoration: underline; }
+.cairndex-sum-copy:focus-visible { outline: 2px solid var(--c-signal); outline-offset: 1px; }
+.cairndex-sum-copy[data-copied="true"] .cairndex-sum-head,
+.cairndex-sum-copy[data-copied="true"] .cairndex-sum-tail { color: var(--c-signal); }
+
+/* ── Bare presenter ───────────────────────────────────────────────────────
+   Styled enough to read, plain enough to survive a text browser. */
+
+.cairndex--bare .cairndex-table { width: 100%; border-collapse: collapse; font-family: var(--c-mono); font-size: 0.8125rem; }
+.cairndex--bare th {
+  text-align: left; padding: 0 0.75rem 0.4rem 0;
+  border-bottom: 1px solid var(--c-ink);
+  font-family: var(--c-sans); font-size: 0.6875rem;
+  text-transform: uppercase; letter-spacing: 0.09em; color: var(--c-slate);
+}
+.cairndex--bare td { padding: 0.35rem 0.75rem 0.35rem 0; border-bottom: 1px solid var(--c-rule); }
+.cairndex--bare td.size, .cairndex--bare th.size { text-align: right; font-variant-numeric: tabular-nums; }
+.cairndex--bare td.sum { color: var(--c-signal); }
+.cairndex--bare a { color: var(--c-ink); text-underline-offset: 3px; }
+
+@media (max-width: 46rem) {
+  .col-date, .cairndex-item-date { display: none; }
+  .cairndex--bare .modified { display: none; }
+  .cairndex { --col-sum: 6rem; }
+}
+
+@media (max-width: 32rem) {
+  .col-sum, .cairndex-sum { display: none; }
+  .cairndex--bare .sum { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+
+/* The page renders part of the directory and says so. Set below the listing,
+   where a reader arrives at the end of the rows and finds out what is past
+   them — not above, where it would read as a warning about the page they have
+   not looked at yet. */
+.cairndex-truncated {
+  margin: 1rem 0 0;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--c-rule);
+  font-size: 0.8125rem;
+  color: var(--c-slate);
+}
+
+.cairndex-truncated strong {
+  font-family: var(--c-mono);
+  font-weight: 500;
+  color: var(--c-ink);
+}
+
+.cairndex-truncated code { font-family: var(--c-mono); }

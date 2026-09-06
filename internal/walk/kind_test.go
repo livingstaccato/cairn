@@ -6,7 +6,7 @@ package walk
 import (
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/config"
+	"github.com/livingstaccato/cairndex/internal/config"
 )
 
 func TestKindOf(t *testing.T) {

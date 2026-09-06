@@ -13,11 +13,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairndex/internal/model"
 )
 
-// TestBasePathMakesPathsSiteAbsolute checks the case where cairn's root is not
-// the web root. Entry.Path is rooted at cairn's root, so a tree indexed from
+// TestBasePathMakesPathsSiteAbsolute checks the case where cairndex's root is not
+// the web root. Entry.Path is rooted at cairndex's root, so a tree indexed from
 // static/_odds and served at /_odds yields /mockups/x.html for a file the site
 // serves at /_odds/mockups/x.html: every link a 404, with internally consistent
 // JSON and nothing to signal it.

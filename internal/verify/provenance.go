@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/livingstaccato/cairn/internal/emit"
-	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairndex/internal/emit"
+	"github.com/livingstaccato/cairndex/internal/model"
 )
 
 // headBytes is how much of a file a header or marker test reads.
@@ -20,24 +20,24 @@ import (
 // Enough for the whole head of a page and far more than a CSV header line, and
 // small enough that testing a file nobody should have named index.html costs
 // nothing. A mirror can hold a 34 MB autoindex page; the marker is in the first
-// few hundred bytes of it or it is not cairn's.
+// few hundred bytes of it or it is not cairndex's.
 const headBytes = 8 << 10
 
-// provenOurs reports whether a file's own bytes prove cairn wrote it.
+// provenOurs reports whether a file's own bytes prove cairndex wrote it.
 //
-// checkOrphan asks a deliberately weaker question — could cairn have written a
+// checkOrphan asks a deliberately weaker question — could cairndex have written a
 // file with this name — and that is the right question for a report. The
 // basename test is a necessary condition and never a sufficient one, and the
 // difference does not matter while a human reads the answer.
 //
 // It matters for deletion. In a mirror root and out are the same directory, so
-// nearly every file is somebody's artifact, and the names cairn generates are
+// nearly every file is somebody's artifact, and the names cairndex generates are
 // the most ordinary names in a published tree: a PyPI simple index, an
 // extracted documentation tarball and a generated API reference are all called
 // index.html. Deleting on the name alone destroyed them, reported success, and
 // exited zero — GeneratedNames covers all four extensions whatever outputs: is
-// set, so cairn need never have written HTML into that tree at all, and
-// emit.Writer's conflict check never fires on a path cairn does not write.
+// set, so cairndex need never have written HTML into that tree at all, and
+// emit.Writer's conflict check never fires on a path cairndex does not write.
 //
 // So removal asks the stronger question and answers it from content. A format
 // that cannot answer it is reported and kept, which is the safe direction: the
@@ -52,7 +52,7 @@ func provenOurs(abs string) bool {
 		return isHugoContent(read(abs, headBytes))
 	case emit.SumsFile:
 		// Coreutils format by design, and tested against the real sha256sum -c.
-		// Every publisher's is the same shape as cairn's, so nothing here can
+		// Every publisher's is the same shape as cairndex's, so nothing here can
 		// tell them apart and this must never be deleted on its name.
 		return false
 	}
@@ -61,12 +61,12 @@ func provenOurs(abs string) bool {
 	case ".json":
 		return isListing(read(abs, 0))
 	case ".csv":
-		return isCairnCSV(read(abs, headBytes))
+		return isCairndexCSV(read(abs, headBytes))
 	case ".html":
 		return bytes.Contains(read(abs, headBytes), []byte(emit.GeneratorMarker))
 	}
 	// index.txt is one filename per line, which is what a listing of anything
-	// looks like anywhere. Nothing in it is cairn's.
+	// looks like anywhere. Nothing in it is cairndex's.
 	return false
 }
 
@@ -94,10 +94,10 @@ func read(abs string, limit int) []byte {
 	return buf[:n]
 }
 
-// isListing reports whether these bytes are a listing cairn emitted.
+// isListing reports whether these bytes are a listing cairndex emitted.
 //
 // path, a timestamp, a count and an array of entries describe any directory
-// listing, not one cairn specifically wrote — a foreign tool's own index.json
+// listing, not one cairndex specifically wrote — a foreign tool's own index.json
 // can carry all four by coincidence, since that is simply what "a directory"
 // looks like in JSON. generator is checked against model.Generator precisely
 // because it is not inferable from the rest of the shape: it says who wrote the
@@ -125,10 +125,10 @@ func isListing(b []byte) bool {
 // A bare array of records, because that is what a browser search library takes
 // directly. An empty array proves nothing: it is what an empty listing of
 // anything looks like, search-index.json is not an unusual name — static-search
-// plugins with no connection to cairn use exactly it — and there is no real case
+// plugins with no connection to cairndex use exactly it — and there is no real case
 // for the empty carve-out to protect. checkOrphan only ever reaches an unclaimed
 // file, and emit.Writer claims every path it handles regardless of the bytes, so
-// a real empty search index cairn wrote is never unclaimed and never arrives
+// a real empty search index cairndex wrote is never unclaimed and never arrives
 // here in the first place.
 func isSearchIndex(b []byte) bool {
 	if len(b) == 0 {
@@ -154,17 +154,17 @@ func isSearchIndex(b []byte) bool {
 	return true
 }
 
-// isCairnCSV reports whether the first row is CSVHeader exactly.
+// isCairndexCSV reports whether the first row is CSVHeader exactly.
 //
 // Weaker evidence than isListing's generator field, and deliberately left that
 // way: CSVHeader is "the stable documented column contract that shell consumers
 // index into" by position, so a ninth column carrying a marker would break every
 // script written against it — the exact contract the field exists to honour. A
-// file carrying the header either came from cairn or is choosing, by picking
-// these eight names in this order, to look exactly like cairn's output; the
+// file carrying the header either came from cairndex or is choosing, by picking
+// these eight names in this order, to look exactly like cairndex's output; the
 // residual risk of the second case is smaller than the cost of breaking the
 // first.
-func isCairnCSV(b []byte) bool {
+func isCairndexCSV(b []byte) bool {
 	if len(b) == 0 {
 		return false
 	}
@@ -179,11 +179,11 @@ func isCairnCSV(b []byte) bool {
 	return slices.Equal(header, emit.CSVHeader)
 }
 
-// isHugoContent reports whether these bytes are the branch bundle cairn writes.
+// isHugoContent reports whether these bytes are the branch bundle cairndex writes.
 //
 // Both keys, because a hand-written _index.md in a Hugo site is an ordinary
-// thing to find and may well carry a layout of its own. The cairn: block is
-// what no page cairn did not write would have.
+// thing to find and may well carry a layout of its own. The cairndex: block is
+// what no page cairndex did not write would have.
 func isHugoContent(b []byte) bool {
 	if !bytes.HasPrefix(b, []byte("---\n")) {
 		return false
@@ -195,5 +195,5 @@ func isHugoContent(b []byte) bool {
 		head = b[4:]
 	}
 	return bytes.Contains(head, []byte("layout: "+emit.HugoLayout)) &&
-		bytes.Contains(head, []byte("\ncairn:"))
+		bytes.Contains(head, []byte("\ncairndex:"))
 }

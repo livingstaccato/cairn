@@ -1,7 +1,7 @@
-# Using cairn from a Hugo site
+# Using cairndex from a Hugo site
 
-cairn ships `layouts/` and `assets/` as a Hugo component module. Import it, run
-`cairn build` in `hugo` mode, and Hugo renders HTML, JSON and CSV for every
+cairndex ships `layouts/` and `assets/` as a Hugo component module. Import it, run
+`cairndex build` in `hugo` mode, and Hugo renders HTML, JSON and CSV for every
 directory from one source.
 
 ## hugo.toml
@@ -9,15 +9,15 @@ directory from one source.
 ```toml
 [module]
   [[module.imports]]
-    path = "github.com/livingstaccato/cairn"
+    path = "github.com/livingstaccato/cairndex"
 ```
 
 Track `main`. Once a release is tagged, pin that instead — `@vX.Y.Z` in both
 commands, so the templates and the binary that feeds them move together.
 
 ```sh
-hugo mod get github.com/livingstaccato/cairn@main
-go install github.com/livingstaccato/cairn/cmd/cairn@main
+hugo mod get github.com/livingstaccato/cairndex@main
+go install github.com/livingstaccato/cairndex/cmd/cairndex@main
 ```
 
 `hugo mod get` writes the revision it resolved into `go.mod` as a pseudo-version,
@@ -25,19 +25,19 @@ so the templates stay pinned; `go install` takes whatever `main` is at that
 moment. The templates read what the binary writes, so update both together.
 
 That is the whole configuration. There are no output formats to declare and no
-media types to register: cairn writes `index.json`, `index.csv`, `index.txt` and
+media types to register: cairndex writes `index.json`, `index.csv`, `index.txt` and
 `SHA256SUMS` into each page's bundle, and Hugo publishes a bundle resource
 verbatim. Hugo renders only the HTML.
 
-Two things follow. The JSON a reader fetches is the exact bytes cairn produced,
+Two things follow. The JSON a reader fetches is the exact bytes cairndex produced,
 so the page and the data cannot disagree. And the frontmatter stays small, which
 is what keeps large directories buildable: with the listing inline, Hugo refuses
 anything past roughly ten thousand entries with "too many YAML aliases for
 non-scalar nodes". A 50,000-entry directory renders in under half a second.
 
-## cairn.yaml
+## cairndex.yaml
 
-`out:` points at the site's `content/`, because in `hugo` mode cairn writes one
+`out:` points at the site's `content/`, because in `hugo` mode cairndex writes one
 `_index.md` per directory and Hugo publishes the rest.
 
 ```yaml
@@ -49,14 +49,14 @@ out:  ./content
 
 ## What the module gives you
 
-- `layouts/_default/cairn.html` — bound to `layout: cairn`, which cairn stamps
+- `layouts/_default/cairndex.html` — bound to `layout: cairndex`, which cairndex stamps
   on every page it writes.
-- `layouts/partials/cairn/listing.html` — the listing, dispatching to a presenter.
+- `layouts/partials/cairndex/listing.html` — the listing, dispatching to a presenter.
   Entries come from the `index.json` resource in the page's bundle, not from
   `.Params`, so a custom template reads
   `(.Resources.GetMatch "index.json" | transform.Unmarshal).entries`.
-- `layouts/partials/cairn/entries.html` — see [search integration](search-integration.md).
-- `assets/cairn/cairn.css`, `cairn.js`, `icons.svg` — load them through Hugo
+- `layouts/partials/cairndex/entries.html` — see [search integration](search-integration.md).
+- `assets/cairndex/cairndex.css`, `cairndex.js`, `icons.svg` — load them through Hugo
   Pipes. The reference theme in `themes/reference` shows the minimum.
 
 It ships no `baseof`, header, footer or brand. Colors read your theme's custom
@@ -65,8 +65,8 @@ properties with fallbacks, so it inherits whatever design you already have.
 ## Two things that collide
 
 `html` and `pep503` both target `index.html`. Asking for both in one directory
-is a conflict cairn refuses rather than picking a winner — they are two
+is a conflict cairndex refuses rather than picking a winner — they are two
 renderings of the same URL.
 
 `present: styled` produces nothing in `direct` mode. Styled HTML needs your
-theme, which cairn does not have, so only `bare` renders without Hugo.
+theme, which cairndex does not have, so only `bare` renders without Hugo.

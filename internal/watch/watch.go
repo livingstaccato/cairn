@@ -15,7 +15,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
-	"github.com/livingstaccato/cairn/internal/config"
+	"github.com/livingstaccato/cairndex/internal/config"
 )
 
 // DefaultSettle is how long the watcher waits for a tree to stop moving before
@@ -182,7 +182,7 @@ func (w *Watcher) accept(ev fsnotify.Event, pending map[string]bool) bool {
 // Windows announces a change inside a directory twice: once on that
 // directory's own watch, naming the entry, and once on its parent's, naming
 // the directory. Acting on both is wrong twice over. The parent's copy does
-// not say what moved, so cairn's own output cannot be recognised and discarded
+// not say what moved, so cairndex's own output cannot be recognised and discarded
 // — in a mirror the index writes itself back into the tree and wakes the
 // watcher that asked for them. And it scopes the rebuild to the parent, which
 // on a deep tree is most of it, so every scoped rebuild widens to something

@@ -8,13 +8,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/emit"
-	"github.com/livingstaccato/cairn/internal/hash"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/emit"
+	"github.com/livingstaccato/cairndex/internal/hash"
 )
 
 // SettingsFor resolves the settings that apply to one directory, including its
-// own .cairn.yaml.
+// own .cairndex.yaml.
 //
 // Exported for callers outside a build that have to agree with one: a watcher
 // deciding which directories to register has to hide exactly what the build
@@ -29,7 +29,7 @@ func SettingsFor(cfg *config.Config, rootDir, relDir string, log *slog.Logger) c
 // "" covers three different arrangements and they all want the same answer:
 // separate trees, the output holding the root, and the mirror where root and
 // out are one directory. The mirror is the interesting one — there is no
-// subtree to skip there, and it is cairn's own generated filenames that keep a
+// subtree to skip there, and it is cairndex's own generated filenames that keep a
 // build from feeding itself.
 //
 // One function because two callers must agree. The walk skips this subtree so a
@@ -68,12 +68,12 @@ func OutRel(rootDir, outDir string) string {
 	return rel
 }
 
-// GeneratedNames lists the basenames cairn writes into a directory it indexes.
+// GeneratedNames lists the basenames cairndex writes into a directory it indexes.
 //
 // A single set drives two decisions that have to agree: which entries a listing
 // leaves out, and which filesystem events a watcher discards. Disagreement
-// between them is a rebuild loop — cairn's own output waking the watcher that
-// asks cairn to write it again.
+// between them is a rebuild loop — cairndex's own output waking the watcher that
+// asks cairndex to write it again.
 func GeneratedNames(cfg *config.Config) map[string]bool {
 	names := map[string]bool{
 		emit.SumsFile:     true,
@@ -96,7 +96,7 @@ func GeneratedNames(cfg *config.Config) map[string]bool {
 // that has just been deleted: a rebuild triggered by a removal still has to
 // resolve settings for the path that is gone.
 //
-// The logger is required rather than optional. A malformed .cairn.yaml is
+// The logger is required rather than optional. A malformed .cairndex.yaml is
 // reported, and a runner assembled without one would panic on the only path
 // that has anything to say.
 func dirOverrideAt(rootDir, relDir string, log *slog.Logger) *config.Override {

@@ -9,9 +9,9 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/livingstaccato/cairn/internal/build"
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/walk"
+	"github.com/livingstaccato/cairndex/internal/build"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/walk"
 )
 
 // Plan is the set of directories a watcher intends to register, and how many

@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/obs"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/obs"
 )
 
 func TestFilterIgnores(t *testing.T) {
@@ -24,15 +24,15 @@ func TestFilterIgnores(t *testing.T) {
 	}{
 		{"docs/intro.md", false, "authored content"},
 		{"docs/_meta.yaml", false, "a sidecar supplies titles, so it changes the output"},
-		{"docs/index.json", true, "cairn's own listing"},
-		{"docs/index.html", true, "cairn's own page"},
-		{"tree.json", true, "cairn's own recursive listing"},
-		{"SHA256SUMS", true, "cairn's own checksums"},
-		{".cairn-manifest.json", true, "cairn's own ownership record"},
-		{".cairn-cache.json", true, "cairn's own hash cache"},
+		{"docs/index.json", true, "cairndex's own listing"},
+		{"docs/index.html", true, "cairndex's own page"},
+		{"tree.json", true, "cairndex's own recursive listing"},
+		{"SHA256SUMS", true, "cairndex's own checksums"},
+		{".cairndex-manifest.json", true, "cairndex's own ownership record"},
+		{".cairndex-cache.json", true, "cairndex's own hash cache"},
 		{".git/objects/ab/cd", true, "inside a directory the build hides"},
 		{".DS_Store", true, "hidden by the default glob"},
-		// Deliberately not a name cairn generates: with one, the generated
+		// Deliberately not a name cairndex generates: with one, the generated
 		// check discards it and the subtree skip is never exercised.
 		{"_out/docs/notes.txt", true, "inside the output directory"},
 		// The segment test again, at the other end: a sibling that merely

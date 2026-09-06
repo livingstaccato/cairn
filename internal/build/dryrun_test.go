@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/emit"
-	"github.com/livingstaccato/cairn/internal/hash"
-	"github.com/livingstaccato/cairn/internal/obs"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/emit"
+	"github.com/livingstaccato/cairndex/internal/hash"
+	"github.com/livingstaccato/cairndex/internal/obs"
 )
 
 func dry(t *testing.T, c *config.Config, root, out string) *Result {
@@ -92,7 +92,7 @@ func TestDryRunReportsNoChangeAfterARealBuild(t *testing.T) {
 }
 
 // The reason the flag exists. Deleting published artifacts is the one thing
-// cairn does that running it again cannot undo, so an operator has to be able
+// cairndex does that running it again cannot undo, so an operator has to be able
 // to see the list first.
 func TestDryRunNamesWhatPruneWouldRemoveWithoutRemovingIt(t *testing.T) {
 	root, out := tree(t), t.TempDir()

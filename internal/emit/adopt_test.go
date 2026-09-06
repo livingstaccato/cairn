@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/config"
+	"github.com/livingstaccato/cairndex/internal/config"
 )
 
-// stray puts a file at relPath under out that cairn has no claim on.
+// stray puts a file at relPath under out that cairndex has no claim on.
 func stray(t *testing.T, out, relPath, body string) string {
 	t.Helper()
 	p := filepath.Join(out, filepath.FromSlash(relPath))
@@ -35,11 +35,11 @@ func body(t *testing.T, p string) string {
 }
 
 // TestAdoptClaimsAnExistingUnownedPath is the recovery this exists for: a tree
-// whose manifest was lost holds hundreds of thousands of files cairn wrote and
+// whose manifest was lost holds hundreds of thousands of files cairndex wrote and
 // no longer claims, and on_conflict: error refuses every one of them.
 func TestAdoptClaimsAnExistingUnownedPath(t *testing.T) {
 	out := t.TempDir()
-	p := stray(t, out, "bootstrap/index.json", "written by an earlier cairn")
+	p := stray(t, out, "bootstrap/index.json", "written by an earlier cairndex")
 
 	w := NewWriterWith(cfg(t, config.ConflictError), out, Options{Adopt: true})
 	if err := w.Write("bootstrap/index.json", []byte("fresh")); err != nil {
@@ -60,7 +60,7 @@ func TestWithoutAdoptAnUnownedPathIsStillRefused(t *testing.T) {
 	p := stray(t, out, "bootstrap/index.json", "somebody else's")
 
 	if err := NewWriter(cfg(t, config.ConflictError), out).Write("bootstrap/index.json", []byte("x")); err == nil {
-		t.Error("a plain build must still refuse a path cairn does not own")
+		t.Error("a plain build must still refuse a path cairndex does not own")
 	}
 	if got := body(t, p); got != "somebody else's" {
 		t.Errorf("body = %q, want it untouched", got)
@@ -68,7 +68,7 @@ func TestWithoutAdoptAnUnownedPathIsStillRefused(t *testing.T) {
 }
 
 // TestAdoptDoesNotReachAProtectedPath: protect: names paths another tool owns —
-// apt's signed dists/, dnf's repodata/. Adopting is about reclaiming cairn's own
+// apt's signed dists/, dnf's repodata/. Adopting is about reclaiming cairndex's own
 // output, and must not become a way to take those.
 func TestAdoptDoesNotReachAProtectedPath(t *testing.T) {
 	out := t.TempDir()
@@ -152,7 +152,7 @@ func TestADryAdoptClaimsNothingOnDisk(t *testing.T) {
 
 // TestTheConflictErrorNamesBothRemedies. The two are for opposite situations
 // and the message is all an operator has to tell them apart: a file that is
-// genuinely somebody else's should be left alone, and output cairn wrote and
+// genuinely somebody else's should be left alone, and output cairndex wrote and
 // can no longer prove it wrote should be reclaimed. Naming only skip, as this
 // did, sends the second case to the one setting that freezes the mirror.
 func TestTheConflictErrorNamesBothRemedies(t *testing.T) {

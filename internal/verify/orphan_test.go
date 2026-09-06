@@ -9,9 +9,9 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/emit"
-	"github.com/livingstaccato/cairn/internal/hash"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/emit"
+	"github.com/livingstaccato/cairndex/internal/hash"
 )
 
 // The stale-output case: csv came out of outputs:, the build stopped writing
@@ -26,7 +26,7 @@ func TestUnclaimedGeneratedFileIsOrphaned(t *testing.T) {
 }
 
 // In a mirror the output tree is the artifact tree, so almost everything under
-// it is content cairn must never claim. Only a basename cairn itself writes can
+// it is content cairndex must never claim. Only a basename cairndex itself writes can
 // be an orphan.
 func TestMirrorContentIsNotOrphaned(t *testing.T) {
 	f := mirror(t)
@@ -39,7 +39,7 @@ func TestMirrorContentIsNotOrphaned(t *testing.T) {
 	eq(t, "Orphaned", f.run().Orphaned, nil)
 }
 
-// protect: is the operator naming paths another tool owns. cairn never writes
+// protect: is the operator naming paths another tool owns. cairndex never writes
 // there and never claims one, so a manifest that does not mention a protected
 // path is the documented state, not a finding — and reporting it would fire on
 // every run of every repository mirror that uses the feature.
@@ -90,7 +90,7 @@ func TestOrphanIsDecidedPerPath(t *testing.T) {
 }
 
 // The generated set follows the config, so a renamed index_basename changes
-// which names cairn would write and therefore which files it could own.
+// which names cairndex would write and therefore which files it could own.
 func TestGeneratedSetFollowsIndexBasename(t *testing.T) {
 	f := mirror(t)
 	f.cfg.IndexBasename = "listing"
@@ -113,8 +113,8 @@ func TestGeneratedSetFollowsMode(t *testing.T) {
 	eq(t, "Orphaned", f.run().Orphaned, []string{emit.HugoContentFile})
 }
 
-// A symlink wearing a generated name is not something cairn wrote, and nothing
-// claims it. It is exactly the "what is here that cairn does not own" case, so
+// A symlink wearing a generated name is not something cairndex wrote, and nothing
+// claims it. It is exactly the "what is here that cairndex does not own" case, so
 // it is reported rather than followed.
 func TestUnclaimedSymlinkWearingAGeneratedNameIsOrphaned(t *testing.T) {
 	if runtime.GOOS == "windows" {

@@ -1,0 +1,10 @@
+{{- /* Dispatches to a presenter. They are genuinely different documents, not
+       one document with styling toggled: `bare` is a table because that is what
+       an autoindex is and what a text browser can read, and `styled` is a flex
+       listing because rows there carry hover, sort and animation a table cell
+       cannot express cleanly. */ -}}
+{{- if eq .Params.cairndex.present "bare" -}}
+{{- partial "cairndex/listing-bare.html" . -}}
+{{- else -}}
+{{- partial "cairndex/listing-styled.html" . -}}
+{{- end -}}

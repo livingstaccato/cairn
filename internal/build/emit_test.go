@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/model"
-	"github.com/livingstaccato/cairn/internal/obs"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/model"
+	"github.com/livingstaccato/cairndex/internal/obs"
 )
 
 // recursing returns a config that writes the recursive listing beside the
@@ -47,7 +47,7 @@ func treeEntries(t *testing.T, path string) []struct{ Name, Path string } {
 // The two are produced by different paths — collect runs the per-directory walk
 // through dropGenerated, while emitTree reaches walk.Tree directly — so the
 // exclusion had to be stated twice or stated once and shared. Stated only on the
-// collect side, tree.json published the output directory and cairn's own
+// collect side, tree.json published the output directory and cairndex's own
 // generated files as though they were content, and the recursive search index
 // built from that listing inherited it.
 func TestTreeListingExcludesTheOutputDirectory(t *testing.T) {
@@ -68,7 +68,7 @@ func TestTreeListingExcludesTheOutputDirectory(t *testing.T) {
 	}
 }
 
-// cairn's own generated filenames are dropped from the recursive listing for the
+// cairndex's own generated filenames are dropped from the recursive listing for the
 // same reason they are dropped from the per-directory one: in a mirror, root and
 // out are one directory, so there is no subtree to skip and the names are the
 // only thing keeping the build from listing what it just wrote.
@@ -86,7 +86,7 @@ func TestTreeListingExcludesGeneratedNames(t *testing.T) {
 
 	for _, e := range treeEntries(t, filepath.Join(root, "tree.json")) {
 		if e.Name == "index.json" || e.Name == "tree.json" {
-			t.Errorf("the recursive listing names cairn's own output: %+v", e)
+			t.Errorf("the recursive listing names cairndex's own output: %+v", e)
 		}
 	}
 }
@@ -257,7 +257,7 @@ func TestRunHugoModeWritesOneFilePerDir(t *testing.T) {
 	}
 	// index.json is written whether or not it was requested: the page reads its
 	// entries from it, and Hugo publishes the resource verbatim so the bytes a
-	// reader fetches are cairn's own.
+	// reader fetches are cairndex's own.
 	if _, err := os.Stat(filepath.Join(out, "bootstrap/index.json")); err != nil {
 		t.Errorf("hugo mode must write the listing resource: %v", err)
 	}
@@ -319,7 +319,7 @@ func TestRunPEP503AndHTMLCollide(t *testing.T) {
 }
 
 // In hugo mode every non-HTML output is a bundle resource Hugo publishes
-// verbatim, so cairn writes them all rather than declaring output formats.
+// verbatim, so cairndex writes them all rather than declaring output formats.
 func TestRunHugoWritesEveryResource(t *testing.T) {
 	root, out := tree(t), t.TempDir()
 	c := conf(nil)
@@ -334,9 +334,9 @@ func TestRunHugoWritesEveryResource(t *testing.T) {
 			t.Errorf("missing bundle resource %s: %v", rel, err)
 		}
 	}
-	// Hugo renders the HTML; cairn must not also write it.
+	// Hugo renders the HTML; cairndex must not also write it.
 	if _, err := os.Stat(filepath.Join(out, "bootstrap", "index.html")); err == nil {
-		t.Error("cairn wrote index.html in hugo mode; Hugo renders that")
+		t.Error("cairndex wrote index.html in hugo mode; Hugo renders that")
 	}
 }
 
@@ -514,12 +514,12 @@ func TestSearchIndexWrittenOncePerDirectory(t *testing.T) {
 	}
 }
 
-// cairn excludes its own output from the listings it writes. A search index
+// cairndex excludes its own output from the listings it writes. A search index
 // that offers itself as a result is noise on every query.
 //
 // Root and out are the same directory here, which is both the arrangement the
 // deployment guide describes and the only one that can catch this: with output
-// written elsewhere cairn never walks over what it wrote, and the test passes
+// written elsewhere cairndex never walks over what it wrote, and the test passes
 // whether or not the exclusion exists.
 func TestSearchIndexDoesNotListItself(t *testing.T) {
 	root := tree(t)
@@ -534,6 +534,6 @@ func TestSearchIndexDoesNotListItself(t *testing.T) {
 		t.Error("the search index lists itself")
 	}
 	if got["index.json"] {
-		t.Error("the search index lists cairn's own listing")
+		t.Error("the search index lists cairndex's own listing")
 	}
 }

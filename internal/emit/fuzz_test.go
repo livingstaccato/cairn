@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
 // SPDX-License-Identifier: MIT
 
-// Fuzz targets for the guards that stand between a scanned tree and what cairn
+// Fuzz targets for the guards that stand between a scanned tree and what cairndex
 // writes. Every input here is a filename, and filenames in a mirror are
 // attacker-influenced — which is why these are properties over all inputs
 // rather than a table of the ones somebody thought of.
@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairndex/internal/model"
 )
 
 // hostileNames seed every target. A corpus that starts from real breakage finds
@@ -52,8 +52,8 @@ func FuzzSumsIsOneLinePerEntry(f *testing.F) {
 	})
 }
 
-// containedPath is the single guard on every write cairn makes. If any input
-// resolves outside the output root, cairn can be made to write anywhere the
+// containedPath is the single guard on every write cairndex makes. If any input
+// resolves outside the output root, cairndex can be made to write anywhere the
 // process can reach.
 func FuzzContainedPath(f *testing.F) {
 	for _, n := range hostileNames {
@@ -87,7 +87,7 @@ func FuzzContainedPath(f *testing.F) {
 }
 
 // A spreadsheet executes a field that begins =, +, -, @, tab or CR. Whatever
-// the name, the field cairn writes must not begin with one.
+// the name, the field cairndex writes must not begin with one.
 func FuzzCSVSafeNeutralizesFormulas(f *testing.F) {
 	for _, n := range hostileNames {
 		f.Add(n)

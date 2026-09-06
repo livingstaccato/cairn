@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/model"
 )
 
 func names(es []model.Entry) []string {

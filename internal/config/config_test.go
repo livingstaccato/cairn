@@ -38,7 +38,7 @@ rules:
 func writeConfig(t *testing.T, body string) string {
 	t.Helper()
 	dir := t.TempDir()
-	p := filepath.Join(dir, "cairn.yaml")
+	p := filepath.Join(dir, "cairndex.yaml")
 	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +145,7 @@ func TestResolvePrecedence(t *testing.T) {
 	t.Run("directory override beats every rule", func(t *testing.T) {
 		got := c.Resolve("bootstrap/linux", &Override{Present: strp("styled")})
 		if got.Present != "styled" {
-			t.Errorf("Present = %q, want styled from .cairn.yaml", got.Present)
+			t.Errorf("Present = %q, want styled from .cairndex.yaml", got.Present)
 		}
 		if got.Checksum != "sha256" {
 			t.Errorf("Checksum = %q, want sha256 still from the rule", got.Checksum)
@@ -217,7 +217,7 @@ func TestValidateRejectsRemovedHiddenKey(t *testing.T) {
 	old := "skip"
 	c := &Config{Version: 1, OnConflict: ConflictError, Mode: ModeDirect,
 		Defaults: Override{Hidden: &old}}
-	err := c.validate("cairn.yaml")
+	err := c.validate("cairndex.yaml")
 	if err == nil {
 		t.Fatal("a config still using hidden: must be refused, not silently ignored")
 	}
@@ -230,7 +230,7 @@ func TestValidateRejectsBadHideGlob(t *testing.T) {
 	bad := []string{"["}
 	c := &Config{Version: 1, OnConflict: ConflictError, Mode: ModeDirect,
 		Defaults: Override{Hide: &bad}}
-	if err := c.validate("cairn.yaml"); err == nil {
+	if err := c.validate("cairndex.yaml"); err == nil {
 		t.Fatal("a glob that cannot compile must fail the config")
 	}
 }

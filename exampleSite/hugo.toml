@@ -1,14 +1,14 @@
 baseURL = "/"
-title = "cairn example"
+title = "cairndex example"
 
 # Both modules are imported by path, exactly as a consumer would, and resolved
 # locally by the replace lines in go.mod. Importing rather than mounting is the
 # point: it exercises the real module identity the repo publishes.
 [module]
   [[module.imports]]
-    path = "github.com/livingstaccato/cairn"
+    path = "github.com/livingstaccato/cairndex"
   [[module.imports]]
-    path = "github.com/livingstaccato/cairn/themes/reference"
+    path = "github.com/livingstaccato/cairndex/themes/reference"
 
   # source: pages lists content Hugo already renders, so the markdown it points
   # at has to be mounted as content. Without this the listing links to

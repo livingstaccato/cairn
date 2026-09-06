@@ -1,0 +1,31 @@
+{{- /* Single-pass breadcrumb. Takes a dict of the cairndex path, e.g.
+       "/bootstrap/linux/", and the base_path the tree is published under.
+       Accumulates each href as it goes rather than rebuilding the prefix from
+       scratch per crumb, which is what made the implementation this replaces
+       quadratic in the depth of the path.
+
+       base_path is why this takes a dict rather than the path alone. The root
+       anchor is site-absolute, and hardcoded to "/" it pointed above the tree
+       cairndex published — outside the mirror under base_path, and at the
+       filesystem root from file://. The crumbs were always right, because
+       listing paths already carry the prefix; the anchor in front of them was
+       not, and no amount of reading the path can tell a template where the
+       prefix ends. */ -}}
+{{- $base := .base | default "" -}}
+{{- $path := .path | strings.TrimPrefix $base | strings.TrimPrefix "/" | strings.TrimSuffix "/" -}}
+{{- $parts := split $path "/" -}}
+{{- $acc := $base -}}
+<nav class="cairndex-breadcrumb" aria-label="Breadcrumb">
+  <a href="{{ $base }}/">/</a>
+  {{- if ne $path "" -}}
+    {{- range $i, $crumb := $parts -}}
+      {{- $acc = printf "%s/%s" $acc $crumb -}}
+      {{- if $i }}<span class="sep">/</span>{{ end -}}
+      {{- if eq $i (sub (len $parts) 1) -}}
+        <span class="current">{{ $crumb }}</span>
+      {{- else -}}
+        <a href="{{ $acc }}/">{{ $crumb }}</a>
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+</nav>

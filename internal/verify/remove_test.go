@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/emit"
+	"github.com/livingstaccato/cairndex/internal/emit"
 )
 
 func (f *fixture) exists(rel string) bool {
@@ -26,7 +26,7 @@ func TestRemoveOrphanedDeletesWhatWasReported(t *testing.T) {
 	f := mirror(t)
 	f.file("pool/nginx.deb", "deb\n")
 	f.outFile("pool/index.json", "{}")
-	// csv left outputs: a release ago. Cairn's own bytes, because that is what
+	// csv left outputs: a release ago. Cairndex's own bytes, because that is what
 	// makes it removable — a file merely named index.csv is kept.
 	f.outFile("pool/index.csv", string(mustBytes(emit.CSV(sampleListing()))))
 	f.manifest("pool/index.json")
@@ -43,14 +43,14 @@ func TestRemoveOrphanedDeletesWhatWasReported(t *testing.T) {
 		t.Error("the orphan is still there")
 	}
 	if !f.exists("pool/index.json") {
-		t.Error("removed output cairn owns")
+		t.Error("removed output cairndex owns")
 	}
 	if _, err := os.Lstat(filepath.Join(f.root, "pool/nginx.deb")); err != nil {
 		t.Error("removed an artifact")
 	}
 }
 
-// The guard that matters. A manifest claiming nothing means cairn owns nothing,
+// The guard that matters. A manifest claiming nothing means cairndex owns nothing,
 // so every generated-looking file reads as an orphan -- and removing them would
 // delete the entire published output. That state is a lost manifest, which
 // build --adopt exists to repair, not a tree that is genuinely all foreign.
@@ -87,7 +87,7 @@ func TestRemoveOrphanedStaysUnderTheOutputRoot(t *testing.T) {
 	f.manifest("pool/index.json")
 
 	outside := filepath.Join(filepath.Dir(f.out), "outside.json")
-	if err := os.WriteFile(outside, []byte("not cairn's\n"), 0o644); err != nil {
+	if err := os.WriteFile(outside, []byte("not cairndex's\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	rep := f.run()
@@ -136,10 +136,10 @@ func TestRemoveOrphanedWithNothingToDoDoesNotTripTheGuard(t *testing.T) {
 // The data-loss case, end to end.
 //
 // A mirror is root and out in one directory, so nearly every file in it is
-// somebody's artifact, and the names cairn generates are the most ordinary
+// somebody's artifact, and the names cairndex generates are the most ordinary
 // names in a published tree. GeneratedNames covers all four extensions whatever
-// outputs: is set, so cairn need never have written HTML into this tree — which
-// also means emit.Writer's conflict check, the guard that stops cairn walking
+// outputs: is set, so cairndex need never have written HTML into this tree — which
+// also means emit.Writer's conflict check, the guard that stops cairndex walking
 // over a file it did not write, never fires on these paths.
 //
 // Reported: correct, and the report is what a person reads. Deleted: a mirrored
@@ -149,7 +149,7 @@ func TestRemoveOrphanedKeepsForeignFilesWearingGeneratedNames(t *testing.T) {
 	f := mirror(t)
 	f.file("simple/requests/index.html", "<a href='requests-2.0.tar.gz'>requests</a>\n")
 	f.file("docs/api/index.html", "<h1>API reference</h1>\n")
-	// Real cairn output in the same tree, so the manifest is not empty and the
+	// Real cairndex output in the same tree, so the manifest is not empty and the
 	// claims guard does not fire. A normal mirror has thousands of these.
 	f.outFile("simple/requests/index.json", "{}")
 	f.manifest("simple/requests/index.json")
@@ -168,7 +168,7 @@ func TestRemoveOrphanedKeepsForeignFilesWearingGeneratedNames(t *testing.T) {
 		t.Fatalf("RemoveOrphaned: %v", err)
 	}
 	if len(res.Removed) != 0 {
-		t.Errorf("deleted %v; nothing in this tree is cairn's", res.Removed)
+		t.Errorf("deleted %v; nothing in this tree is cairndex's", res.Removed)
 	}
 	if !slices.Equal(res.Kept, foreign) {
 		t.Errorf("Kept = %v, want %v", res.Kept, foreign)
@@ -198,9 +198,9 @@ func TestKeptOrphansAreStillReported(t *testing.T) {
 	}
 }
 
-// Stale output cairn really did write is still removed: the feature exists for
+// Stale output cairndex really did write is still removed: the feature exists for
 // exactly this, and a fix that only ever refuses would be a fix that broke it.
-func TestRemoveOrphanedStillRemovesCairnsOwnStaleOutput(t *testing.T) {
+func TestRemoveOrphanedStillRemovesCairndexsOwnStaleOutput(t *testing.T) {
 	f := mirror(t)
 	l := sampleListing()
 	f.outFile("pool/index.json", "{}")
@@ -217,7 +217,7 @@ func TestRemoveOrphanedStillRemovesCairnsOwnStaleOutput(t *testing.T) {
 		t.Errorf("Removed = %v, want %v", res.Removed, want)
 	}
 	if len(res.Kept) != 0 {
-		t.Errorf("Kept = %v, want nothing: every one of these is cairn's", res.Kept)
+		t.Errorf("Kept = %v, want nothing: every one of these is cairndex's", res.Kept)
 	}
 }
 
@@ -300,7 +300,7 @@ func TestRemoveOrphanedRefusesWhenAnAncestorBecameASymlink(t *testing.T) {
 
 	// The swap: "a" becomes a symlink to a directory that mirrors the relative
 	// shape the orphan path expects — b/index.csv — so the resolved path
-	// through the symlink names a real, deletable file, and cairn's own bytes
+	// through the symlink names a real, deletable file, and cairndex's own bytes
 	// at it so provenOurs would accept it if the swap is not caught first.
 	outside := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(outside, "b"), 0o755); err != nil {
@@ -326,8 +326,8 @@ func TestRemoveOrphanedRefusesWhenAnAncestorBecameASymlink(t *testing.T) {
 	}
 }
 
-// header is cairn's real CSV header, for a body a foreign path can carry to
-// look like cairn's own output without going through the emitter.
+// header is cairndex's real CSV header, for a body a foreign path can carry to
+// look like cairndex's own output without going through the emitter.
 func header(t *testing.T) string {
 	t.Helper()
 	return string(mustBytes(emit.CSV(sampleListing())))

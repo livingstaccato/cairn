@@ -14,15 +14,15 @@ import (
 	"os"
 	"sync"
 
-	"github.com/livingstaccato/cairn/internal/atomicfile"
+	"github.com/livingstaccato/cairndex/internal/atomicfile"
 )
 
 // CacheFile is the conventional filename for a cache, written under the output
 // directory.
-const CacheFile = ".cairn-cache.json"
+const CacheFile = ".cairndex-cache.json"
 
 // cacheFileMode keeps the cache to its owner. Unlike the generated listings it
-// is cairn's own bookkeeping: nothing serves it, and nothing else reads it.
+// is cairndex's own bookkeeping: nothing serves it, and nothing else reads it.
 const cacheFileMode os.FileMode = 0o600
 
 // record is one cached digest plus the stat fields that validate it.
@@ -61,7 +61,7 @@ type Cache struct {
 // there is nothing a bad cache can make wrong except the time a run takes.
 func NewCache(path string) *Cache {
 	c := &Cache{path: path, entries: map[string]record{}}
-	// #nosec G304 -- path is composed by cairn from the configured output
+	// #nosec G304 -- path is composed by cairndex from the configured output
 	// directory and a fixed filename.
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -130,7 +130,7 @@ var digestFile = digest
 // digest streams a file through SHA-256. Streaming rather than reading whole:
 // the files this exists for are disk images.
 func digest(absPath string) (string, error) {
-	// #nosec G304 -- absPath comes from a directory walk of the tree cairn was
+	// #nosec G304 -- absPath comes from a directory walk of the tree cairndex was
 	// configured to index. Containment of *written* paths is emit.Write's job;
 	// this only reads what the walk already listed.
 	f, err := os.Open(absPath)

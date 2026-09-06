@@ -1,22 +1,22 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
 // SPDX-License-Identifier: MIT
 
-// Package model defines the normalized record that every cairn producer fills
+// Package model defines the normalized record that every cairndex producer fills
 // and every emitter reads. Its JSON field names are a public contract:
 // index.json consumers and Hugo templates both depend on them.
 package model
 
 import "time"
 
-// Generator is what identifies a listing as cairn's own, in the one field that
+// Generator is what identifies a listing as cairndex's own, in the one field that
 // exists to say so rather than being inferred from the rest of the shape.
 //
 // path, a timestamp, a count and an array of entries describe any directory
-// listing, not one cairn specifically produced — a foreign file coincidentally
+// listing, not one cairndex specifically produced — a foreign file coincidentally
 // carrying all four is not evidence of authorship, only of describing the same
 // kind of thing. Generator is the difference between a shape that could be
 // imitated and a value that says who wrote it.
-const Generator = "cairn"
+const Generator = "cairndex"
 
 // Entry is one item in a directory listing — a file, a directory, or a page.
 type Entry struct {
@@ -52,6 +52,6 @@ type Listing struct {
 	// Generator is always Generator. Present on every listing this package
 	// constructs, not optional: an unknown field is silently ignored by any
 	// existing consumer, and its absence is exactly what tells a foreign
-	// listing apart from cairn's.
+	// listing apart from cairndex's.
 	Generator string `json:"generator" yaml:"generator"`
 }

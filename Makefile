@@ -3,9 +3,12 @@
 
 GO_COVER_MIN ?= 90.0
 
-.PHONY: templates pageweight gate lint security test cover example bench fuzz tools act act-job diagrams clean
+.PHONY: templates pageweight gate lint security test cover example bench fuzz tools act act-job diagrams clean build
 
 gate: private lint security test ## Everything a commit must pass
+
+build: ## Build ./cairndex with the git-described version embedded
+	ci/build.sh
 
 private: ## Refuse identifying strings in tracked files, commits and tags
 	ci/check-private.sh
@@ -18,7 +21,7 @@ security: ## gosec, govulncheck, go mod verify
 
 test: ## Race-enabled Go suite plus the module's JavaScript
 	go test -race ./...
-	node --test assets/cairn/cairn.test.mjs
+	node --test assets/cairndex/cairndex.test.mjs
 
 cover: ## Coverage gate over internal/
 	go test -race -coverprofile=coverage.out ./internal/...
@@ -30,7 +33,7 @@ act: ## Run the CI workflow locally (ubuntu leg only; needs Docker)
 act-job: ## Run one CI job locally, e.g. make act-job JOB=security
 	ci/act.sh -j $(JOB)
 
-example: ## End-to-end: cairn build -> hugo -> assert both halves agree
+example: ## End-to-end: cairndex build -> hugo -> assert both halves agree
 	ci/example.sh
 
 templates: ## Render the templates against an awkward tree and assert the output

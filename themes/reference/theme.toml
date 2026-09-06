@@ -1,4 +1,4 @@
-name = "cairn reference"
+name = "cairndex reference"
 license = "MIT"
 min_version = "0.128.0"
-description = "Minimal theme wrapping the cairn listing module. Bring your own design."
+description = "Minimal theme wrapping the cairndex listing module. Bring your own design."

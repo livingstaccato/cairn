@@ -15,7 +15,7 @@ func TestSetupReturnsUsableLoggerAndShutdown(t *testing.T) {
 	var buf bytes.Buffer
 	ctx := context.Background()
 
-	log, shutdown, err := Setup(ctx, "cairn-test", &buf)
+	log, shutdown, err := Setup(ctx, "cairndex-test", &buf)
 	if err != nil {
 		t.Fatalf("Setup: %v", err)
 	}
@@ -39,7 +39,7 @@ func TestSetupReturnsUsableLoggerAndShutdown(t *testing.T) {
 // A nil writer must be rejected rather than surfacing as a panic on the first
 // log line.
 func TestSetupRejectsNilWriter(t *testing.T) {
-	if _, _, err := Setup(context.Background(), "cairn-test", nil); err == nil {
+	if _, _, err := Setup(context.Background(), "cairndex-test", nil); err == nil {
 		t.Fatal("expected an error for a nil writer")
 	}
 }
@@ -65,7 +65,7 @@ func TestVersionReportsTheBuild(t *testing.T) {
 	}
 }
 
-// The identity cairn reports when nothing in the environment says otherwise.
+// The identity cairndex reports when nothing in the environment says otherwise.
 // These are the values that appear in a build log, so they are asserted as
 // literals: comparing against the constants would pass even if a constant were
 // changed to something wrong.
@@ -74,8 +74,8 @@ func TestConfigDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("config: %v", err)
 	}
-	if cfg.ServiceName != "cairn" {
-		t.Errorf("ServiceName = %q, want %q", cfg.ServiceName, "cairn")
+	if cfg.ServiceName != "cairndex" {
+		t.Errorf("ServiceName = %q, want %q", cfg.ServiceName, "cairndex")
 	}
 	if cfg.Environment != "production" {
 		t.Errorf("Environment = %q, want %q", cfg.Environment, "production")
@@ -85,24 +85,24 @@ func TestConfigDefaults(t *testing.T) {
 	}
 }
 
-// CAIRN_ENVIRONMENT is cairn's own name for this and wins over the telemetry
+// CAIRNDEX_ENVIRONMENT is cairndex's own name for this and wins over the telemetry
 // library's, which stays honoured so anyone driving that stack directly is not
 // cut off. An empty value is not a value: it must not beat the library's.
 func TestConfigEnvironmentPrecedence(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
-		cairnEnv     string
+		cairndexEnv  string
 		telemetryEnv string
 		want         string
 	}{
 		{"neither set", "", "", "production"},
-		{"cairn only", "staging", "", "staging"},
+		{"cairndex only", "staging", "", "staging"},
 		{"library only", "", "development", "development"},
-		{"both set, cairn wins", "staging", "development", "staging"},
-		{"cairn empty does not win", "", "development", "development"},
+		{"both set, cairndex wins", "staging", "development", "staging"},
+		{"cairndex empty does not win", "", "development", "development"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Setenv("CAIRN_ENVIRONMENT", tc.cairnEnv)
+			t.Setenv("CAIRNDEX_ENVIRONMENT", tc.cairndexEnv)
 			t.Setenv("PROVIDE_TELEMETRY_ENV", tc.telemetryEnv)
 			cfg, err := config()
 			if err != nil {
@@ -115,7 +115,7 @@ func TestConfigEnvironmentPrecedence(t *testing.T) {
 	}
 }
 
-// Name and version have no cairn-specific variable — the name is an identity
+// Name and version have no cairndex-specific variable — the name is an identity
 // and the version comes from the build — but the library's own must still
 // reach the config, or setting one would silently do nothing.
 func TestConfigLibraryVariablesStillApply(t *testing.T) {

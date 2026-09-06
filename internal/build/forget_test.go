@@ -12,9 +12,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/hash"
-	"github.com/livingstaccato/cairn/internal/obs"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/hash"
+	"github.com/livingstaccato/cairndex/internal/obs"
 )
 
 // hashing returns a config that digests every file, which is what puts records
@@ -77,7 +77,7 @@ func TestARebuildForgetsAFileThatIsGone(t *testing.T) {
 }
 
 // TestAScopedRebuildForgetsOnlyInsideItsScope is the property that makes the
-// sweep safe under cairn watch. A watch event rebuilds one subtree and consults
+// sweep safe under cairndex watch. A watch event rebuilds one subtree and consults
 // only that subtree, so an unscoped sweep would discard the digests for the
 // whole rest of the mirror on the first change and re-hash it on the next full
 // build.
@@ -150,7 +150,7 @@ func TestAFailedBuildForgetsNothing(t *testing.T) {
 	root, out := tree(t), t.TempDir()
 	run(t, hashing(), root, out)
 
-	// A file cairn does not own, standing where a later directory's listing
+	// A file cairndex does not own, standing where a later directory's listing
 	// goes: on_conflict: error stops the build there.
 	if err := os.MkdirAll(filepath.Join(root, "docs", "guides"), 0o755); err != nil {
 		t.Fatal(err)

@@ -7,7 +7,7 @@ import (
 	"bytes"
 	"strings"
 
-	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairndex/internal/model"
 )
 
 // Text renders a listing as one entry name per line, directories with a

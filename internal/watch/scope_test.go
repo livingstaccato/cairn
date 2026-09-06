@@ -9,8 +9,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/obs"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/obs"
 )
 
 func TestCovers(t *testing.T) {

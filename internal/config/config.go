@@ -16,7 +16,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// SupportedVersion is the only cairn.yaml schema version this build accepts.
+// SupportedVersion is the only cairndex.yaml schema version this build accepts.
 const SupportedVersion = 1
 
 // Conflict policies for an output path that already exists.
@@ -25,7 +25,7 @@ const (
 	ConflictSkip  = "skip"
 )
 
-// Output modes. In direct mode cairn writes index.{json,csv,html} itself. In
+// Output modes. In direct mode cairndex writes index.{json,csv,html} itself. In
 // hugo mode it writes one _index.md per directory and Hugo renders the formats
 // from that single source, so they cannot drift.
 const (
@@ -45,7 +45,7 @@ type Rule struct {
 	Override `yaml:",inline"`
 }
 
-// Config is a parsed root cairn.yaml.
+// Config is a parsed root cairndex.yaml.
 type Config struct {
 	Version        int      `yaml:"version"`
 	Mode           string   `yaml:"mode"`
@@ -60,7 +60,7 @@ type Config struct {
 	Rules          []Rule   `yaml:"rules"`
 }
 
-// Load reads and validates a root cairn.yaml.
+// Load reads and validates a root cairndex.yaml.
 func Load(p string) (*Config, error) {
 	// #nosec G304 -- p is the config path the operator passed on the command
 	// line. Reading the file the user named is the function's entire purpose;
@@ -93,7 +93,7 @@ func Load(p string) (*Config, error) {
 
 // applyPolicyDefaults fills the top-level policy fields a config may omit.
 // normalizeBasePath makes base_path a clean prefix: leading slash, no trailing
-// one, empty when unset. Doing it once here means every path cairn emits can
+// one, empty when unset. Doing it once here means every path cairndex emits can
 // concatenate without re-deciding what shape the value was written in.
 func (c *Config) normalizeBasePath() {
 	p := strings.Trim(c.BasePath, "/")
@@ -203,7 +203,7 @@ func validateSources(p string, defaults Override, rules []Rule) error {
 
 // Resolve returns the effective Settings for relDir. Precedence, lowest first:
 // built-in defaults, root defaults:, each matching rule in file order, then the
-// directory's own .cairn.yaml.
+// directory's own .cairndex.yaml.
 func (c *Config) Resolve(relDir string, dirOverride *Override) Settings {
 	s := c.Defaults.Apply(Defaults())
 	for _, r := range c.Rules {

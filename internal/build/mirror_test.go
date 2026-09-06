@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
 // SPDX-License-Identifier: MIT
 
-// Tests for the deployment cairn was written for: indexes written in place,
+// Tests for the deployment cairndex was written for: indexes written in place,
 // beside artifacts a package manager owns and verifies.
 
 package build
@@ -15,9 +15,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/emit"
-	"github.com/livingstaccato/cairn/internal/model"
-	"github.com/livingstaccato/cairn/internal/obs"
+	"github.com/livingstaccato/cairndex/internal/emit"
+	"github.com/livingstaccato/cairndex/internal/model"
+	"github.com/livingstaccato/cairndex/internal/obs"
 )
 
 func TestRunSkipsProtectedOutputs(t *testing.T) {
@@ -38,7 +38,7 @@ func TestRunSkipsProtectedOutputs(t *testing.T) {
 }
 
 // repoTree builds a mirror shaped like a real APT and YUM repository: signed
-// dists/ metadata, a package pool, and repodata/. This is the deployment cairn
+// dists/ metadata, a package pool, and repodata/. This is the deployment cairndex
 // exists for — indexes written beside artifacts that another tool owns.
 func repoTree(t *testing.T) string {
 	t.Helper()
@@ -66,7 +66,7 @@ func repoTree(t *testing.T) string {
 }
 
 // snapshot records every file in a tree with its contents, so a later
-// comparison can prove cairn did not touch what it does not own.
+// comparison can prove cairndex did not touch what it does not own.
 func snapshot(t *testing.T, root string) map[string]string {
 	t.Helper()
 	got := map[string]string{}
@@ -92,7 +92,7 @@ func snapshot(t *testing.T, root string) map[string]string {
 }
 
 // TestRunCoexistsWithPackageRepo is the deployment this tool was written for:
-// cairn indexing an APT/YUM mirror in place, beside metadata that apt and dnf
+// cairndex indexing an APT/YUM mirror in place, beside metadata that apt and dnf
 // own and verify. It must leave every byte of that metadata alone, write no
 // output inside it, still index the pool, and still list the protected
 // directories so a browser can walk into them.
@@ -111,13 +111,13 @@ func TestRunCoexistsWithPackageRepo(t *testing.T) {
 			t.Fatalf("%s disappeared: %v", rel, err)
 		}
 		if string(b) != body {
-			t.Errorf("%s changed; cairn must not rewrite content it did not create", rel)
+			t.Errorf("%s changed; cairndex must not rewrite content it did not create", rel)
 		}
 	}
 
-	// No cairn output anywhere inside a protected subtree. An extra file will
+	// No cairndex output anywhere inside a protected subtree. An extra file will
 	// not break apt, which fetches only what Release names, but it does put
-	// cairn's output inside a directory whose checksums another tool signs.
+	// cairndex's output inside a directory whose checksums another tool signs.
 	for rel := range snapshot(t, root) {
 		if _, was := before[rel]; was {
 			continue
@@ -127,7 +127,7 @@ func TestRunCoexistsWithPackageRepo(t *testing.T) {
 		}
 	}
 
-	// The pool and the RPM directory are cairn's to index.
+	// The pool and the RPM directory are cairndex's to index.
 	for _, rel := range []string{
 		"pool/index.json", "pool/main/n/nginx/index.json",
 		"Packages/n/index.json", "index.json",
@@ -177,7 +177,7 @@ func TestRunOverPackageRepoIsIdempotent(t *testing.T) {
 	for rel, body := range first {
 		// The listing timestamp moves every run by design; the digests and the
 		// entry set must not.
-		if rel == emit.ManifestFile || strings.HasSuffix(rel, ".cairn-cache.json") {
+		if rel == emit.ManifestFile || strings.HasSuffix(rel, ".cairndex-cache.json") {
 			continue
 		}
 		got, ok := second[rel]
@@ -203,7 +203,7 @@ func TestRunOverPackageRepoIsIdempotent(t *testing.T) {
 // cleanup is not usable.
 func TestRunFailureLeavesRecoverableState(t *testing.T) {
 	root := tree(t)
-	// A file cairn does not own, deep enough that the root listing is written
+	// A file cairndex does not own, deep enough that the root listing is written
 	// before the build reaches it. This is the ordinary way a real build dies.
 	if err := os.WriteFile(filepath.Join(root, "docs", "index.json"), []byte("mine"), 0o644); err != nil {
 		t.Fatal(err)
@@ -217,7 +217,7 @@ func TestRunFailureLeavesRecoverableState(t *testing.T) {
 		t.Fatalf("the test needs the root listing written before the failure: %v", err)
 	}
 
-	// Clear the conflict. The retry must succeed: cairn has to recognize the
+	// Clear the conflict. The retry must succeed: cairndex has to recognize the
 	// output its own aborted run left behind.
 	if err := os.Remove(filepath.Join(root, "docs", "index.json")); err != nil {
 		t.Fatal(err)

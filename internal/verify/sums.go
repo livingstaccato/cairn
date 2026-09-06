@@ -13,7 +13,7 @@ import (
 
 // The shape of a coreutils line: a 64-character hex digest, a two-byte
 // separator, then the filename. "  " is text mode and " *" is binary mode;
-// sha256sum writes both and accepts both, so a verifier that reads only cairn's
+// sha256sum writes both and accepts both, so a verifier that reads only cairndex's
 // own output would skip lines a client verifies successfully — reporting a file
 // as unchecked when it is in fact fine.
 const (
@@ -26,14 +26,14 @@ const (
 //
 // relSums is the file's path under the output directory, but the names inside it
 // are not. A digest line is what a client resolves against the directory it
-// fetched the file from, and what is served there is the artifact tree — cairn's
+// fetched the file from, and what is served there is the artifact tree — cairndex's
 // indexed root. In a mirror the two directories are one; in a split build the
 // artifacts are not under the output directory at all, and resolving there finds
 // nothing and reports a tree of missing files that are sitting on disk.
 //
 // A protected SHA256SUMS is skipped whole. protect: is the operator saying
 // another tool owns that subtree, so both the file and the names in it belong to
-// a scheme cairn does not know — apt's dists/ has its own signed digests over
+// a scheme cairndex does not know — apt's dists/ has its own signed digests over
 // its own paths.
 func (v *verifier) checkSums(relSums string) error {
 	if v.cfg.IsProtected(relSums) {
@@ -84,7 +84,7 @@ func (v *verifier) checkSums(relSums string) error {
 func (v *verifier) checkDigest(rootAbs, target, want string) {
 	abs, err := containedIn(rootAbs, target)
 	if err != nil {
-		// A name climbing out of the tree names nothing cairn published. It is
+		// A name climbing out of the tree names nothing cairndex published. It is
 		// reported and never resolved: dropping it would let a doctored
 		// SHA256SUMS verify clean, and following it would hash a path the file
 		// under inspection chose.
@@ -127,8 +127,8 @@ func (v *verifier) checkDigest(rootAbs, target, want string) {
 // as unchecked when nothing is wrong with it.
 func parseSumsLine(line string) (sum, name string, ok bool) {
 	// A leading backslash says the name was escaped because it holds a
-	// backslash, a newline or a carriage return. cairn writes those lines, so
-	// cairn has to read them: without this every such file is reported missing
+	// backslash, a newline or a carriage return. cairndex writes those lines, so
+	// cairndex has to read them: without this every such file is reported missing
 	// while the artifact sits there intact.
 	escaped := strings.HasPrefix(line, `\`)
 	if escaped {

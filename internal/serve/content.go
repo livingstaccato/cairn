@@ -14,7 +14,7 @@ import (
 // IndexFile is the only thing a directory request is ever answered with.
 //
 // http.FileServer would fall back to a listing it generates itself when this is
-// missing. That fallback is off here and stays off: a directory with no cairn
+// missing. That fallback is off here and stays off: a directory with no cairndex
 // index is a 404. The standard library's listing names every file in the
 // directory, honours no hide rule, no protect glob and no sidecar, and quietly
 // undoes the one decision this whole program exists to make.
@@ -25,10 +25,10 @@ const IndexFile = "index.html"
 // This viewer sits behind a watcher, so the bytes under it are expected to
 // change while someone is looking at them. A cache header promising otherwise
 // would be a lie the browser then acts on, and the reported symptom is that
-// cairn did not rebuild — which it did.
+// cairndex did not rebuild — which it did.
 const noStore = "no-store"
 
-// Media types cairn pins rather than looks up.
+// Media types cairndex pins rather than looks up.
 //
 // mime.TypeByExtension is not a fixed table. Go's built-in list is overwritten
 // at init by the host's — /etc/mime.types on Unix, the registry on Windows — so
@@ -53,7 +53,7 @@ var byExtension = map[string]string{
 	".xml":  "application/xml",
 }
 
-// byName covers what cairn writes with no extension at all. Matched by exact
+// byName covers what cairndex writes with no extension at all. Matched by exact
 // name rather than by "anything without a dot", because a mirror is full of
 // release artifacts that carry no suffix and are not text; declaring those as
 // text on the strength of a missing extension would be a worse guess than the
@@ -108,7 +108,7 @@ func (h *files) accept(w http.ResponseWriter, r *http.Request) bool {
 		return true
 	}
 	w.Header().Set("Allow", "GET, HEAD")
-	http.Error(w, "cairn serve answers GET and HEAD", http.StatusMethodNotAllowed)
+	http.Error(w, "cairndex serve answers GET and HEAD", http.StatusMethodNotAllowed)
 	return false
 }
 
@@ -130,7 +130,7 @@ func (h *files) target(name string) (string, bool, error) {
 	return path.Join(name, IndexFile), true, nil
 }
 
-// send writes the file out with the type cairn chose for it.
+// send writes the file out with the type cairndex chose for it.
 //
 // http.ServeContent handles ranges and conditional requests from here, and it
 // leaves an already-set Content-Type alone — which is the whole reason the type
@@ -184,7 +184,7 @@ func (h *files) close(f http.File, name string) {
 //
 // Without it every relative link in the index resolves against the parent
 // directory instead of the one being viewed, so a page served at /docs finds
-// its stylesheet at /cairn.css and its entries one level too high.
+// its stylesheet at /cairndex.css and its entries one level too high.
 //
 // The target is relative and built only from the last segment of the path the
 // client already asked for, so there is no spelling of a request that turns
@@ -200,7 +200,7 @@ func redirect(w http.ResponseWriter, r *http.Request) {
 
 // setType declares the media type, or declares nothing.
 //
-// Leaving the header unset is a real answer: for anything cairn did not write
+// Leaving the header unset is a real answer: for anything cairndex did not write
 // — a tarball, a package, an image in a directory being indexed — the host's
 // table and then content sniffing are better guesses than a table that has
 // never seen the file.

@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ if .Title }}{{ .Title }} · {{ end }}{{ site.Title }}</title>
-{{ with .Params.cairn }}<meta name="description" content="Index of {{ .path }}">{{ end }}
+{{ with .Params.cairndex }}<meta name="description" content="Index of {{ .path }}">{{ end }}
 {{ $sheets := slice }}
 {{ with resources.Get "reference/theme.css" }}{{ $sheets = $sheets | append . }}{{ end }}
-{{ with resources.Get "cairn/cairn.css" }}{{ $sheets = $sheets | append . }}{{ end }}
+{{ with resources.Get "cairndex/cairndex.css" }}{{ $sheets = $sheets | append . }}{{ end }}
 {{ with $sheets }}
   {{ $css := . | resources.Concat "css/site.css" | resources.Minify | resources.Fingerprint "sha256" }}
   <link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}">

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
 // SPDX-License-Identifier: MIT
 
-// Tests for what comes back: the media type on cairn's own outputs, the index
+// Tests for what comes back: the media type on cairndex's own outputs, the index
 // that answers a directory, and the requests that must not be answered at all.
 
 package serve
@@ -37,7 +37,7 @@ const (
 // without this proves only that the machine running it happened to agree.
 //
 // There is no way to remove an entry once added, and none is needed: every
-// extension below is one cairn pins, so nothing that runs afterwards reaches
+// extension below is one cairndex pins, so nothing that runs afterwards reaches
 // the table to read it.
 func poison(t *testing.T) {
 	t.Helper()
@@ -56,12 +56,12 @@ func poison(t *testing.T) {
 	}
 }
 
-// TestEveryOutputCairnWritesIsDeclared checks the table itself, not a response.
+// TestEveryOutputCairndexWritesIsDeclared checks the table itself, not a response.
 //
 // A media type that arrives correct because the host's mime table agreed is not
-// a media type cairn chose, and the agreement is not there on every host. What
+// a media type cairndex chose, and the agreement is not there on every host. What
 // this asserts is that something is declared at all, and exactly what.
-func TestEveryOutputCairnWritesIsDeclared(t *testing.T) {
+func TestEveryOutputCairndexWritesIsDeclared(t *testing.T) {
 	cases := []struct {
 		file string
 		want string
@@ -73,8 +73,8 @@ func TestEveryOutputCairnWritesIsDeclared(t *testing.T) {
 		{"index.txt", textPlainUTF8},
 		{"index.html", textHTMLUTF8},
 		{"SHA256SUMS", textPlainUTF8},
-		{"cairn.css", textCSSUTF8},
-		{"cairn.js", textJSUTF8},
+		{"cairndex.css", textCSSUTF8},
+		{"cairndex.js", textJSUTF8},
 		{"icons.svg", imageSVG},
 	}
 	for _, c := range cases {
@@ -87,13 +87,13 @@ func TestEveryOutputCairnWritesIsDeclared(t *testing.T) {
 		})
 	}
 
-	// The other half of the rule: cairn declares what it wrote and nothing
+	// The other half of the rule: cairndex declares what it wrote and nothing
 	// else. A release artifact is ServeContent's guess to make, because it has
 	// the bytes to make it with.
 	w := httptest.NewRecorder()
 	setType(w, "/anywhere/release.bin")
 	if got := w.Header().Get("Content-Type"); got != "" {
-		t.Errorf("setType declared %q for a file cairn did not write, want nothing", got)
+		t.Errorf("setType declared %q for a file cairndex did not write, want nothing", got)
 	}
 }
 
@@ -116,8 +116,8 @@ func TestContentTypesArePinned(t *testing.T) {
 		{"listing page", "/index.html", textHTMLUTF8},
 		{"directory answered by its index", "/", textHTMLUTF8},
 		{"subdirectory index", "/docs/", textHTMLUTF8},
-		{"stylesheet", "/cairn.css", textCSSUTF8},
-		{"script", "/cairn.js", textJSUTF8},
+		{"stylesheet", "/cairndex.css", textCSSUTF8},
+		{"script", "/cairndex.js", textJSUTF8},
 		{"icon sprite", "/icons.svg", imageSVG},
 	}
 	for _, c := range cases {
@@ -163,11 +163,11 @@ func TestDirectoryWithoutAnIndexIsNotListed(t *testing.T) {
 
 	resp, body := get(t, base+"/bare/")
 	if resp.StatusCode != http.StatusNotFound {
-		t.Fatalf("status %d, want 404: a directory cairn has not indexed has no listing", resp.StatusCode)
+		t.Fatalf("status %d, want 404: a directory cairndex has not indexed has no listing", resp.StatusCode)
 	}
 	if strings.Contains(body, "notes.md") {
 		t.Errorf("the response listed the directory's contents:\n%s\n\nWhat a directory "+
-			"listing says is cairn's to decide; the standard library must not answer for it", body)
+			"listing says is cairndex's to decide; the standard library must not answer for it", body)
 	}
 }
 
@@ -333,7 +333,7 @@ func raw(t *testing.T, addr, target string) (*http.Response, string) {
 	if err := conn.SetDeadline(time.Now().Add(waitFor)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fmt.Fprintf(conn, "GET %s HTTP/1.0\r\nHost: cairn.invalid\r\n\r\n", target); err != nil {
+	if _, err := fmt.Fprintf(conn, "GET %s HTTP/1.0\r\nHost: cairndex.invalid\r\n\r\n", target); err != nil {
 		t.Fatal(err)
 	}
 	resp, err := http.ReadResponse(bufio.NewReader(conn), nil)

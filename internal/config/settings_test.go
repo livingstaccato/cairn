@@ -8,7 +8,7 @@ import "testing"
 // These tests assert literal strings rather than the exported constants on
 // purpose. Comparing a constant against itself passes even when its value is
 // changed wrongly, and these values are a config-file contract: "styled" in
-// someone's cairn.yaml has to keep meaning what it means.
+// someone's cairndex.yaml has to keep meaning what it means.
 
 func strp(s string) *string { return &s }
 func boolp(b bool) *bool    { return &b }

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 // Tests for Options.Adopt: the way back from a lost or unreadable manifest,
-// when every file cairn wrote is one it no longer claims.
+// when every file cairndex wrote is one it no longer claims.
 
 package build
 
@@ -11,11 +11,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/emit"
-	"github.com/livingstaccato/cairn/internal/obs"
+	"github.com/livingstaccato/cairndex/internal/emit"
+	"github.com/livingstaccato/cairndex/internal/obs"
 )
 
-// loseTheManifest leaves the output in place and takes away cairn's record of
+// loseTheManifest leaves the output in place and takes away cairndex's record of
 // having written it — the state a build that died before SavePartial could
 // finish leaves behind, and the state that has no way out.
 func loseTheManifest(t *testing.T, out string) {
@@ -27,7 +27,7 @@ func loseTheManifest(t *testing.T, out string) {
 }
 
 // TestWithoutAdoptALostManifestStillStopsTheBuild is the state this recovers
-// from. It is not a hypothetical: every file in the output is one cairn wrote,
+// from. It is not a hypothetical: every file in the output is one cairndex wrote,
 // and on_conflict: error refuses all of them, naming a path and saying it
 // already exists.
 func TestWithoutAdoptALostManifestStillStopsTheBuild(t *testing.T) {
@@ -51,7 +51,7 @@ func TestAdoptRecoversATreeWhoseManifestWasLost(t *testing.T) {
 
 	res, err := RunWith(conf(nil), root, out, obs.Discard(), Options{Adopt: true})
 	if err != nil {
-		t.Fatalf("--adopt must reclaim cairn's own output: %v", err)
+		t.Fatalf("--adopt must reclaim cairndex's own output: %v", err)
 	}
 	if len(res.Adopted) != len(first.Written) {
 		t.Errorf("adopted %d paths, want the %d the first build wrote",
@@ -76,7 +76,7 @@ func TestAdoptClaimsNothingWhenThereIsNothingToClaim(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(res.Adopted) != 0 {
-		t.Errorf("Adopted = %v, want nothing on a tree cairn already owns", res.Adopted)
+		t.Errorf("Adopted = %v, want nothing on a tree cairndex already owns", res.Adopted)
 	}
 }
 

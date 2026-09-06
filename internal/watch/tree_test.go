@@ -12,8 +12,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/obs"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/obs"
 )
 
 // rels turns a plan's absolute directories into paths relative to root, for an

@@ -36,7 +36,7 @@ metric() {
     END { printf "%-6s %5.0fMB", (t==""?"?":t"s"), rss }'
 }
 
-go build -o "$bench/cairn" ./cmd/cairn
+go build -o "$bench/cairndex" ./cmd/cairndex
 
 printf '%-8s %-22s %-14s %s\n' "ENTRIES" "STAGE" "TIME  PEAK RSS" "OUTPUT"
 for n in "${sizes[@]}"; do
@@ -60,12 +60,12 @@ defaults:
   checksum: sha256
   outputs: [html, json, csv, txt, sums]
 YAML
-  m="$(timed "$bench/cairn" build --config "$d/direct.yaml" | metric)"
-  printf '%-8s %-22s %-14s %s\n' "$n" "cairn direct, cold" "$m" \
+  m="$(timed "$bench/cairndex" build --config "$d/direct.yaml" | metric)"
+  printf '%-8s %-22s %-14s %s\n' "$n" "cairndex direct, cold" "$m" \
     "html $(du -h "$d/out/pool/index.html" | cut -f1)  json $(du -h "$d/out/pool/index.json" | cut -f1)"
 
-  m="$(timed "$bench/cairn" build --config "$d/direct.yaml" | metric)"
-  printf '%-8s %-22s %-14s %s\n' "$n" "cairn direct, warm" "$m" "hash cache hit"
+  m="$(timed "$bench/cairndex" build --config "$d/direct.yaml" | metric)"
+  printf '%-8s %-22s %-14s %s\n' "$n" "cairndex direct, warm" "$m" "hash cache hit"
 
   sed "s|__REPO__|$repo|g" ci/bench-site.go.mod.in > "$d/site/go.mod"
   cp ci/bench-site.hugo.toml.in "$d/site/hugo.toml"
@@ -78,8 +78,8 @@ defaults:
   present: styled
   outputs: [html, json, csv, txt]
 YAML
-  m="$(timed "$bench/cairn" build --config "$d/hugo.yaml" | metric)"
-  printf '%-8s %-22s %-14s %s\n' "$n" "cairn hugo" "$m" \
+  m="$(timed "$bench/cairndex" build --config "$d/hugo.yaml" | metric)"
+  printf '%-8s %-22s %-14s %s\n' "$n" "cairndex hugo" "$m" \
     "_index.md $(du -h "$d/site/content/pool/_index.md" | cut -f1)"
 
   m="$(cd "$d/site" && timed hugo --quiet | metric)"

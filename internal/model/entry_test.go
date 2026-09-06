@@ -60,7 +60,7 @@ func TestListingJSONShape(t *testing.T) {
 		`"entries":[` +
 		`{"name":"a","path":"","is_dir":false,"size":0,"modified":"0001-01-01T00:00:00Z","kind":"","mime":"","depth":0},` +
 		`{"name":"b","path":"","is_dir":false,"size":0,"modified":"0001-01-01T00:00:00Z","kind":"","mime":"","depth":0}` +
-		`],"generator":"cairn"}`
+		`],"generator":"cairndex"}`
 	if string(b) != want {
 		t.Errorf("got  %s\nwant %s", b, want)
 	}

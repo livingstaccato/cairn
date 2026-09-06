@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairndex/internal/model"
 )
 
 func write(t *testing.T, dir, name, body string) {

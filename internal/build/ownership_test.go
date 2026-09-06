@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
 // SPDX-License-Identifier: MIT
 
-// Tests for the two files cairn writes about itself rather than about the tree:
+// Tests for the two files cairndex writes about itself rather than about the tree:
 // the manifest of what it owns and the hash cache.
 
 package build
@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/emit"
-	"github.com/livingstaccato/cairn/internal/hash"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/emit"
+	"github.com/livingstaccato/cairndex/internal/hash"
 )
 
 // A rebuild that changes nothing must not rewrite the manifest either.
@@ -113,15 +113,15 @@ func TestAManifestThatChangesIsStillWritten(t *testing.T) {
 	}
 }
 
-// A manifest cairn cannot read is the worst failure it has, because of what
+// A manifest cairndex cannot read is the worst failure it has, because of what
 // happens next: it claims nothing, and on_conflict: error then refuses a file
-// cairn itself wrote, with a message about a path that already exists. The run
+// cairndex itself wrote, with a message about a path that already exists. The run
 // has to say what actually went wrong before that starts.
 func TestAnUnreadableManifestIsReportedBeforeTheConflicts(t *testing.T) {
 	root, out := tree(t), t.TempDir()
 	run(t, conf(nil), root, out)
 
-	// The shape a manifest from an older cairn has: outputs recorded as a list
+	// The shape a manifest from an older cairndex has: outputs recorded as a list
 	// of paths, with no digest against any of them.
 	if err := os.WriteFile(filepath.Join(out, emit.ManifestFile),
 		[]byte(`{"version":1,"outputs":["index.json","docs/index.json"]}`), 0o644); err != nil {

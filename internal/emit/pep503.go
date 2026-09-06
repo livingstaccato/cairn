@@ -9,7 +9,7 @@ import (
 	"html/template"
 	"net/url"
 
-	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairndex/internal/model"
 )
 
 // sha256HexLen is the length of a SHA-256 digest in hexadecimal.
@@ -17,7 +17,7 @@ const sha256HexLen = 64
 
 // pep503Template follows PEP 503: an HTML page whose anchors are the available
 // files. pip reads the #sha256= fragment to verify a download, which matters
-// most on exactly the plain-HTTP mirrors cairn targets.
+// most on exactly the plain-HTTP mirrors cairndex targets.
 var pep503Template = template.Must(template.New("pep503").Parse(
 	`<!DOCTYPE html>
 <html>
@@ -77,7 +77,7 @@ func hrefFor(e model.Entry) (template.URL, error) {
 // PEP503 renders a listing as a Python simple-repository index page.
 //
 // A simple index is literally a page of anchor links, so this is near-zero
-// marginal cost over the listing cairn already has.
+// marginal cost over the listing cairndex already has.
 func PEP503(l model.Listing) ([]byte, error) {
 	data := struct {
 		Title string

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
 // SPDX-License-Identifier: MIT
 
-// Tests for the ownership record: what cairn claims, and what it says those
+// Tests for the ownership record: what cairndex claims, and what it says those
 // files should hold.
 
 package emit
@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/config"
+	"github.com/livingstaccato/cairndex/internal/config"
 )
 
 // The manifest records what stands at each path, not what a particular run
@@ -85,7 +85,7 @@ func TestScopedSaveCarriesDigestsForward(t *testing.T) {
 func TestParseManifestRejectsWhatIsNotOne(t *testing.T) {
 	cases := map[string]string{
 		"an object that is not a manifest": `{"paths":["a"]}`,
-		"the shape cairn never wrote":      `["a","b"]`,
+		"the shape cairndex never wrote":   `["a","b"]`,
 		"a digest that is not one":         `{"version":1,"outputs":{"a":"nope"}}`,
 		"a truncated digest":               `{"version":1,"outputs":{"a":"abc123"}}`,
 		"not json at all":                  `{`,

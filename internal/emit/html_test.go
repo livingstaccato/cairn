@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairndex/internal/model"
 )
 
 func TestHumanSize(t *testing.T) {

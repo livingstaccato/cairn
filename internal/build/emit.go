@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/emit"
-	"github.com/livingstaccato/cairn/internal/meta"
-	"github.com/livingstaccato/cairn/internal/model"
-	"github.com/livingstaccato/cairn/internal/walk"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/emit"
+	"github.com/livingstaccato/cairndex/internal/meta"
+	"github.com/livingstaccato/cairndex/internal/model"
+	"github.com/livingstaccato/cairndex/internal/walk"
 )
 
 // This file answers one question: given a finished listing for a directory,
@@ -87,7 +87,7 @@ func (r *runner) emitFor(relDir, basename string, l model.Listing, s config.Sett
 // Only the HTML is Hugo's. Every other output is written here, into the page's
 // own bundle, and Hugo publishes a branch-bundle resource verbatim — so
 // index.json, index.csv, index.txt and SHA256SUMS reach the site as the exact
-// bytes cairn produced.
+// bytes cairndex produced.
 //
 // That is why a consumer's hugo.toml declares no output formats. It also removes
 // a whole class of defect: while Hugo re-rendered these from frontmatter there
@@ -136,8 +136,8 @@ func (r *runner) emitHugo(c emitCtx) error {
 	return r.emitResources(c)
 }
 
-// hugoRenders reports whether Hugo produces this format, in which case cairn
-// must not write it too. json is excluded separately: cairn always writes it,
+// hugoRenders reports whether Hugo produces this format, in which case cairndex
+// must not write it too. json is excluded separately: cairndex always writes it,
 // because the page reads its entries from it.
 func hugoRenders(format string) bool {
 	switch format {
@@ -221,7 +221,7 @@ func (r *runner) emitSums(c emitCtx) error {
 }
 
 // emitHTML renders only the bare presenter. Styled HTML is Hugo's job: it needs
-// the consumer's theme, which cairn does not have.
+// the consumer's theme, which cairndex does not have.
 func (r *runner) emitHTML(c emitCtx) error {
 	// The styled presenter lives in the Hugo templates; Go renders only the bare
 	// one. Asking for styled HTML in direct mode is unsatisfiable, and silence
@@ -241,7 +241,7 @@ func (r *runner) emitHTML(c emitCtx) error {
 		Prose:       c.prose,
 		MaxRendered: c.settings.MaxRendered,
 		// The top of the indexed tree, where a parent link would point at
-		// something cairn never wrote.
+		// something cairndex never wrote.
 		AtRoot: c.relDir == ".",
 	})
 	if err != nil {

@@ -23,4 +23,4 @@ fi
 patterns=$(mktemp)
 trap 'rm -f "$patterns"' EXIT
 printf '%s\n' "$PRIVATE_PATTERNS" > "$patterns"
-CAIRN_PRIVATE_PATTERNS="$patterns" ci/check-private.sh
+CAIRNDEX_PRIVATE_PATTERNS="$patterns" ci/check-private.sh

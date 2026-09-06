@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
 // SPDX-License-Identifier: MIT
 
-// Package emit writes cairn's output formats. Every write goes through Writer,
+// Package emit writes cairndex's output formats. Every write goes through Writer,
 // which enforces path containment, the protect globs and the conflict policy.
-// That single choke point is what keeps cairn from ever clobbering apt or yum
+// That single choke point is what keeps cairndex from ever clobbering apt or yum
 // repository metadata, or writing outside the directory it was given.
 package emit
 
@@ -18,24 +18,24 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/livingstaccato/cairn/internal/atomicfile"
-	"github.com/livingstaccato/cairn/internal/config"
+	"github.com/livingstaccato/cairndex/internal/atomicfile"
+	"github.com/livingstaccato/cairndex/internal/config"
 )
 
-// ManifestFile records the paths cairn generated, so a later run can tell its
+// ManifestFile records the paths cairndex generated, so a later run can tell its
 // own output apart from content that was already there.
-const ManifestFile = ".cairn-manifest.json"
+const ManifestFile = ".cairndex-manifest.json"
 
 // manifestVersion is stamped into every manifest so a later shape can be told
 // apart from this one without guessing.
 const manifestVersion = 1
 
-// manifest is what cairn owns under one output root, and what it put there.
+// manifest is what cairndex owns under one output root, and what it put there.
 //
-// The digest is why the shape changed. A path alone answers "may cairn replace
+// The digest is why the shape changed. A path alone answers "may cairndex replace
 // this", which is all a build needs; it cannot answer "does this still hold what
-// cairn wrote", which is what an operator asks of a mirror they are unsure
-// about. Generated output appears in no SHA256SUMS — a listing excludes cairn's
+// cairndex wrote", which is what an operator asks of a mirror they are unsure
+// about. Generated output appears in no SHA256SUMS — a listing excludes cairndex's
 // own files — so without this nothing records it at all.
 type manifest struct {
 	Version int               `json:"version"`
@@ -49,8 +49,8 @@ func ParseManifest(b []byte) (map[string]string, error) { return parseManifest(b
 func parseManifest(b []byte) (map[string]string, error) {
 	// Decoded through a pointer so an absent "outputs" is distinguishable from
 	// an empty one. A JSON object that is not a manifest would otherwise parse
-	// as cairn claiming nothing, and every file in the tree would then be
-	// reported as output cairn does not own — a lie about the tree rather than
+	// as cairndex claiming nothing, and every file in the tree would then be
+	// reported as output cairndex does not own — a lie about the tree rather than
 	// a finding about it.
 	var m struct {
 		Version int                `json:"version"`
@@ -60,7 +60,7 @@ func parseManifest(b []byte) (map[string]string, error) {
 		return nil, err
 	}
 	if m.Outputs == nil {
-		return nil, fmt.Errorf("no outputs recorded; not a cairn manifest")
+		return nil, fmt.Errorf("no outputs recorded; not a cairndex manifest")
 	}
 	for claim, sum := range *m.Outputs {
 		if !isHex64(sum) {
@@ -79,13 +79,13 @@ func digestOf(body []byte) string {
 }
 
 // Output permissions. These are deliberately looser than gosec's defaults:
-// cairn writes a static site that a web server reads as a different user, so
+// cairndex writes a static site that a web server reads as a different user, so
 // 0600 files and 0750 directories would produce a tree nginx cannot serve. The
 // content is public by construction — it is a published index.
 //
 // DirMode is exported because it is a decision about the shape of the output
 // tree rather than a detail of writing one file: anything that creates a
-// directory cairn will later fill — `cairn watch --serve`, which opens the
+// directory cairndex will later fill — `cairndex watch --serve`, which opens the
 // socket before the first build has made the tree — has to create it the same
 // way, or the served directory is one the web server cannot enter.
 const (
@@ -97,7 +97,7 @@ const (
 //
 // It carries a manifest because a generator that cannot be run twice is not
 // finished. Without one, the second build sees the first build's index.json and
-// reports a conflict; with one, cairn overwrites what it previously wrote and
+// reports a conflict; with one, cairndex overwrites what it previously wrote and
 // still refuses to touch anything it did not.
 type Writer struct {
 	cfg   *config.Config
@@ -109,14 +109,14 @@ type Writer struct {
 	sums  map[string]string // what this run put at each path
 	took  []string          // paths this run claimed that it did not previously own
 	dry   bool              // report what a build would do, change nothing
-	adopt bool              // claim an existing path cairn does not own
+	adopt bool              // claim an existing path cairndex does not own
 	mErr  error             // why the previous manifest was not usable, if it was not
 }
 
 // Options are the departures from default behaviour a single run may ask for.
 //
-// Neither is expressible in cairn.yaml, on purpose. A config that permanently
-// suppressed the conflict check would turn off the property that stops cairn
+// Neither is expressible in cairndex.yaml, on purpose. A config that permanently
+// suppressed the conflict check would turn off the property that stops cairndex
 // overwriting somebody else's files — silently, on every run after the one that
 // needed it. These are asked for on the command line, for one run, by somebody
 // who is watching.
@@ -124,7 +124,7 @@ type Options struct {
 	// Dry answers every question a build asks and changes nothing under the
 	// output root.
 	Dry bool
-	// Adopt claims an output path that already exists and cairn does not own,
+	// Adopt claims an output path that already exists and cairndex does not own,
 	// instead of refusing it.
 	Adopt bool
 }
@@ -152,7 +152,7 @@ func NewWriterWith(cfg *config.Config, outRoot string, opts Options) *Writer {
 	own, err := parseManifest(b)
 	if err != nil {
 		// Kept rather than returned, so the caller can say why. A manifest that
-		// will not parse means cairn claims nothing, and the next thing that
+		// will not parse means cairndex claims nothing, and the next thing that
 		// happens is on_conflict: error refusing a file it wrote itself last
 		// week — with a message about a path that already exists, which sends
 		// an operator looking in exactly the wrong place.
@@ -165,14 +165,14 @@ func NewWriterWith(cfg *config.Config, outRoot string, opts Options) *Writer {
 
 // ManifestError reports why the previous run's manifest was unusable, or nil
 // when there was none to read or it read cleanly. Losing a manifest is not
-// itself fatal — cairn simply owns nothing — but it changes what every later
+// itself fatal — cairndex simply owns nothing — but it changes what every later
 // error in the run means, so a caller states it up front.
 func (w *Writer) ManifestError() error { return w.mErr }
 
 // NewDryWriter loads the same manifest and answers the same questions, but
 // creates, replaces and deletes nothing.
 //
-// Prune is the only irreversible thing cairn does, and until now the only way
+// Prune is the only irreversible thing cairndex does, and until now the only way
 // to learn what it would remove was to let it. Every decision still runs — the
 // containment check, the protect globs, the conflict policy, the digest of each
 // body against what is on disk — so Written, Changed and the pruned list say
@@ -242,7 +242,7 @@ func (w *Writer) Write(relPath string, body []byte) error {
 	return nil
 }
 
-// checkConflict reports an error when something cairn does not own already
+// checkConflict reports an error when something cairndex does not own already
 // occupies the path and the policy is to fail.
 //
 // Lstat, not Stat: a symlink sitting at the output path must count as a conflict
@@ -253,7 +253,7 @@ func (w *Writer) checkConflict(relPath, abs string) error {
 		return nil
 	}
 	if _, ours := w.own[relPath]; ours {
-		return nil // cairn wrote it last run; overwriting is the whole point
+		return nil // cairndex wrote it last run; overwriting is the whole point
 	}
 	if w.adopt {
 		// Ahead of the skip policy on purpose: under skip the path would be
@@ -267,12 +267,12 @@ func (w *Writer) checkConflict(relPath, abs string) error {
 	}
 	// Both remedies, because they are for opposite situations and the message is
 	// all an operator has to tell them apart. A file that is genuinely somebody
-	// else's should be left alone, which is what skip does; output cairn wrote
+	// else's should be left alone, which is what skip does; output cairndex wrote
 	// and can no longer prove it wrote should be reclaimed, and skip would
 	// freeze the mirror instead.
-	return fmt.Errorf("refusing to write %s: path already exists and cairn did not create it "+
+	return fmt.Errorf("refusing to write %s: path already exists and cairndex did not create it "+
 		"(if the file is somebody else's, set on_conflict: %s or change index_basename; "+
-		"if cairn wrote it and the manifest was lost, rebuild once with --adopt)",
+		"if cairndex wrote it and the manifest was lost, rebuild once with --adopt)",
 		relPath, config.ConflictSkip)
 }
 
@@ -298,7 +298,7 @@ func (w *Writer) Written() []string { return w.made }
 
 // Changed lists the paths whose bytes this run actually altered.
 //
-// Written is what cairn owns; this is what moved. A deployment that syncs a
+// Written is what cairndex owns; this is what moved. A deployment that syncs a
 // mirror does not need to re-upload a listing that is byte-identical to the one
 // already published, and until now nothing could tell it which those were — the
 // build knew and threw the answer away.
@@ -332,7 +332,7 @@ func (w *Writer) Protected() []string { return w.prot }
 // directory leaves a whole published listing for something that is gone — links
 // and all. A generator that only ever adds is not maintaining a mirror.
 //
-// Only paths the previous manifest recorded are considered, so cairn can delete
+// Only paths the previous manifest recorded are considered, so cairndex can delete
 // nothing it did not create. A missing or corrupt manifest prunes nothing, which
 // is the safe failure: stale files are a nuisance, deleting someone's artifacts
 // is not.
@@ -499,7 +499,7 @@ func (w *Writer) save(paths []string) error {
 	}
 	// Replaced rather than rewritten in place, and left alone when it already
 	// says this. A manifest is the one file whose loss cannot be repaired by
-	// running cairn again — without it the next build disowns everything the
+	// running cairndex again — without it the next build disowns everything the
 	// last one wrote — and on a large mirror it is tens of megabytes that a
 	// rebuild changing nothing has no reason to touch.
 	if _, err := atomicfile.Write(abs, b, outFileMode); err != nil {

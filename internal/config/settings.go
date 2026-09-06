@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
 // SPDX-License-Identifier: MIT
 
-// Package config resolves per-directory cairn behavior from root defaults,
+// Package config resolves per-directory cairndex behavior from root defaults,
 // path-glob rules, and per-directory override files.
 package config
 
@@ -61,7 +61,7 @@ type Settings struct {
 	Order     string   `yaml:"order"`
 	DirsFirst bool     `yaml:"dirs_first"`
 	// Hide lists globs, matched against a path relative to root, whose entries
-	// stay out of listings. Explicit rather than conventional: cairn cannot know
+	// stay out of listings. Explicit rather than conventional: cairndex cannot know
 	// which prefixes mean "internal" in someone else's tree.
 	Hide           []string `yaml:"hide"`
 	Checksum       string   `yaml:"checksum"`

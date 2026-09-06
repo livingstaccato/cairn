@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/obs"
+	"github.com/livingstaccato/cairndex/internal/obs"
 )
 
 // Nothing outside the served directory may ever be readable, whatever the
@@ -73,8 +73,8 @@ func FuzzNothingEscapesTheServedDirectory(f *testing.F) {
 	})
 }
 
-// A directory with no index of cairn's own is a 404, never a listing the
-// standard library generated. cairn deciding what a directory listing says is
+// A directory with no index of cairndex's own is a 404, never a listing the
+// standard library generated. cairndex deciding what a directory listing says is
 // the entire point of the project, so no request path may talk net/http into
 // writing one instead.
 func FuzzNoGeneratedDirectoryListing(f *testing.F) {
@@ -101,9 +101,9 @@ func FuzzNoGeneratedDirectoryListing(f *testing.F) {
 		h.ServeHTTP(rec, req)
 
 		// net/http's own listing is a page of <a href=...> naming the entries.
-		// cairn wrote no index here, so any such page came from the library.
+		// cairndex wrote no index here, so any such page came from the library.
 		if body := rec.Body.String(); strings.Contains(body, "listed.txt") {
-			t.Fatalf("path %q produced a directory listing cairn did not write:\n%s", target, body)
+			t.Fatalf("path %q produced a directory listing cairndex did not write:\n%s", target, body)
 		}
 	})
 }

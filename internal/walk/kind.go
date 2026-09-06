@@ -96,7 +96,7 @@ func modTime(t time.Time) time.Time {
 	return t.UTC().Truncate(time.Second)
 }
 
-// Metadata filenames cairn reads. They live here rather than in meta because
+// Metadata filenames cairndex reads. They live here rather than in meta because
 // walk decides what a listing contains, and meta imports walk.
 const (
 	// DirFile describes every entry in one directory.
@@ -105,7 +105,7 @@ const (
 	SidecarSuffix = ".meta.yaml"
 )
 
-// IsSidecar reports whether name is metadata cairn reads rather than content it
+// IsSidecar reports whether name is metadata cairndex reads rather than content it
 // publishes.
 //
 // These were excluded only as a side effect of the underscore rule, so

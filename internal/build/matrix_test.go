@@ -19,8 +19,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/obs"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/obs"
 )
 
 // outputFile names the file a format is supposed to produce in a directory.
@@ -33,7 +33,7 @@ var outputFile = map[string]string{
 	config.OutputPEP503: "index.html",
 }
 
-// TestMatrixEveryRequestedOutputAppearsOrIsExplained is the contract: cairn
+// TestMatrixEveryRequestedOutputAppearsOrIsExplained is the contract: cairndex
 // writes what the config asked for, or says why it did not. A format that
 // silently produces nothing is the defect this sweep exists to catch.
 func TestMatrixEveryRequestedOutputAppearsOrIsExplained(t *testing.T) {
@@ -82,7 +82,7 @@ func assertOutputOrReason(t *testing.T, mode, present, format, sum string) {
 		return
 	}
 
-	// Hugo renders the HTML from _index.md, so cairn writing none is correct
+	// Hugo renders the HTML from _index.md, so cairndex writing none is correct
 	// there — the page still exists.
 	if mode == config.ModeHugo && format == config.OutputHTML {
 		if _, err := os.Stat(filepath.Join(out, "bootstrap", "linux", "_index.md")); err != nil {
@@ -154,11 +154,11 @@ func TestMatrixRecursiveAcrossModes(t *testing.T) {
 	}
 }
 
-// TestHiddenShowDoesNotListCairnState is a trap the in-place deployment walks
-// straight into: hidden: show plus root == out would list .cairn-manifest.json
-// and .cairn-cache.json as though they were published artifacts, and SHA256SUMS
+// TestHiddenShowDoesNotListCairndexState is a trap the in-place deployment walks
+// straight into: hidden: show plus root == out would list .cairndex-manifest.json
+// and .cairndex-cache.json as though they were published artifacts, and SHA256SUMS
 // would cover two files that change on every run — so it would never settle.
-func TestHiddenShowDoesNotListCairnState(t *testing.T) {
+func TestHiddenShowDoesNotListCairndexState(t *testing.T) {
 	root := tree(t)
 	c := conf(nil)
 	none := []string{}
@@ -171,11 +171,11 @@ func TestHiddenShowDoesNotListCairnState(t *testing.T) {
 	run(t, c, root, root)
 	second := readFile(t, filepath.Join(root, "bootstrap", "linux", "SHA256SUMS"))
 
-	// cairn's own state lives at the output root, which is the tree itself here.
+	// cairndex's own state lives at the output root, which is the tree itself here.
 	rootListing := readFile(t, filepath.Join(root, "index.json"))
-	for _, bad := range []string{".cairn-manifest.json", ".cairn-cache.json"} {
+	for _, bad := range []string{".cairndex-manifest.json", ".cairndex-cache.json"} {
 		if strings.Contains(string(rootListing), bad) {
-			t.Errorf("the listing shows %s; cairn's own state is not published content", bad)
+			t.Errorf("the listing shows %s; cairndex's own state is not published content", bad)
 		}
 	}
 	if !bytes.Equal(first, second) {

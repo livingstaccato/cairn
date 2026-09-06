@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/emit"
-	"github.com/livingstaccato/cairn/internal/obs"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/emit"
+	"github.com/livingstaccato/cairndex/internal/obs"
 )
 
 func tree(t *testing.T) string {
@@ -98,7 +98,7 @@ func TestRunInPlaceIsIdempotent(t *testing.T) {
 		return string(b)
 	}
 
-	// out == root: cairn writes into the tree it is indexing.
+	// out == root: cairndex writes into the tree it is indexing.
 	run(t, c, root, root)
 	firstSums := read("bootstrap/SHA256SUMS")
 	firstList := read("bootstrap/index.txt")
@@ -113,7 +113,7 @@ func TestRunInPlaceIsIdempotent(t *testing.T) {
 
 	for _, generated := range []string{"index.json", "index.csv", "index.txt", "SHA256SUMS"} {
 		if strings.Contains(firstList, generated) {
-			t.Errorf("listing includes cairn's own output %q", generated)
+			t.Errorf("listing includes cairndex's own output %q", generated)
 		}
 	}
 	if !strings.Contains(firstList, "bootstrap.sh") {
@@ -182,8 +182,8 @@ func TestRunPrunesRemovedFilesAndDirectories(t *testing.T) {
 	}
 }
 
-// Pruning may only ever touch paths cairn recorded writing. An artifact sharing
-// the output root is not cairn's to delete.
+// Pruning may only ever touch paths cairndex recorded writing. An artifact sharing
+// the output root is not cairndex's to delete.
 func TestRunPruneLeavesForeignFilesAlone(t *testing.T) {
 	root, out := tree(t), t.TempDir()
 	c := conf(nil)
@@ -199,7 +199,7 @@ func TestRunPruneLeavesForeignFilesAlone(t *testing.T) {
 	run(t, c, root, out)
 
 	if _, err := os.Stat(foreign); err != nil {
-		t.Errorf("pruning deleted a file cairn did not create: %v", err)
+		t.Errorf("pruning deleted a file cairndex did not create: %v", err)
 	}
 }
 
@@ -217,7 +217,7 @@ func TestRunPruneWithoutManifestRemovesNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Without the manifest cairn no longer knows it owns its own output, so the
+	// Without the manifest cairndex no longer knows it owns its own output, so the
 	// conflict policy has to be relaxed for the build to proceed at all — see
 	// TestRunWithoutManifestConflicts.
 	c.OnConflict = config.ConflictSkip
@@ -231,7 +231,7 @@ func TestRunPruneWithoutManifestRemovesNothing(t *testing.T) {
 	}
 }
 
-// Losing the manifest is recoverable but not silent. cairn stops rather than
+// Losing the manifest is recoverable but not silent. cairndex stops rather than
 // overwriting files it can no longer prove it wrote, and the error says how to
 // proceed — an rsync --delete or a git clean over the output directory is enough
 // to land here.
@@ -245,7 +245,7 @@ func TestRunWithoutManifestConflicts(t *testing.T) {
 	}
 	_, err := Run(c, root, out, obs.Discard())
 	if err == nil {
-		t.Fatal("expected a conflict once cairn cannot prove it wrote its output")
+		t.Fatal("expected a conflict once cairndex cannot prove it wrote its output")
 	}
 	if !strings.Contains(err.Error(), config.ConflictSkip) {
 		t.Errorf("error should name the way out, got: %v", err)

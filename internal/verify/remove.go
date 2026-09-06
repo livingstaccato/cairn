@@ -16,7 +16,7 @@ import (
 var ErrNoClaims = errors.New(
 	"the manifest claims nothing, so every generated file looks unowned; that is a " +
 		"lost manifest rather than a tree of foreign files — repair it with " +
-		"cairn build --adopt before removing anything")
+		"cairndex build --adopt before removing anything")
 
 // Removal is what RemoveOrphaned deleted, and what it refused to.
 //
@@ -44,7 +44,7 @@ type Removal struct {
 // config — a renamed index_basename, a dropped format — stayed unclaimed and
 // therefore unprunable for the life of the mirror.
 //
-// It refuses outright when the manifest claims nothing. In that state cairn owns
+// It refuses outright when the manifest claims nothing. In that state cairndex owns
 // nothing, so every file wearing a generated name is reported as an orphan, and
 // removing them would delete the whole published output. A tree in which every
 // single generated file is genuinely foreign does not really happen; a tree
@@ -56,10 +56,10 @@ type Removal struct {
 // output root through it.
 //
 // What it deletes is narrower than what check reports. A report answers "could
-// cairn have written a file with this name", which is the right question to put
+// cairndex have written a file with this name", which is the right question to put
 // in front of a person and the wrong one to hand to rm: in a mirror the names
-// cairn generates are the most ordinary names in the tree. Every deletion here
-// is gated on provenOurs, so a file is removed only when its own bytes say cairn
+// cairndex generates are the most ordinary names in the tree. Every deletion here
+// is gated on provenOurs, so a file is removed only when its own bytes say cairndex
 // wrote it. The rest come back in Kept.
 func RemoveOrphaned(outDir string, rep *Report) (*Removal, error) {
 	res := &Removal{}

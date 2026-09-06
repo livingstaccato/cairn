@@ -9,7 +9,7 @@ import (
 )
 
 // The parent row was written for every listing, including the top of the tree,
-// where it points at something cairn did not index. Served under base_path it
+// where it points at something cairndex did not index. Served under base_path it
 // leaves the mirror entirely, and from file:// it walks out of the tree.
 //
 // The same rule the footer already follows: machineFormats exists so a page

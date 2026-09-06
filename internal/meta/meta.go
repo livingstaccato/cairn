@@ -14,8 +14,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/livingstaccato/cairn/internal/model"
-	"github.com/livingstaccato/cairn/internal/walk"
+	"github.com/livingstaccato/cairndex/internal/model"
+	"github.com/livingstaccato/cairndex/internal/walk"
 )
 
 const (
@@ -27,7 +27,7 @@ const (
 	DirFile = walk.DirFile
 	// DirConfigFile holds per-directory settings, and a manifest source's
 	// entry list.
-	DirConfigFile = ".cairn.yaml"
+	DirConfigFile = ".cairndex.yaml"
 )
 
 // FileMeta is authored metadata for one file.
@@ -155,7 +155,7 @@ func loadSidecars(absDir string, des []os.DirEntry, out map[string]FileMeta) err
 
 // readIfPresent returns nil bytes and no error when the file does not exist.
 func readIfPresent(p string) ([]byte, error) {
-	// #nosec G304 -- p is built from a directory cairn was configured to scan
+	// #nosec G304 -- p is built from a directory cairndex was configured to scan
 	// plus a fixed filename, never from user-supplied text.
 	b, err := os.ReadFile(p)
 	if err == nil {

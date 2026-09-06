@@ -52,7 +52,7 @@ jobs:
         with:
           hugo-version: "0.165.0"
           extended: true
-      # cairn build -> hugo -> assert the two halves agree
+      # cairndex build -> hugo -> assert the two halves agree
       - name: End-to-end
         run: ci/example.sh
 

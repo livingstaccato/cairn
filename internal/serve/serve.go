@@ -1,17 +1,17 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
 // SPDX-License-Identifier: MIT
 
-// Package serve puts a built tree in front of a browser, so what cairn wrote
+// Package serve puts a built tree in front of a browser, so what cairndex wrote
 // can be looked at without Hugo, nginx or a container standing in the way.
 //
-// It is the partner to `cairn watch`: the watcher rebuilds the directories a
+// It is the partner to `cairndex watch`: the watcher rebuilds the directories a
 // change touched and this hands the result to a refresh, so the distance
 // between editing a tree and seeing the index it produces is one keystroke.
 //
 // It is a viewer, not a deployment. Nothing here negotiates content, terminates
 // TLS, authenticates anyone or writes to the tree. A directory it cannot answer
 // is a 404 rather than a listing invented by the standard library, because what
-// a directory listing says is the whole thing cairn exists to decide.
+// a directory listing says is the whole thing cairndex exists to decide.
 package serve
 
 import (
@@ -26,7 +26,7 @@ import (
 	"time"
 )
 
-// DefaultAddr is the address cairn serves on when none is given.
+// DefaultAddr is the address cairndex serves on when none is given.
 //
 // Loopback, never every interface. This hands out whatever is in a directory,
 // and a half-built mirror is nobody else's to read; defaulting to 0.0.0.0 would
@@ -34,15 +34,15 @@ import (
 // at their own build. Serving wider than the machine is a thing to ask for in
 // writing, by passing an address.
 //
-// 22476 is CAIRN on a phone keypad, which is the only part of a port number
+// 22476 is CAIRNDEX on a phone keypad, which is the only part of a port number
 // anybody remembers. The rest is arithmetic: it falls inside IANA's unassigned
 // 22352-22536 block, and it sits below the ephemeral range on both Linux
 // (32768+) and macOS (49152+), so the kernel never hands it to something else
-// while cairn is not looking. The low numbers are unusable anyway — 1313 is
+// while cairndex is not looking. The low numbers are unusable anyway — 1313 is
 // Hugo's, and 3000, 5000, 8000 and 8080 are occupied on any machine doing web
 // work.
 //
-// A port cairn does not choose for itself is still the safer habit. Two cairns
+// A port cairndex does not choose for itself is still the safer habit. Two cairndexs
 // on one machine collide here whatever the number is, and --addr is the answer
 // to that rather than a different default.
 const DefaultAddr = "127.0.0.1:22476"
@@ -138,7 +138,7 @@ func (s *Server) Run(ctx context.Context) error {
 // BoundAddr reports the address the server actually listens on.
 //
 // That is not always the address that was asked for: a caller may pass port 0
-// to have the kernel choose a free one — the one exception to cairn never
+// to have the kernel choose a free one — the one exception to cairndex never
 // picking a port on someone's behalf, because it is the caller asking for it —
 // and then has no other way to learn where to point a browser. Empty until the
 // socket is open, and safe to call from another goroutine while Run is
@@ -153,7 +153,7 @@ func (s *Server) BoundAddr() string {
 //
 // A port already in use is an error and stays one. Quietly moving to the next
 // free port would leave the operator reading a URL that no longer says where
-// the server is, and would hide a second cairn already running on the tree they
+// the server is, and would hide a second cairndex already running on the tree they
 // think they are looking at.
 func (s *Server) bind() (net.Listener, error) {
 	if s.Addr == "" {
@@ -173,7 +173,7 @@ func (s *Server) bind() (net.Listener, error) {
 
 	ln, err := listen("tcp", s.Addr)
 	if err != nil {
-		return nil, fmt.Errorf("cannot listen on %s: %w; cairn will not choose a "+
+		return nil, fmt.Errorf("cannot listen on %s: %w; cairndex will not choose a "+
 			"different port for you — free that one or name another", s.Addr, err)
 	}
 

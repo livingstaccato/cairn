@@ -1,0 +1,34 @@
+{{- /* A format switcher, not a list of links.
+
+       It names the format you are reading and opens onto the others, so it
+       explains itself without a caption. The previous version was a bare row of
+       filenames beside a directory listing, which read as more files, and the
+       caption added to fix that was three words apologising for the control.
+
+       <details>, not <select>: a select needs JavaScript to navigate, and this
+       has to work with scripting off. */ -}}
+{{- $names := dict "json" "index.json" "csv" "index.csv" "txt" "index.txt" -}}
+{{- $blurbs := dict
+    "json" "one record per entry"
+    "csv"  "rows as columns"
+    "txt"  "one name per line"
+-}}
+{{- $recursive := .recursive -}}
+{{- $shown := slice -}}
+{{- range .formats }}{{ if ne . "sums" }}{{ $shown = $shown | append . }}{{ end }}{{ end -}}
+{{- with $shown }}
+<details class="cairndex-formats">
+  <summary>index.html</summary>
+  <ul>
+    {{ range . }}
+    <li><a href="{{ index $names . }}"><code>{{ index $names . }}</code> <span>{{ index $blurbs . }}</span></a></li>
+    {{ end }}
+    {{- /* A recursive directory also publishes the whole subtree as one file.
+           It is listed apart from the others because it answers a different
+           question: those describe this directory, this one replaces a walk. */ -}}
+    {{ if $recursive }}
+    <li><a href="tree.json"><code>tree.json</code> <span>this directory and everything under it</span></a></li>
+    {{ end }}
+  </ul>
+</details>
+{{- end }}

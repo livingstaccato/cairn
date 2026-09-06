@@ -9,14 +9,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/livingstaccato/cairn/internal/build"
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/walk"
+	"github.com/livingstaccato/cairndex/internal/build"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/walk"
 )
 
 // Filter decides which filesystem events a watcher acts on.
 //
-// The decision cairn cannot get wrong is its own output. When the index is
+// The decision cairndex cannot get wrong is its own output. When the index is
 // written into the tree it indexes — the mirror deployment, one directory that
 // rsyncs whole — every rebuild writes files inside the watched tree, and a
 // watcher that treats those writes as changes rebuilds forever. The names it

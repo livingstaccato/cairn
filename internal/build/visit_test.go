@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/model"
-	"github.com/livingstaccato/cairn/internal/obs"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/model"
+	"github.com/livingstaccato/cairndex/internal/obs"
 )
 
 // Producing one directory's entries: the source the settings name, the metadata
@@ -51,7 +51,7 @@ func TestRunAppliesMetadata(t *testing.T) {
 
 func TestRunHonorsDirectoryOverride(t *testing.T) {
 	root, out := tree(t), t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "docs", ".cairn.yaml"),
+	if err := os.WriteFile(filepath.Join(root, "docs", ".cairndex.yaml"),
 		[]byte("outputs: [json]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestRunHonorsDirectoryOverride(t *testing.T) {
 		t.Error("docs/index.json missing")
 	}
 	if _, err := os.Stat(filepath.Join(out, "docs/index.csv")); err == nil {
-		t.Error(".cairn.yaml narrowed outputs to json; csv must not be written")
+		t.Error(".cairndex.yaml narrowed outputs to json; csv must not be written")
 	}
 }
 
@@ -75,7 +75,7 @@ func TestRunDispatchesOnSource(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, "external"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "external", ".cairn.yaml"),
+	if err := os.WriteFile(filepath.Join(root, "external", ".cairndex.yaml"),
 		[]byte("entries:\n  - name: upstream.iso\n    path: https://example.invalid/upstream.iso\n    title: Fetched elsewhere\n"),
 		0o644); err != nil {
 		t.Fatal(err)
@@ -200,7 +200,7 @@ func TestRunLogsWarningsWithoutFailing(t *testing.T) {
 }
 
 // TestMetadataSidecarsAreNeverListed pins the rule that what describes a listing
-// is not part of it. _meta.yaml and <file>.meta.yaml are cairn's own inputs, and
+// is not part of it. _meta.yaml and <file>.meta.yaml are cairndex's own inputs, and
 // excluding them must not depend on a hide: glob happening to cover them — a
 // tree that shows underscore-prefixed names would otherwise publish its own
 // sidecars, with digests, in SHA256SUMS, on the page.
@@ -213,7 +213,7 @@ func TestMetadataSidecarsAreNeverListed(t *testing.T) {
 
 	c := conf(nil)
 	// Nothing hidden, so a sidecar could only stay out of the listing by being
-	// recognised as cairn's own input.
+	// recognised as cairndex's own input.
 	none := []string{}
 	c.Defaults = config.Override{Hide: &none}
 	run(t, c, root, out)
@@ -228,7 +228,7 @@ func TestMetadataSidecarsAreNeverListed(t *testing.T) {
 	}
 	for _, e := range l.Entries {
 		if e.Name == "_meta.yaml" || strings.HasSuffix(e.Name, ".meta.yaml") {
-			t.Errorf("listed %s; a metadata sidecar is cairn's input, not content", e.Name)
+			t.Errorf("listed %s; a metadata sidecar is cairndex's input, not content", e.Name)
 		}
 	}
 }

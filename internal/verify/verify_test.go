@@ -14,10 +14,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/build"
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/emit"
-	"github.com/livingstaccato/cairn/internal/obs"
+	"github.com/livingstaccato/cairndex/internal/build"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/emit"
+	"github.com/livingstaccato/cairndex/internal/obs"
 )
 
 // fixture is one tree under verification. root and out are separate fields
@@ -33,7 +33,7 @@ type fixture struct {
 	logs *bytes.Buffer
 }
 
-// mirror is the deployment cairn exists for: indexes written into the artifact
+// mirror is the deployment cairndex exists for: indexes written into the artifact
 // tree itself.
 func mirror(t *testing.T) *fixture {
 	t.Helper()
@@ -93,7 +93,7 @@ func (f *fixture) writeAt(base, rel, body string) {
 	}
 }
 
-// manifest records the paths cairn claims, exactly as emit.Writer would.
+// manifest records the paths cairndex claims, exactly as emit.Writer would.
 //
 // The digest is the file's real one where the file exists. Where it does not —
 // which is most of the missing-path cases — any well-formed digest will do,
@@ -236,7 +236,7 @@ func TestOKRequiresEveryListEmpty(t *testing.T) {
 	}
 }
 
-// A tree cairn has never built is a legitimate thing to point verify at, so it
+// A tree cairndex has never built is a legitimate thing to point verify at, so it
 // must not error — but it is also not clean, and saying so is the whole point.
 func TestMissingManifestClaimsNothing(t *testing.T) {
 	f := mirror(t)
@@ -307,7 +307,7 @@ func TestSortedIsOrderedEveryTime(t *testing.T) {
 
 func ptr[T any](v T) *T { return &v }
 
-// The claim this package makes is that a tree cairn has just built verifies
+// The claim this package makes is that a tree cairndex has just built verifies
 // clean. It is asserted against a real build rather than a hand-made fixture
 // because every path decision here is a claim about what build.Run writes —
 // which root a digest line resolves against, which basenames no manifest ever
@@ -317,7 +317,7 @@ func TestFreshBuildVerifiesClean(t *testing.T) {
 
 	r := f.run()
 	if !r.OK() {
-		t.Fatalf("a tree cairn just built reported dirty: %+v", r)
+		t.Fatalf("a tree cairndex just built reported dirty: %+v", r)
 	}
 	if r.Checked < 3 {
 		t.Errorf("Checked = %d, want every hashed artifact re-read", r.Checked)
@@ -344,7 +344,7 @@ func TestFreshBuildCatchesADeletedIndex(t *testing.T) {
 	eq(t, "Missing", f.run().Missing, []string{"pool/index.json"})
 }
 
-// freshBuild runs cairn over a small mirror the way a mirror is configured:
+// freshBuild runs cairndex over a small mirror the way a mirror is configured:
 // every output format, digests on, indexes written into the artifact tree.
 func freshBuild(t *testing.T) *fixture {
 	t.Helper()

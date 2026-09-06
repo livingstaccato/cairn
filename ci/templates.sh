@@ -19,7 +19,7 @@ repo="$PWD"
 d="${TEMPLATE_DIR:-$(mktemp -d)}"
 fail=0
 
-go build -o "$d/cairn" ./cmd/cairn
+go build -o "$d/cairndex" ./cmd/cairndex
 
 mk() { mkdir -p "$(dirname "$d/site/tree/$1")"; printf '%s\n' "$2" > "$d/site/tree/$1"; }
 
@@ -40,7 +40,7 @@ mk "meta/_meta.yaml" "zebra.txt:
   summary: First because it is weighted, against the alphabet
   weight: 1"
 
-cat > "$d/site/cairn.yaml" <<YAML
+cat > "$d/site/cairndex.yaml" <<YAML
 version: 1
 mode: hugo
 root: ./tree
@@ -55,9 +55,9 @@ rules:
 YAML
 
 sed "s|__REPO__|$repo|g" ci/bench-site.go.mod.in > "$d/site/go.mod"
-printf 'baseURL = "/"\ntitle = "templates"\n\n[module]\n  [[module.imports]]\n    path = "github.com/livingstaccato/cairn"\n  [[module.imports]]\n    path = "github.com/livingstaccato/cairn/themes/reference"\n' > "$d/site/hugo.toml"
+printf 'baseURL = "/"\ntitle = "templates"\n\n[module]\n  [[module.imports]]\n    path = "github.com/livingstaccato/cairndex"\n  [[module.imports]]\n    path = "github.com/livingstaccato/cairndex/themes/reference"\n' > "$d/site/hugo.toml"
 
-(cd "$d/site" && "$d/cairn" build --config cairn.yaml >/dev/null 2>&1)
+(cd "$d/site" && "$d/cairndex" build --config cairndex.yaml >/dev/null 2>&1)
 (cd "$d/site" && hugo --quiet >/dev/null 2>&1)
 
 pub="$d/site/public"
@@ -81,7 +81,7 @@ fi
 first=$(python3 -c "
 import re,sys
 h = open('$pub/meta/index.html').read()
-m = re.search(r'cairn-item-name\">\s*([^<\s]+)', h)
+m = re.search(r'cairndex-item-name\">\s*([^<\s]+)', h)
 print(m.group(1) if m else 'none')")
 if [ "$first" != "zebra.txt" ]; then
   say "weight: did not lead the listing (first row: ${first:-none})"
@@ -91,7 +91,7 @@ fi
 if ! grep -q 'The weighted one' "$pub/meta/index.html"; then
   say "an authored title did not render"
 fi
-if grep -qE 'cairn-item-summary"></' "$pub/meta/index.html"; then
+if grep -qE 'cairndex-item-summary"></' "$pub/meta/index.html"; then
   say "a file with no summary rendered an empty summary element"
 fi
 
@@ -118,7 +118,7 @@ mkdir -p "$b/tree/sub"
 printf 'top\n' > "$b/tree/top.txt"
 printf 'nested\n' > "$b/tree/sub/nested.txt"
 
-cat > "$b/cairn.yaml" <<YAML
+cat > "$b/cairndex.yaml" <<YAML
 version: 1
 mode: hugo
 root: ./tree
@@ -133,12 +133,12 @@ defaults:
 YAML
 
 sed "s|__REPO__|$repo|g" ci/bench-site.go.mod.in > "$b/go.mod"
-printf 'baseURL = "/"\ntitle = "bare"\n\n[module]\n  [[module.imports]]\n    path = "github.com/livingstaccato/cairn"\n  [[module.imports]]\n    path = "github.com/livingstaccato/cairn/themes/reference"\n' > "$b/hugo.toml"
+printf 'baseURL = "/"\ntitle = "bare"\n\n[module]\n  [[module.imports]]\n    path = "github.com/livingstaccato/cairndex"\n  [[module.imports]]\n    path = "github.com/livingstaccato/cairndex/themes/reference"\n' > "$b/hugo.toml"
 
-(cd "$b" && "$d/cairn" build --config cairn.yaml >/dev/null 2>&1)
+(cd "$b" && "$d/cairndex" build --config cairndex.yaml >/dev/null 2>&1)
 (cd "$b" && hugo --quiet >/dev/null 2>&1)
 
-# At the top of the tree the parent points at something cairn never indexed: it
+# At the top of the tree the parent points at something cairndex never indexed: it
 # leaves the mirror under base_path and walks out of the tree from file://.
 if grep -q 'href="\.\./"' "$b/public/index.html"; then
   say "the top bare listing offers a link above the tree"
@@ -149,13 +149,13 @@ if ! grep -q 'href="\.\./"' "$b/public/sub/index.html"; then
 fi
 
 # The breadcrumb's root anchor is site-absolute, so under base_path it has to be
-# the top of the mirror. Hardcoded to "/" it left the tree cairn published.
+# the top of the mirror. Hardcoded to "/" it left the tree cairndex published.
 # Read out of the nav element rather than grepped: the anchors sit on the line
 # after it, and "/" on its own would also match the theme's home link.
 crumbs=$(python3 -c "
 import re,sys
 h = open('$b/public/sub/index.html').read()
-m = re.search(r'<nav class=\"cairn-breadcrumb\".*?</nav>', h, re.S)
+m = re.search(r'<nav class=\"cairndex-breadcrumb\".*?</nav>', h, re.S)
 print(' '.join(re.findall(r'href=\"([^\"]*)\"', m.group(0))) if m else 'NO-NAV')")
 case "$crumbs" in
   "NO-NAV") say "the bare listing rendered no breadcrumb" ;;

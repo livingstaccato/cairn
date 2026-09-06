@@ -57,11 +57,11 @@ repos:
         types: [go]
 
       - id: js-test
-        name: cairn.js tests
-        entry: node --test assets/cairn/cairn.test.mjs
+        name: cairndex.js tests
+        entry: node --test assets/cairndex/cairndex.test.mjs
         language: system
         pass_filenames: false
-        files: ^assets/cairn/.*\.(js|mjs)$
+        files: ^assets/cairndex/.*\.(js|mjs)$
 
       - id: go-security
         name: gosec + govulncheck

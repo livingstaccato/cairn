@@ -8,8 +8,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/livingstaccato/cairn/internal/build"
-	"github.com/livingstaccato/cairn/internal/config"
+	"github.com/livingstaccato/cairndex/internal/build"
+	"github.com/livingstaccato/cairndex/internal/config"
 )
 
 // Coalesce turns the directories that changed during one settle window into the

@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairndex/internal/model"
 )
 
 // SumsFile is the conventional filename for a directory's checksums.
@@ -41,7 +41,7 @@ const sumsSeparator = "  "
 // A checksum line names a file relative to the directory it sits in, and three
 // names cannot do that: the empty one, "." and "..", which name the directory
 // or its parent. The filesystem walk never produces them, but an authored
-// manifest source can, and writing one produces a line cairn's own verifier has
+// manifest source can, and writing one produces a line cairndex's own verifier has
 // to reject — a mirror reporting its own output as damaged.
 func nameableInSums(name string) bool {
 	return name != "" && name != "." && name != ".."

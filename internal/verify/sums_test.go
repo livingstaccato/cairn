@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/livingstaccato/cairn/internal/emit"
-	"github.com/livingstaccato/cairn/internal/hash"
+	"github.com/livingstaccato/cairndex/internal/emit"
+	"github.com/livingstaccato/cairndex/internal/hash"
 )
 
 func TestChangedBytesAreModified(t *testing.T) {
@@ -111,7 +111,7 @@ func TestSymlinkWhereSumsExpectsAFileIsMissing(t *testing.T) {
 	}
 }
 
-// A SHA256SUMS wearing a symlink is not cairn's file and is not read. Following
+// A SHA256SUMS wearing a symlink is not cairndex's file and is not read. Following
 // it would hand an arbitrary path to the parser.
 func TestSymlinkNamedSumsIsNotParsed(t *testing.T) {
 	if runtime.GOOS == "windows" {
@@ -201,7 +201,7 @@ func TestUppercaseDigestIsAccepted(t *testing.T) {
 }
 
 // The binary-mode marker is what `sha256sum -b` writes, and a mirror's
-// SHA256SUMS is not always cairn's own.
+// SHA256SUMS is not always cairndex's own.
 func TestBinaryModeMarkerIsAccepted(t *testing.T) {
 	f := mirror(t)
 	f.file("a.iso", "iso bytes\n")
@@ -213,7 +213,7 @@ func TestBinaryModeMarkerIsAccepted(t *testing.T) {
 	}
 }
 
-// A name climbing out of the tree names nothing cairn published. It is never
+// A name climbing out of the tree names nothing cairndex published. It is never
 // resolved, and it is reported rather than dropped: a digest covering a file
 // that is not there is not a verified mirror.
 func TestSumsNameEscapingTheTreeIsMissing(t *testing.T) {

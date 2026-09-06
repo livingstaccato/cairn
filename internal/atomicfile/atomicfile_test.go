@@ -26,7 +26,7 @@ func TestSameComparesContentNotLength(t *testing.T) {
 	}
 }
 
-// A symlink where cairn writes is something someone else put there. Comparing
+// A symlink where cairndex writes is something someone else put there. Comparing
 // through it would read the target's bytes and then leave the link standing —
 // the one outcome this package exists to prevent.
 //
@@ -224,7 +224,7 @@ func TestWriteReplacesASymlinkRatherThanFollowingIt(t *testing.T) {
 
 // The staged file is cleaned up even when the rename is what failed. Anything
 // else litters the output directory with dot-files nobody claims — and in
-// cairn's case, files a later run would report as output it does not own.
+// cairndex's case, files a later run would report as output it does not own.
 func TestWriteRemovesTheStagedFileWhenTheRenameFails(t *testing.T) {
 	dir := t.TempDir()
 	orig := rename

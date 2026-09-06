@@ -15,10 +15,10 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-patterns="${CAIRN_PRIVATE_PATTERNS:-$HOME/.config/cairn/private-patterns.txt}"
+patterns="${CAIRNDEX_PRIVATE_PATTERNS:-$HOME/.config/cairndex/private-patterns.txt}"
 if [ ! -f "$patterns" ]; then
   echo "check-private: no pattern file at $patterns"
-  echo "  Set CAIRN_PRIVATE_PATTERNS, or create the file: one extended-regex"
+  echo "  Set CAIRNDEX_PRIVATE_PATTERNS, or create the file: one extended-regex"
   echo "  term per line, '#' for comments. Refusing to pass without it."
   exit 1
 fi

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
 // SPDX-License-Identifier: MIT
 
-// Tests for detecting cairn's own output being changed after it was written.
+// Tests for detecting cairndex's own output being changed after it was written.
 
 package verify
 
@@ -11,7 +11,7 @@ import (
 )
 
 // The gap the digests exist to close. Generated files are in no SHA256SUMS — a
-// listing leaves cairn's own output out — and the watcher discards events on
+// listing leaves cairndex's own output out — and the watcher discards events on
 // them by name, which is what stops a rebuild loop. Nothing else can see this.
 func TestGeneratedOutputChangedAfterTheBuildIsReported(t *testing.T) {
 	f := mirror(t)

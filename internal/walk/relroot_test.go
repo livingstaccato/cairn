@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/config"
+	"github.com/livingstaccato/cairndex/internal/config"
 )
 
 // relFixture is a tree reached by a relative path, which is how every config
-// cairn documents names its root: — the README quickstart, cairn init,
+// cairndex documents names its root: — the README quickstart, cairndex init,
 // testdata/example and exampleSite all use ./tree.
 func relFixture(t *testing.T) string {
 	t.Helper()

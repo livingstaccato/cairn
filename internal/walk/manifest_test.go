@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/config"
+	"github.com/livingstaccato/cairndex/internal/config"
 )
 
-func TestManifestFromCairnYAML(t *testing.T) {
+func TestManifestFromCairndexYAML(t *testing.T) {
 	dir := t.TempDir()
 	body := `
 source: manifest
@@ -27,7 +27,7 @@ entries:
     path: /bootstrap/notes/
     kind: dir
 `
-	if err := os.WriteFile(filepath.Join(dir, ".cairn.yaml"), []byte(body), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, ".cairndex.yaml"), []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -59,7 +59,7 @@ entries:
 
 func TestManifestInfersKindWhenAbsent(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, ".cairn.yaml"),
+	if err := os.WriteFile(filepath.Join(dir, ".cairndex.yaml"),
 		[]byte("entries:\n  - name: setup.sh\n    path: /x/setup.sh\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestManifestInfersKindWhenAbsent(t *testing.T) {
 
 func TestManifestRequiresNameAndPath(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, ".cairn.yaml"),
+	if err := os.WriteFile(filepath.Join(dir, ".cairndex.yaml"),
 		[]byte("entries:\n  - title: nameless\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestManifestRequiresNameAndPath(t *testing.T) {
 func TestManifestMissingFileIsEmpty(t *testing.T) {
 	got, _, err := Manifest(t.TempDir(), config.Defaults())
 	if err != nil {
-		t.Fatalf("a directory with no .cairn.yaml is empty, not an error: %v", err)
+		t.Fatalf("a directory with no .cairndex.yaml is empty, not an error: %v", err)
 	}
 	if len(got) != 0 {
 		t.Errorf("got %v, want none", names(got))
@@ -99,7 +99,7 @@ func TestManifestMissingFileIsEmpty(t *testing.T) {
 
 func TestManifestMalformedIsError(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, ".cairn.yaml"),
+	if err := os.WriteFile(filepath.Join(dir, ".cairndex.yaml"),
 		[]byte("entries: [unclosed\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}

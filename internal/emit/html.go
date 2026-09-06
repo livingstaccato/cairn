@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"html/template"
 
-	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairndex/internal/model"
 )
 
 //go:embed templates/bare.html
@@ -23,7 +23,7 @@ const digestPreview = 12
 // unitPrefixes are the binary size prefixes, in ascending order.
 const unitPrefixes = "KMGTPE"
 
-// HumanSize formats a byte count for display. It is the ONLY place in cairn
+// HumanSize formats a byte count for display. It is the ONLY place in cairndex
 // that turns a size into text — Entry.Size stays exact bytes everywhere else,
 // which is what the previous implementation got wrong when it rendered every
 // file under a kilobyte as "0KB".
@@ -52,20 +52,20 @@ func DigestPreview(sum string) string {
 	return sum[:digestPreview] + "…"
 }
 
-// GeneratorMarker is the line that identifies a page cairn rendered.
+// GeneratorMarker is the line that identifies a page cairndex rendered.
 //
 // HTML is the one generated format whose bytes are otherwise anonymous. JSON
 // carries a listing's own shape, CSV carries CSVHeader, and _index.md carries
 // its frontmatter — each says who wrote it. An autoindex page does not, and
-// "index.html" is the single most likely name for a file in a mirror that cairn
+// "index.html" is the single most likely name for a file in a mirror that cairndex
 // did not write: a package index, an extracted documentation tree, a generated
-// API reference. --remove-orphaned needs to tell those apart from cairn's own
+// API reference. --remove-orphaned needs to tell those apart from cairndex's own
 // stale output before it deletes anything, and this is what lets it.
 //
 // A meta tag rather than a comment because it is the standard place to say
 // this, and it survives a formatter that strips comments. It does not make the
 // page depend on anything external, which the bare presenter must not do.
-const GeneratorMarker = `<meta name="generator" content="cairn">`
+const GeneratorMarker = `<meta name="generator" content="cairndex">`
 
 var bareTmpl = template.Must(template.New("bare").
 	Funcs(template.FuncMap{"humanSize": HumanSize, "digest": DigestPreview}).
@@ -93,7 +93,7 @@ type BarePage struct {
 	// MaxRendered bounds the rows the template renders; 0 renders every one.
 	MaxRendered int
 	// AtRoot suppresses the parent row. The top of the indexed tree has no
-	// parent cairn knows anything about: under base_path that link leaves the
+	// parent cairndex knows anything about: under base_path that link leaves the
 	// mirror, and from file:// it walks out of the tree. Everywhere else it is
 	// the only way back up.
 	AtRoot bool

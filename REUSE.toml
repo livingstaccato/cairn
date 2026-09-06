@@ -1,7 +1,7 @@
 version = 1
-SPDX-PackageName = "cairn"
+SPDX-PackageName = "cairndex"
 SPDX-PackageSupplier = "Tim Perkins"
-SPDX-PackageDownloadLocation = "https://github.com/livingstaccato/cairn"
+SPDX-PackageDownloadLocation = "https://github.com/livingstaccato/cairndex"
 
 # Files that cannot carry a comment header.
 [[annotations]]
@@ -14,6 +14,7 @@ path = [
   ".pre-commit-config.yaml",
   ".secrets.baseline",
   "README.md",
+  "CHANGELOG.md",
   "docs/**",
   "ci/bench-site.go.mod.in",
   "ci/bench-site.hugo.toml.in",
@@ -22,11 +23,11 @@ path = [
   "commitlint.config.cjs",
   "testdata/**",
   # Templates carry no header of their own: an HTML comment would be copied into
-  # every page cairn generates, licensing a user's output as though it were this
+  # every page cairndex generates, licensing a user's output as though it were this
   # project's source.
   "internal/emit/templates/**",
   "layouts/**",
-  "assets/cairn/icons.svg",
+  "assets/cairndex/icons.svg",
   "themes/**",
   "exampleSite/**",
   ".provide/**",

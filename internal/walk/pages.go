@@ -13,8 +13,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/model"
 )
 
 const (
@@ -27,7 +27,7 @@ const (
 // sectionPages are a section's own page rather than an entry within it.
 var sectionPages = map[string]bool{"_index.md": true, "index.md": true}
 
-// pageFrontmatter is the subset of a Hugo page's frontmatter cairn reads.
+// pageFrontmatter is the subset of a Hugo page's frontmatter cairndex reads.
 type pageFrontmatter struct {
 	Title   string   `yaml:"title"`
 	Summary string   `yaml:"summary"`
@@ -104,10 +104,10 @@ func pageEntry(absDir, relDir string, de os.DirEntry, s config.Settings) (model.
 }
 
 // readFrontmatter parses a page's leading YAML block. A page without one is not
-// an error: Hugo renders it, so cairn lists it.
+// an error: Hugo renders it, so cairndex lists it.
 func readFrontmatter(p string) (pageFrontmatter, error) {
 	var fm pageFrontmatter
-	// #nosec G304 -- p comes from a directory walk of the content root cairn
+	// #nosec G304 -- p comes from a directory walk of the content root cairndex
 	// was configured to read.
 	b, err := os.ReadFile(p)
 	if err != nil {

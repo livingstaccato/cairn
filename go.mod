@@ -1,4 +1,4 @@
-module github.com/livingstaccato/cairn
+module github.com/livingstaccato/cairndex
 
 go 1.26.0
 

@@ -19,7 +19,7 @@ func TestClaimedPathAbsentFromDiskIsMissing(t *testing.T) {
 	eq(t, "Missing", r.Missing, []string{"docs/index.csv", "gone/index.json"})
 }
 
-// A symlink standing where cairn wrote a regular file means the file cairn
+// A symlink standing where cairndex wrote a regular file means the file cairndex
 // wrote is not there any more, whatever the link points at. Reporting it as
 // present would make verify agree with a tree whose served bytes now come from
 // somewhere else entirely.
@@ -87,7 +87,7 @@ func TestAbsoluteManifestPathIsMissing(t *testing.T) {
 func TestManifestOfWrongShapeIsAnError(t *testing.T) {
 	for _, body := range []string{`{"paths":["a"]}`, `["a", 7]`, `null-ish`} {
 		f := mirror(t)
-		f.outFile(".cairn-manifest.json", body)
+		f.outFile(".cairndex-manifest.json", body)
 		if err := f.runErr(); err == nil {
 			t.Errorf("manifest %q verified as clean", body)
 		}
@@ -105,11 +105,11 @@ func TestEmptyManifestIsValid(t *testing.T) {
 
 // A directory standing where the manifest belongs is not a missing manifest.
 // Reading it fails for a reason that is not absence, and treating every read
-// failure as "cairn claims nothing" would report the whole tree as orphaned
+// failure as "cairndex claims nothing" would report the whole tree as orphaned
 // because of a filesystem accident.
 func TestUnreadableManifestPathIsAnError(t *testing.T) {
 	f := mirror(t)
-	if err := os.MkdirAll(filepath.Join(f.out, ".cairn-manifest.json"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(f.out, ".cairndex-manifest.json"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.runErr(); err == nil {

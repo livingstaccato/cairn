@@ -8,7 +8,7 @@
  * scale, and light/dark. What is not: fonts to download, a nav, a footer, a
  * brand. The listing module owns everything below the masthead.
  *
- * Custom properties are set on :root so the cairn module inherits them — a
+ * Custom properties are set on :root so the cairndex module inherits them — a
  * consumer with a design system overrides these four and the listing follows. */
 
 :root {

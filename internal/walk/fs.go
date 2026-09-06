@@ -12,8 +12,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/model"
 )
 
 // Warning is a non-fatal problem encountered during a walk. Warnings are
@@ -48,7 +48,7 @@ func Dir(root, relDir string, s config.Settings) ([]model.Entry, []Warning, erro
 // directory the entry was read from, so a caller can name a path rather than
 // only a basename.
 //
-// The walk cannot answer this itself. What a build excludes is cairn's own
+// The walk cannot answer this itself. What a build excludes is cairndex's own
 // output — the directory it writes into and the filenames it generates — and
 // those are properties of the build's configuration, not of the tree. Passing
 // the decision in keeps the policy with the caller that owns it and still lets
@@ -156,7 +156,7 @@ func (sc *scanner) entry(relDir string, de os.DirEntry, depth int) (model.Entry,
 			return model.Entry{}, nil, false
 		}
 		// A followed symlink can point anywhere. Listing its target would
-		// publish a path from outside the tree cairn was pointed at.
+		// publish a path from outside the tree cairndex was pointed at.
 		if !withinRoot(sc.root, filepath.Join(sc.root, filepath.FromSlash(rel))) {
 			return model.Entry{}, []Warning{{
 				Path: rel, Err: fmt.Errorf("symlink escapes the root, skipped"),
@@ -225,7 +225,7 @@ func withinRoot(root, target string) bool {
 	// Absolute before resolving, and not for tidiness. EvalSymlinks returns a
 	// relative path when given one, and filepath.Rel cannot relate that to the
 	// absolute root above — it errors, and this function's error path is
-	// indistinguishable from a real escape. Every config cairn documents uses a
+	// indistinguishable from a real escape. Every config cairndex documents uses a
 	// relative root:, so follow_symlinks refused every symlink it was given,
 	// including ones plainly inside the tree, and said they escaped it.
 	targetAbs, err := filepath.Abs(target)
@@ -245,7 +245,7 @@ func withinRoot(root, target string) bool {
 
 // HiddenByGlob reports whether relPath matches any hide: glob.
 //
-// Globs rather than a convention because cairn cannot know which prefixes mean
+// Globs rather than a convention because cairndex cannot know which prefixes mean
 // "internal" in someone else's tree. A dot is the filesystem's own answer and
 // is the default; an underscore is a Hugo convention about pages, and a tree of
 // static artifacts is not pages. Baking the second in made a published

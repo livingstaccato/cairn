@@ -10,14 +10,14 @@ import "path/filepath"
 // there is nothing for the key to distinguish.
 const unkeyed = -1
 
-// checkAltered reports cairn's own output that no longer holds what cairn wrote.
+// checkAltered reports cairndex's own output that no longer holds what cairndex wrote.
 //
 // This is the gap the manifest's digests exist to close. Generated files appear
-// in no SHA256SUMS — a listing leaves cairn's own output out, or the build never
+// in no SHA256SUMS — a listing leaves cairndex's own output out, or the build never
 // reaches a fixed point — so nothing else records what an index.json should
 // contain. A watcher cannot catch it either: it discards events on its own
 // output by name, which is what stops a rebuild loop, and a name cannot tell
-// cairn's write from anyone else's.
+// cairndex's write from anyone else's.
 func (v *verifier) checkAltered() {
 	for claim, want := range v.claimed {
 		// checkMissing has already spoken for a path that is gone; re-reporting

@@ -10,10 +10,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/config"
+	"github.com/livingstaccato/cairndex/internal/config"
 )
 
-// These cover the rule generated.go owns: cairn's own output is not content, so
+// These cover the rule generated.go owns: cairndex's own output is not content, so
 // neither the output directory nor a generated filename belongs in a listing or
 // in the walk that produces one.
 
@@ -125,6 +125,6 @@ func TestRunInPlaceHugoExcludesItsPage(t *testing.T) {
 		t.Fatal(err)
 	}
 	if strings.Contains(string(b), "_index.md") {
-		t.Errorf("listing includes the page cairn generated: %q", b)
+		t.Errorf("listing includes the page cairndex generated: %q", b)
 	}
 }

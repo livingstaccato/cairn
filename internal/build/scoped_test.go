@@ -14,10 +14,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/emit"
-	"github.com/livingstaccato/cairn/internal/model"
-	"github.com/livingstaccato/cairn/internal/obs"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/emit"
+	"github.com/livingstaccato/cairndex/internal/model"
+	"github.com/livingstaccato/cairndex/internal/obs"
 )
 
 func readListing(t *testing.T, path string) model.Listing {
@@ -158,7 +158,7 @@ func TestScopedRebuildKeepsOwnershipOfTheRestOfTheTree(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	b, err := os.ReadFile(filepath.Join(out, ".cairn-manifest.json"))
+	b, err := os.ReadFile(filepath.Join(out, ".cairndex-manifest.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -256,7 +256,7 @@ func TestScopedRebuildRecordsPartialOutputOnFailure(t *testing.T) {
 	if _, err := RunScoped(c, root, out, obs.Discard(), "bootstrap"); err == nil {
 		t.Fatal("an unknown output format must fail the rebuild")
 	}
-	if _, err := os.Stat(filepath.Join(out, ".cairn-manifest.json")); err != nil {
+	if _, err := os.Stat(filepath.Join(out, ".cairndex-manifest.json")); err != nil {
 		t.Errorf("a failed rebuild recorded nothing: %v", err)
 	}
 }

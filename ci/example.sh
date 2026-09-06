@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
 # SPDX-License-Identifier: MIT
 #
-# End-to-end gate: cairn build -> hugo -> assert the documented output paths and
+# End-to-end gate: cairndex build -> hugo -> assert the documented output paths and
 # that the Go and Hugo halves agree.
 #
 # This is the only check that can catch the two drifting. Everything else tests
@@ -21,14 +21,14 @@ trap 'rm -f "$hostile"' EXIT
 repo="$PWD"
 
 rm -rf exampleSite/content exampleSite/public
-go run ./cmd/cairn build --config exampleSite/cairn.yaml
+go run ./cmd/cairndex build --config exampleSite/cairndex.yaml
 (cd exampleSite && hugo --quiet)
 
 # Overlay the artifact tree onto the published site so one http.server can
 # serve both, and so the link check below sees what a visitor sees.
 #
 # This is a DEMO CONVENIENCE, not the deployment. Hugo never copies artifacts —
-# it only ever sees the _index.md files cairn wrote — and in production the web
+# it only ever sees the _index.md files cairndex wrote — and in production the web
 # server serves the artifact tree from its own root at the same URL prefix. See
 # docs/deployment.md. Copying a real mirror would defeat the point.
 # cp rather than rsync: rsync is absent from the CI runner image.
@@ -47,13 +47,13 @@ for d in bootstrap bootstrap/linux pool docs external; do
 done
 
 # Hugo publishes a bundle resource verbatim, so what a reader fetches must be
-# the exact bytes cairn wrote. This is the check that keeps it that way: while
+# the exact bytes cairndex wrote. This is the check that keeps it that way: while
 # Hugo re-rendered these there were two producers of one file and they drifted.
 for f in index.json index.csv index.txt SHA256SUMS; do
   a="exampleSite/content/bootstrap/$f"
   b="$pub/bootstrap/$f"
   if [ -f "$a" ] && ! cmp -s "$a" "$b"; then
-    echo "FAIL: $f published differs from what cairn wrote"
+    echo "FAIL: $f published differs from what cairndex wrote"
     fail=1
   fi
 done
@@ -87,7 +87,7 @@ fi
 
 # The digest is the one element this design is built around; a styled listing
 # with checksums on must actually render it.
-if ! grep -q 'cairn-sum-head' "$pub/bootstrap/index.html"; then
+if ! grep -q 'cairndex-sum-head' "$pub/bootstrap/index.html"; then
   echo "FAIL: the styled listing rendered no digest"; fail=1
 fi
 
@@ -99,13 +99,13 @@ fi
 
 # A capped page states what it is showing and points at the complete listing. A
 # truncated listing that does not say so misrepresents the server.
-if ! grep -q 'cairn-truncated' "$pub/docs/index.html"; then
+if ! grep -q 'cairndex-truncated' "$pub/docs/index.html"; then
   echo "FAIL: a capped page carried no truncation notice"; fail=1
 fi
 if ! grep -q 'placeholder="Filter the first' "$pub/docs/index.html"; then
   echo "FAIL: the filter on a capped page did not narrow its stated scope"; fail=1
 fi
-if grep -q 'cairn-truncated' "$pub/bootstrap/index.html"; then
+if grep -q 'cairndex-truncated' "$pub/bootstrap/index.html"; then
   echo "FAIL: an uncapped page carried a truncation notice"; fail=1
 fi
 

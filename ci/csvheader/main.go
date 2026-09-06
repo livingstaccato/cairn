@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/livingstaccato/cairn/internal/emit"
+	"github.com/livingstaccato/cairndex/internal/emit"
 )
 
 func main() {

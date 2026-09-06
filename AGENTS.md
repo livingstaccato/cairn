@@ -1,4 +1,4 @@
-# cairn — working agreement
+# cairndex — working agreement
 
 Static directory-index and artifact-repo generator. A Go binary and a Hugo
 module in one repo, so emitted data and the templates that render it share a
@@ -25,10 +25,10 @@ only tells you how much you already owe.
 ## Layout
 
 ```
-cmd/cairn/       CLI entry point, thin — logic lives in internal/
+cmd/cairndex/       CLI entry point, thin — logic lives in internal/
 internal/
   model/         Entry, Listing — the JSON/YAML contract
-  config/        cairn.yaml, .cairn.yaml, rule matching, precedence
+  config/        cairndex.yaml, .cairndex.yaml, rule matching, precedence
   walk/          producers: fs, pages, manifest + kind inference
   meta/          _meta.yaml, sidecars, directory prose
   hash/          SHA-256 with a (path,size,mtime) cache
@@ -39,7 +39,7 @@ internal/
   serve/         local HTTP for the generated output, declared media types
   atomicfile/    replace a file by rename, and skip a write that changes nothing
 layouts/         Hugo component module (no baseof, no brand)
-assets/cairn/    CSS, JS, SVG sprite — self-contained, no CDN
+assets/cairndex/    CSS, JS, SVG sprite — self-contained, no CDN
 themes/reference/ minimal standalone theme, own go.mod
 ci/              one script per gate; never inline YAML
 exampleSite/     end-to-end proof
@@ -75,7 +75,7 @@ test pass.
   no icon font. Icons are an inline SVG sprite. It has to work airgapped.
 - **`bare` presenter emits no `<script>`** and renders in `lynx`.
 - **`emit.Writer` is the only writer.** It checks path containment, `protect:`
-  globs, and conflicts, and it records what cairn generated so a re-run may
+  globs, and conflicts, and it records what cairndex generated so a re-run may
   replace its own output and nothing else. Writing around it defeats all four.
 - **`protect:` skips, it does not fail.** The glob is the operator naming paths
   another tool owns — apt's signed `dists/`, dnf's `repodata/` — so refusing to
@@ -83,7 +83,7 @@ test pass.
   written, so no later run can overwrite it and `Prune` cannot delete it.
 - **`--adopt` is the only way to waive the conflict check, and it waives only
   that.** It exists for one state: the manifest is lost or unreadable, so every
-  file cairn wrote is one it no longer claims and `on_conflict: error` refuses
+  file cairndex wrote is one it no longer claims and `on_conflict: error` refuses
   all of them. `on_conflict: skip` is not a recovery — it leaves each path
   alone, writes nothing, claims nothing, and freezes the mirror. What `--adopt`
   claims is the set of paths the build produces that already exist, so it cannot
@@ -92,7 +92,7 @@ test pass.
   of it and are not affected, and every claim is reported.
 - **The hash cache forgets, bounded by the region the run rebuilt.** A full
   build sweeps from `root:`, a scoped rebuild from its scope, a failed build
-  sweeps nothing. Unbounded, a `cairn watch` event would discard the digests for
+  sweeps nothing. Unbounded, a `cairndex watch` event would discard the digests for
   the whole rest of the mirror; not at all, and the cache grows by one record
   per file that ever existed in the tree.
 - **Every exit from `build.Run` records ownership,** including the error path
@@ -104,7 +104,7 @@ test pass.
   globs; the default is `["**/.*"]`, the filesystem's own convention and nothing
   else. Baking in the underscore convention beside the dot leaves no setting
   that describes a tree holding both a published `_tradewars/` and a `.DS_Store`.
-  cairn cannot know which prefixes mean "internal" in someone else's tree.
+  cairndex cannot know which prefixes mean "internal" in someone else's tree.
 - **A sidecar's `hidden:`, `weight:` and `url:` are honoured, not just parsed.**
   Weight is applied after the walk, so `build` re-sorts: the walker orders
   entries before metadata is merged, and a unit test on `sortEntries` passes
@@ -154,7 +154,7 @@ implement. A test that has never failed has never been verified.
 - Table-driven cases for anything with boundaries (sizes, precedence, globs).
 - Hostile input is a test case, not a review note.
 - **Fuzz what a filename reaches.** Names in a mirror are attacker-influenced,
-  so every guard standing between a scanned tree and what cairn writes has a
+  so every guard standing between a scanned tree and what cairndex writes has a
   property over all inputs, not a table of the cases somebody thought of:
   `SHA256SUMS` escaping, `containedPath`, CSV formula neutralisation, HTML and
   PEP 503 escaping, and the server's containment. `make fuzz` runs them all;

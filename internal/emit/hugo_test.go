@@ -9,20 +9,20 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairndex/internal/model"
 )
 
 // frontmatter is the shape a Hugo template will read back out of .Params.
 type parsedFM struct {
-	Title  string `yaml:"title"`
-	Layout string `yaml:"layout"`
-	Cairn  struct {
+	Title    string `yaml:"title"`
+	Layout   string `yaml:"layout"`
+	Cairndex struct {
 		Present  string `yaml:"present"`
 		Path     string `yaml:"path"`
 		Count    int    `yaml:"count"`
 		AtRoot   bool   `yaml:"at_root"`
 		BasePath string `yaml:"base_path"`
-	} `yaml:"cairn"`
+	} `yaml:"cairndex"`
 }
 
 func split(t *testing.T, b []byte) (parsedFM, string) {
@@ -55,11 +55,11 @@ func TestHugoContentFrontmatter(t *testing.T) {
 	if fm.Layout != HugoLayout {
 		t.Errorf("layout = %q, want %q", fm.Layout, HugoLayout)
 	}
-	if fm.Cairn.Present != "styled" {
-		t.Errorf("present = %q", fm.Cairn.Present)
+	if fm.Cairndex.Present != "styled" {
+		t.Errorf("present = %q", fm.Cairndex.Present)
 	}
-	if fm.Cairn.Count != 2 {
-		t.Errorf("count = %d, want 2", fm.Cairn.Count)
+	if fm.Cairndex.Count != 2 {
+		t.Errorf("count = %d, want 2", fm.Cairndex.Count)
 	}
 	if fm.Title != "linux" {
 		t.Errorf("title = %q, want the directory name", fm.Title)
@@ -189,7 +189,7 @@ func TestHugoContentCarriesAtRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	fm, _ := split(t, b)
-	if !fm.Cairn.AtRoot {
+	if !fm.Cairndex.AtRoot {
 		t.Errorf("at_root did not reach the frontmatter:\n%s", b)
 	}
 }
@@ -202,7 +202,7 @@ func TestHugoContentOmitsAtRootBelowTheTop(t *testing.T) {
 		t.Fatal(err)
 	}
 	fm, _ := split(t, b)
-	if fm.Cairn.AtRoot {
+	if fm.Cairndex.AtRoot {
 		t.Errorf("at_root is set for a listing below the top:\n%s", b)
 	}
 }
@@ -212,7 +212,7 @@ func TestHugoContentOmitsAtRootBelowTheTop(t *testing.T) {
 //
 // It was hardcoded to "/". The crumbs themselves were already right, because
 // listing paths carry the prefix, but the anchor in front of them pointed above
-// the tree cairn published — and from file:// at the filesystem root. A template
+// the tree cairndex published — and from file:// at the filesystem root. A template
 // cannot work this out from the path alone, so it travels with it.
 func TestHugoContentCarriesBasePath(t *testing.T) {
 	b, err := HugoContent(HugoPage{Listing: sample(), BasePath: "/mirror"})
@@ -220,7 +220,7 @@ func TestHugoContentCarriesBasePath(t *testing.T) {
 		t.Fatal(err)
 	}
 	fm, _ := split(t, b)
-	if fm.Cairn.BasePath != "/mirror" {
+	if fm.Cairndex.BasePath != "/mirror" {
 		t.Errorf("base_path did not reach the frontmatter:\n%s", b)
 	}
 }

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
 // SPDX-License-Identifier: MIT
 
-// What a listing leaves out, and why cairn's own output is not content.
+// What a listing leaves out, and why cairndex's own output is not content.
 //
 // One question, asked by two walks that have to agree about it: the
 // per-directory walk reaches it through dropGenerated and the recursive one
@@ -13,12 +13,12 @@ package build
 import (
 	"path"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/model"
-	"github.com/livingstaccato/cairn/internal/walk"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/model"
+	"github.com/livingstaccato/cairndex/internal/walk"
 )
 
-// dropGenerated removes cairn's own output from a listing.
+// dropGenerated removes cairndex's own output from a listing.
 //
 // Required for the deployment that matters most: writing index files into the
 // artifact tree itself, so a mirror is one directory that rsyncs whole and
@@ -26,10 +26,10 @@ import (
 // first run's index.json, SHA256SUMS covers files that change on every run, and
 // the build never reaches a fixed point.
 //
-// Excluding is safe for a path cairn would actually write: if such a file
-// already exists and cairn did not create it, emit.Writer refuses the whole
+// Excluding is safe for a path cairndex would actually write: if such a file
+// already exists and cairndex did not create it, emit.Writer refuses the whole
 // build, so there is no case where this hides someone's own file from its own
-// listing. A protected path is the exception — cairn writes nothing there, so a
+// listing. A protected path is the exception — cairndex writes nothing there, so a
 // file of that name belongs to whoever put it there and must stay listed.
 func (r *runner) dropGenerated(relDir string, entries []model.Entry, s config.Settings) []model.Entry {
 	keep := r.treeFilter()
@@ -42,7 +42,7 @@ func (r *runner) dropGenerated(relDir string, entries []model.Entry, s config.Se
 	return out
 }
 
-// treeFilter returns the rule for what cairn's own output is, for the two walks
+// treeFilter returns the rule for what cairndex's own output is, for the two walks
 // that have to agree about it.
 //
 // One function because two callers must agree, the same reason OutRel is one
@@ -76,9 +76,9 @@ func (r *runner) treeFilter() walk.Filter {
 // written, and walking it made every build index the previous build's output
 // one level deeper.
 //
-// This is the same exclusion cairn already applies to its own generated
-// filenames, one level up: a directory cairn fills is no more part of the tree
-// it describes than a file cairn wrote.
+// This is the same exclusion cairndex already applies to its own generated
+// filenames, one level up: a directory cairndex fills is no more part of the tree
+// it describes than a file cairndex wrote.
 func (r *runner) isOutputDir(relDir string, e model.Entry) bool {
 	if !e.IsDir || r.outRel == "" {
 		return false
@@ -86,7 +86,7 @@ func (r *runner) isOutputDir(relDir string, e model.Entry) bool {
 	return path.Join(relDir, e.Name) == r.outRel
 }
 
-// generatedNames is every filename cairn writes into one directory.
+// generatedNames is every filename cairndex writes into one directory.
 func (r *runner) generatedNames() map[string]bool {
 	return GeneratedNames(r.cfg)
 }

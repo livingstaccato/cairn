@@ -12,14 +12,14 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairndex/internal/model"
 )
 
 const (
-	// HugoLayout is the layout name cairn stamps on every generated page, so a
+	// HugoLayout is the layout name cairndex stamps on every generated page, so a
 	// theme can bind templates to it without guessing at section names.
-	HugoLayout = "cairn"
-	// HugoContentFile is the branch-bundle filename cairn writes per directory.
+	HugoLayout = "cairndex"
+	// HugoContentFile is the branch-bundle filename cairndex writes per directory.
 	HugoContentFile = "_index.md"
 	// rootTitle names the top of the tree, which has no directory name.
 	rootTitle = "Index"
@@ -28,12 +28,12 @@ const (
 // hugoFrontmatter is what a Hugo template reads back out of .Params. Field
 // names are lowercase because Hugo exposes frontmatter keys verbatim.
 type hugoFrontmatter struct {
-	Title  string     `yaml:"title"`
-	Layout string     `yaml:"layout"`
-	Cairn  cairnParam `yaml:"cairn"`
+	Title    string        `yaml:"title"`
+	Layout   string        `yaml:"layout"`
+	Cairndex cairndexParam `yaml:"cairndex"`
 }
 
-// cairnParam is what a template needs *about* the listing. The entries
+// cairndexParam is what a template needs *about* the listing. The entries
 // themselves are not here: they travel as an index.json page resource beside the
 // page, which the template unmarshals.
 //
@@ -41,7 +41,7 @@ type hugoFrontmatter struct {
 // entries — "too many YAML aliases for non-scalar nodes", a decoder limit rather
 // than a memory or time one, and a normal package pool exceeds it. A
 // 50,000-entry directory renders from a JSON resource in 0.36s.
-type cairnParam struct {
+type cairndexParam struct {
 	Present    string   `yaml:"present"`
 	Path       string   `yaml:"path"`
 	Source     string   `yaml:"source,omitempty"`
@@ -88,7 +88,7 @@ type HugoPage struct {
 	// written and nothing ever links to it.
 	Recursive bool
 	// AtRoot is the top of the indexed tree, where a parent link would point at
-	// something cairn never wrote. The same switch BarePage carries, for the
+	// something cairndex never wrote. The same switch BarePage carries, for the
 	// renderer that is not BareHTML.
 	AtRoot bool
 	// BasePath is the site-absolute prefix the tree is published under, "" when
@@ -108,7 +108,7 @@ func HugoContent(p HugoPage) ([]byte, error) {
 	fm := hugoFrontmatter{
 		Title:  titleFor(l.Path),
 		Layout: HugoLayout,
-		Cairn: cairnParam{
+		Cairndex: cairndexParam{
 			Present:     p.Present,
 			Path:        l.Path,
 			Source:      p.Source,

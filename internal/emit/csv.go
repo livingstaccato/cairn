@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairndex/internal/model"
 )
 
 // CSVHeader is the stable documented column order. Shell consumers index into

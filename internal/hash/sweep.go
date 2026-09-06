@@ -19,7 +19,7 @@ import (
 // all of it describing files that are gone.
 //
 // The prefix is what makes this safe, and is not optional. A scoped rebuild —
-// every `cairn watch` event is one — consults a single subtree, so "drop what
+// every `cairndex watch` event is one — consults a single subtree, so "drop what
 // this run did not consult" applied to the whole cache would discard the
 // digests for the rest of the mirror and force a full re-hash on the next
 // build. Bounding the sweep to the region the run was actually authoritative

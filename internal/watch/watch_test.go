@@ -19,8 +19,8 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/obs"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/obs"
 )
 
 // settle is short enough to keep the suite quick and long enough that one
@@ -187,7 +187,7 @@ func TestWatchFollowsDirectoriesCreatedAfterItStarted(t *testing.T) {
 	}
 }
 
-// The failure that makes a watcher unusable: cairn writing its index into the
+// The failure that makes a watcher unusable: cairndex writing its index into the
 // tree it indexes, and its own writes waking it to write them again.
 func TestWatchIgnoresItsOwnOutput(t *testing.T) {
 	root := tree(t)
@@ -369,7 +369,7 @@ func TestRunRefusesATreeThatDoesNotFit(t *testing.T) {
 // Windows reports a change inside a directory on that directory's watch and on
 // its parent's, and the parent's copy names only the directory. Acting on it
 // scopes the rebuild to the parent — on a deep tree, most of it — and cannot
-// tell cairn's own output from content, which in a mirror is a rebuild that
+// tell cairndex's own output from content, which in a mirror is a rebuild that
 // wakes itself. The child's copy says everything the parent's does.
 func TestRedundantDropsAParentsCopyOfAChildsChange(t *testing.T) {
 	root := tree(t)

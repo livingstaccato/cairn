@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/livingstaccato/cairn/internal/obs"
+	"github.com/livingstaccato/cairndex/internal/obs"
 )
 
 // anyPort asks the kernel for a free port so a suite running in parallel with
@@ -38,7 +38,7 @@ const waitFor = 20 * time.Second
 // connection the next server has to wait on during shutdown.
 var client = &http.Client{Transport: &http.Transport{DisableKeepAlives: true}}
 
-// tree writes a directory shaped like something cairn built: an index at the
+// tree writes a directory shaped like something cairndex built: an index at the
 // root, an index in a subdirectory, a subdirectory with no index at all, and a
 // file outside the served root that no request may reach.
 func tree(t *testing.T) string {
@@ -55,8 +55,8 @@ func tree(t *testing.T) string {
 	write(t, out, "search-index.json", `[]`)
 	write(t, out, "Data.JSON", `{}`)
 	write(t, out, "SHA256SUMS", "d41d8cd98f00b204e9800998ecf8427e  index.txt\n") // pragma: allowlist secret
-	write(t, out, "cairn.css", "body{}\n")
-	write(t, out, "cairn.js", "export{}\n")
+	write(t, out, "cairndex.css", "body{}\n")
+	write(t, out, "cairndex.js", "export{}\n")
 	write(t, out, "icons.svg", "<svg/>\n")
 	write(t, out, "release.bin", "\x00\x01\x02binary\n")
 	write(t, out, "docs/index.html", "<h1>docs index</h1>\n")
@@ -142,7 +142,7 @@ func TestDefaultAddrIsLoopbackOnly(t *testing.T) {
 	}
 	// The comment on DefaultAddr promises this and nothing checked it. Above the
 	// ephemeral floor the kernel may hand the port to some other process while
-	// cairn is not running, and the failure lands on whoever next runs a build
+	// cairndex is not running, and the failure lands on whoever next runs a build
 	// -- as a port already in use, naming a process that has nothing to do with
 	// this.
 	n, err := strconv.Atoi(port)
@@ -336,7 +336,7 @@ func TestShutdownIsBoundedWhenAClientHangsOn(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 	// One blank line short of a request, so the server reads what arrived and
 	// then waits for the rest of it forever.
-	if _, err := io.WriteString(conn, "GET /index.html HTTP/1.1\r\nHost: cairn.invalid\r\n"); err != nil {
+	if _, err := io.WriteString(conn, "GET /index.html HTTP/1.1\r\nHost: cairndex.invalid\r\n"); err != nil {
 		t.Fatal(err)
 	}
 	<-reading

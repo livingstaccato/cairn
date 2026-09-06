@@ -12,15 +12,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/livingstaccato/cairn/internal/emit"
+	"github.com/livingstaccato/cairndex/internal/emit"
 )
 
-// loadManifest reads what cairn claims to own under outDir.
+// loadManifest reads what cairndex claims to own under outDir.
 //
-// A missing manifest is not an error and not an empty tree — it is cairn
+// A missing manifest is not an error and not an empty tree — it is cairndex
 // claiming nothing here. Nothing can then be reported missing, and every file
 // wearing a generated name becomes an orphan, which is the honest reading: those
-// files are being served and cairn cannot account for one of them. It is also
+// files are being served and cairndex cannot account for one of them. It is also
 // the answer that agrees with what happens next, since the following build will
 // refuse each of them as a conflict for the same reason.
 //
@@ -48,8 +48,8 @@ func loadManifest(outDir string) (map[string]string, error) {
 
 // checkMissing reports every claimed path the output tree no longer holds.
 //
-// Lstat and IsRegular, never Stat: cairn writes regular files, so a symlink or a
-// directory standing at a claimed path means the file cairn wrote is gone,
+// Lstat and IsRegular, never Stat: cairndex writes regular files, so a symlink or a
+// directory standing at a claimed path means the file cairndex wrote is gone,
 // whatever now answers for it. Following the link would report the target's
 // existence as the artifact's, which is the substitution the whole ownership
 // record exists to make visible.
@@ -109,7 +109,7 @@ func resolveRoot(root string) (string, error) {
 // filepath.Join cleans "..", so a crafted path resolves quietly outside the root
 // unless containment is checked afterwards. This mirrors emit's guard on the
 // write side; the read side needs it just as much, because every path it is
-// given comes from a file on disk that cairn did not necessarily write.
+// given comes from a file on disk that cairndex did not necessarily write.
 //
 // A lexical check only, and load-bearing only against the path string, not
 // against the filesystem at the moment something acts on it — see

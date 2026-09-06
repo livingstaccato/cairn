@@ -1,0 +1,82 @@
+{{- /* The autoindex. A table, no JavaScript, no interactive affordance —
+       everything here survives lynx, w3m and a browser with scripting off.
+
+       Same information architecture as the styled presenter: formats beside the
+       path, the digest column header linking to the file that holds it, and the
+       authored prose carrying its own provenance. Nothing under the listing. */ -}}
+{{- $c := .Params.cairndex -}}
+{{- /* Entries come from the index.json resource in this page's bundle, not from
+       frontmatter. Hugo refused any directory past roughly ten thousand entries
+       while the listing rode in YAML — a decoder limit — and the same
+       50,000-entry directory renders from JSON in a third of a second.
+
+       cairndex writes that file, and Hugo publishes a bundle resource verbatim, so
+       the JSON a reader fetches is the exact bytes cairndex produced. Nothing is
+       generated twice, which is where the earlier drift between the two came
+       from. */ -}}
+{{- $r := .Resources.GetMatch "index.json" -}}
+{{- $entries := slice -}}
+{{- with $r }}{{ $entries = (. | transform.Unmarshal).entries }}{{ end -}}
+{{- /* The page renders at most max_rendered rows. A flat pool of fifty thousand
+       packages is a 34 MB page and nobody reads it; the machine formats carry
+       every entry and are never capped. */ -}}
+{{- $total := len $entries -}}
+{{- $max := int (default 0 $c.max_rendered) -}}
+{{- $shown := $entries -}}
+{{- if and (gt $max 0) (gt $total $max) }}{{ $shown = first $max $entries }}{{ end -}}
+
+<div class="cairndex cairndex--bare" data-cairndex-present="bare">
+
+  <header class="cairndex-head">
+    {{ partial "cairndex/breadcrumb.html" (dict "path" $c.path "base" $c.base_path) }}
+    <div class="cairndex-head-sub">
+      <p class="cairndex-head-count">{{ $n := int $c.count }}{{ $n }} item{{ if ne $n 1 }}s{{ end }}</p>
+      {{ partial "cairndex/formats.html" $c }}
+    </div>
+  </header>
+
+  {{ if or .Content $c.source_text }}
+  <section class="cairndex-authored">
+    {{ with .Content }}{{ . }}{{ end }}
+    {{ with $c.source_text }}
+    <details class="cairndex-provenance">
+      <summary>Titles from <code>{{ $c.source }}</code></summary>
+      <pre>{{ . }}</pre>
+    </details>
+    {{ end }}
+  </section>
+  {{ end }}
+
+  <table class="cairndex-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th class="size">Size</th>
+        <th class="modified">Modified</th>
+        <th class="sum">
+          {{- if in $c.formats "sums" -}}
+          <a href="SHA256SUMS" title="Every digest below, in one file for sha256sum -c">SHA-256</a>
+          {{- else -}}SHA-256{{- end -}}
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      {{- /* Not at the top of the tree: there the parent is something cairndex
+             never indexed, so the link leaves the mirror under base_path and
+             walks out of the tree from file://. The Go template applies the
+             same rule; this partial is the renderer hugo mode uses, and the
+             switch reaches it as at_root because a template cannot derive it —
+             under base_path the top of the tree is not "/". */ -}}
+      {{ if not $c.at_root }}<tr><td><a href="../">../</a></td><td></td><td></td><td></td></tr>{{ end }}
+      {{ range $shown }}
+      <tr>
+        <td><a href="{{ .path }}">{{ .name }}{{ if .is_dir }}/{{ end }}</a>{{ with .title }} — {{ . }}{{ end }}</td>
+        <td class="size">{{ if .is_dir }}—{{ else }}{{ partial "cairndex/size.html" .size }}{{ end }}</td>
+        <td class="modified">{{ dateFormat "2006-01-02" .modified }}</td>
+        <td class="sum">{{ with .sha256 }}{{ substr . 0 12 }}…{{ end }}</td>
+      </tr>
+      {{ end }}
+    </tbody>
+  </table>
+  {{ partial "cairndex/truncated.html" (dict "shown" (len $shown) "total" $total) }}
+</div>

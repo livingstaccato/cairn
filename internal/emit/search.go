@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairndex/internal/model"
 )
 
 // SearchFile is the fixed name of the standalone search index. Fixed rather
@@ -43,7 +43,7 @@ type SearchRecord struct {
 // what a browser search library takes: Fuse.js, MiniSearch and FlexSearch are
 // all constructed from an array of records plus the names of the fields to
 // index, so this file is usable with no adapter and no unwrapping. Lunr builds
-// its own index from the same array. cairn still dictates no record shape for
+// its own index from the same array. cairndex still dictates no record shape for
 // a site that already has a search index — that site maps entries itself.
 func Search(l model.Listing) ([]byte, error) {
 	records := make([]SearchRecord, 0, len(l.Entries))
@@ -64,7 +64,7 @@ func Search(l model.Listing) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	enc.SetIndent("", "  ")
-	// Filenames, like everywhere else cairn writes JSON: escaping would leave
+	// Filenames, like everywhere else cairndex writes JSON: escaping would leave
 	// "a&b<c>.txt" naming nothing on disk.
 	enc.SetEscapeHTML(false)
 	if err := enc.Encode(records); err != nil {

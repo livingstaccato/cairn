@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairndex/internal/model"
 )
 
 func sample() model.Listing {

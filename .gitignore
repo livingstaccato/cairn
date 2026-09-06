@@ -1,5 +1,5 @@
 # Build output
-/cairn
+/cairndex
 coverage.out
 coverage.html
 
@@ -10,8 +10,8 @@ coverage.html
 /testdata/example/out/
 
 # Per-run state written into the output tree
-.cairn-cache.json
-.cairn-manifest.json
+.cairndex-cache.json
+.cairndex-manifest.json
 
 # Tooling
 node_modules/

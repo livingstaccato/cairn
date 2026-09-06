@@ -13,11 +13,11 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/hash"
-	"github.com/livingstaccato/cairn/internal/meta"
-	"github.com/livingstaccato/cairn/internal/model"
-	"github.com/livingstaccato/cairn/internal/walk"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/hash"
+	"github.com/livingstaccato/cairndex/internal/meta"
+	"github.com/livingstaccato/cairndex/internal/model"
+	"github.com/livingstaccato/cairndex/internal/walk"
 )
 
 // visit processes one directory and recurses into its children.
@@ -145,18 +145,18 @@ func (r *runner) hashEntries(absDir string, entries []model.Entry) {
 	}
 }
 
-// dirOverride reads a directory's .cairn.yaml, if present. An unreadable or
+// dirOverride reads a directory's .cairndex.yaml, if present. An unreadable or
 // malformed one is ignored rather than fatal — it is a local preference, not
 // authored content whose loss would make the index wrong.
 //
-// Deliberately not decoded with KnownFields, unlike the root cairn.yaml. The
+// Deliberately not decoded with KnownFields, unlike the root cairndex.yaml. The
 // same file is read twice by two decoders: this one takes the settings, and
 // walk.Manifest takes entries: from it when source: manifest. Each has to
 // ignore what the other owns, so strictness here would refuse every authored
 // manifest in the repository.
 func (r *runner) dirOverride(absDir string) *config.Override {
-	p := filepath.Join(absDir, ".cairn.yaml")
-	// #nosec G304 -- p is a directory cairn was configured to scan plus a fixed
+	p := filepath.Join(absDir, ".cairndex.yaml")
+	// #nosec G304 -- p is a directory cairndex was configured to scan plus a fixed
 	// filename.
 	b, err := os.ReadFile(p)
 	if err != nil {
@@ -164,7 +164,7 @@ func (r *runner) dirOverride(absDir string) *config.Override {
 	}
 	var o config.Override
 	if err := yaml.Unmarshal(b, &o); err != nil {
-		r.log.Warn("ignoring malformed .cairn.yaml", "path", p, "err", err)
+		r.log.Warn("ignoring malformed .cairndex.yaml", "path", p, "err", err)
 		return nil
 	}
 	return &o

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairndex/internal/model"
 )
 
 // listing wraps entries in the envelope the emitters write.
@@ -34,7 +34,7 @@ func (r *runner) listing(relDir string, entries []model.Entry) model.Listing {
 //
 // Not the build clock. A wall-clock stamp makes every index.json differ from
 // the last one even when nothing in the directory moved, so no build ever
-// settles — and in a mirror, where cairn writes into the tree it indexes, that
+// settles — and in a mirror, where cairndex writes into the tree it indexes, that
 // rewrite moves the file's own mtime, which is itself a change the parent
 // listing records. Derived from the content, two builds of one tree produce the
 // same bytes, and the field answers the more useful question anyway: as of when
@@ -63,10 +63,10 @@ func (r *runner) newest(relDir string, entries []model.Entry) time.Time {
 
 // rebase moves every entry path under base_path.
 //
-// Entry.Path is rooted at cairn's root, which is only the site root when the
+// Entry.Path is rooted at cairndex's root, which is only the site root when the
 // two happen to coincide. A tree indexed from static/_odds and served at /_odds
 // emitted /mockups/x.html for a file the site serves at /_odds/mockups/x.html,
-// so every link was a fresh 404 and nothing in cairn mentioned it. This is the
+// so every link was a fresh 404 and nothing in cairndex mentioned it. This is the
 // one funnel all three producers pass through.
 //
 // An authored manifest path that is already a full URL is left alone: it names

@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairndex/internal/model"
 )
 
 // A newline in a filename splits the line, so `sha256sum -c` reads one entry as
@@ -25,7 +25,7 @@ import (
 //
 // coreutils answers this by prefixing the line with a backslash and escaping
 // the name. The digests are meant to be checked by `sha256sum -c` with no
-// bespoke verifier, so cairn writes what that program writes.
+// bespoke verifier, so cairndex writes what that program writes.
 func TestSumsEscapesNamesThatWouldBreakTheFormat(t *testing.T) {
 	cases := []struct {
 		name string
@@ -112,14 +112,14 @@ func TestSumsWithHostileNamesVerifiesWithCoreutils(t *testing.T) {
 		t.Errorf("%d files verified, want %d:\n%s", n, len(names), out)
 	}
 	if strings.Contains(string(out), "improperly formatted") {
-		t.Errorf("coreutils could not read a line cairn wrote:\n%s", out)
+		t.Errorf("coreutils could not read a line cairndex wrote:\n%s", out)
 	}
 }
 
 // gnuSha256sum finds an implementation that speaks the escaping convention.
 //
 // Apple ships its own sha256sum, which reads a plain line and reports a
-// backslash-prefixed one as improperly formatted. Escaping is still what cairn
+// backslash-prefixed one as improperly formatted. Escaping is still what cairndex
 // must write — a mirror is verified by GNU coreutils on the client side, and
 // without it a newline in a filename corrupts the file for every
 // implementation, Apple's included. This test just needs the tool that can read

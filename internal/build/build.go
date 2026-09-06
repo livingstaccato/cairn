@@ -1,17 +1,17 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
 // SPDX-License-Identifier: MIT
 
-// Package build orchestrates one cairn run: walk, merge metadata, hash, emit.
+// Package build orchestrates one cairndex run: walk, merge metadata, hash, emit.
 package build
 
 import (
 	"log/slog"
 	"path/filepath"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/emit"
-	"github.com/livingstaccato/cairn/internal/hash"
-	"github.com/livingstaccato/cairn/internal/walk"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/emit"
+	"github.com/livingstaccato/cairndex/internal/hash"
+	"github.com/livingstaccato/cairndex/internal/walk"
 )
 
 // Result summarizes a run for the caller to report.
@@ -72,7 +72,7 @@ func Run(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Result,
 // Every decision still runs, against the tree as it stands: what would be
 // written, which of those bodies differ from what is on disk, and — the reason
 // this exists — which files Prune would delete. Deleting published artifacts is
-// the one thing cairn does that cannot be undone by running it again, and a
+// the one thing cairndex does that cannot be undone by running it again, and a
 // misconfigured out: or a manifest from a different config makes it delete a
 // lot of them. Until now the only way to find out was to let it happen.
 func RunDry(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Result, error) {
@@ -84,11 +84,11 @@ func RunDry(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Resu
 type Options struct {
 	// Dry reports what a build would do and changes nothing under out:.
 	Dry bool
-	// Adopt claims output paths that already exist and cairn does not own,
+	// Adopt claims output paths that already exist and cairndex does not own,
 	// instead of refusing them.
 	//
-	// This is the way back from a lost or unreadable .cairn-manifest.json. In
-	// that state every file cairn wrote is a file it no longer claims, and
+	// This is the way back from a lost or unreadable .cairndex-manifest.json. In
+	// that state every file cairndex wrote is a file it no longer claims, and
 	// on_conflict: error refuses all of them; the only escapes were deleting the
 	// output — impossible where root: and out: are the same directory, since
 	// that deletes the artifacts — or on_conflict: skip, which then writes
@@ -159,14 +159,14 @@ func (r *runner) build() error {
 // warnAboutTheManifest says so, once, when the previous run's manifest could
 // not be read.
 //
-// The run continues: cairn owning nothing is a recoverable state, and refusing
+// The run continues: cairndex owning nothing is a recoverable state, and refusing
 // to start would be worse than the conflict errors that follow. But those
 // errors name a path and say it already exists, which is true and useless —
-// the file exists because cairn wrote it, and the reason it is now a conflict
+// the file exists because cairndex wrote it, and the reason it is now a conflict
 // is upstream of anything the path can tell you.
 func (r *runner) warnAboutTheManifest() {
 	if err := r.writer.ManifestError(); err != nil {
-		r.log.Warn("the manifest could not be read, so cairn claims none of the output "+
+		r.log.Warn("the manifest could not be read, so cairndex claims none of the output "+
 			"already in place; expect conflicts, and nothing will be pruned",
 			"path", emit.ManifestFile, "err", err)
 	}

@@ -4,18 +4,18 @@
 // Package atomicfile replaces a file's contents without leaving a moment where
 // the path holds neither the old bytes nor the new ones.
 //
-// It exists for cairn's two sidecar files — the manifest of what cairn owns and
+// It exists for cairndex's two sidecar files — the manifest of what cairndex owns and
 // the hash cache. Both are whole-file rewrites of state a later run depends on,
 // and os.WriteFile truncates before it writes: a process killed in that window
 // leaves a half-written JSON object. For the manifest that is not a lost
 // optimization but a wedged tree, because a manifest that will not parse means
-// cairn claims nothing, refuses every path it wrote last time as somebody
+// cairndex claims nothing, refuses every path it wrote last time as somebody
 // else's, and prunes none of it.
 //
 // The generated listings deliberately do not go through here. They are written
 // by the thousand and a rename per file is a cost paid on every build to guard
 // a page that the next build rewrites anyway — and the manifest records their
-// digests, so `cairn check` names a truncated one rather than leaving it to be
+// digests, so `cairndex check` names a truncated one rather than leaving it to be
 // found in a browser.
 package atomicfile
 
@@ -88,7 +88,7 @@ func writeAll(f *os.File, body []byte, mode os.FileMode) error {
 
 // Same reports whether path already holds exactly body.
 //
-// Only a regular file qualifies. A symlink standing where cairn writes is
+// Only a regular file qualifies. A symlink standing where cairndex writes is
 // something someone else put there: reading through it would compare the
 // target's bytes, conclude nothing needs doing, and leave the link in place.
 func Same(path string, body []byte) bool {

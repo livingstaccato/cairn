@@ -11,13 +11,13 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/model"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/model"
 )
 
-// DirConfigFile holds a directory's cairn overrides, and for a manifest source
+// DirConfigFile holds a directory's cairndex overrides, and for a manifest source
 // its entry list too.
-const DirConfigFile = ".cairn.yaml"
+const DirConfigFile = ".cairndex.yaml"
 
 // ManifestEntry is one authored listing row.
 //
@@ -40,15 +40,15 @@ type manifestFile struct {
 	Entries []ManifestEntry `yaml:"entries"`
 }
 
-// Manifest reads an authored entry list from a directory's .cairn.yaml.
+// Manifest reads an authored entry list from a directory's .cairndex.yaml.
 //
 // An entry missing name or path warns and is skipped; a directory with no
-// .cairn.yaml simply lists nothing. Malformed YAML fails, for the same reason
+// .cairndex.yaml simply lists nothing. Malformed YAML fails, for the same reason
 // _meta.yaml does: silently dropping authored content produces an index that
 // looks complete and is not.
 func Manifest(absDir string, s config.Settings) ([]model.Entry, []Warning, error) {
 	p := filepath.Join(absDir, DirConfigFile)
-	// #nosec G304 -- composed from a directory cairn was configured to scan and
+	// #nosec G304 -- composed from a directory cairndex was configured to scan and
 	// a fixed filename.
 	b, err := os.ReadFile(p)
 	if err != nil {

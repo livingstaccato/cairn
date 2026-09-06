@@ -1,13 +1,13 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
 // SPDX-License-Identifier: MIT
 
-// Package verify answers two questions about a published tree: is what cairn
-// recorded still intact, and is anything here wearing cairn's output names that
-// cairn does not own.
+// Package verify answers two questions about a published tree: is what cairndex
+// recorded still intact, and is anything here wearing cairndex's output names that
+// cairndex does not own.
 //
-// Only cairn can answer the second one. A client with sha256sum -c can confirm
+// Only cairndex can answer the second one. A client with sha256sum -c can confirm
 // the artifacts it was told about; nothing but the manifest knows which files in
-// the tree cairn actually wrote, so nothing else can tell a current index from
+// the tree cairndex actually wrote, so nothing else can tell a current index from
 // one left behind when index_basename or outputs: changed. Stale output is the
 // dangerous kind: it is served, it looks authoritative, and it describes a
 // directory as it was.
@@ -23,27 +23,27 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/livingstaccato/cairn/internal/config"
-	"github.com/livingstaccato/cairn/internal/emit"
-	"github.com/livingstaccato/cairn/internal/hash"
+	"github.com/livingstaccato/cairndex/internal/config"
+	"github.com/livingstaccato/cairndex/internal/emit"
+	"github.com/livingstaccato/cairndex/internal/hash"
 )
 
 // Report is what one verification found.
 //
 // The four lists are separate because the operator's next move differs with
 // each: restore, investigate, delete, rebuild. Paths are relative and slash-separated,
-// against the root that holds the thing named — cairn's own output against the
+// against the root that holds the thing named — cairndex's own output against the
 // output directory, an artifact named by SHA256SUMS against the indexed root.
 // In a mirror, which is the deployment this was written for, those are one
 // directory and the distinction does not arise.
 type Report struct {
 	Missing  []string // manifest claims it, disk does not have it
 	Modified []string // SHA256SUMS lists a digest that no longer matches
-	Orphaned []string // a file that looks like cairn output but no manifest claims it
-	Altered  []string // cairn's own output, no longer holding what cairn wrote
+	Orphaned []string // a file that looks like cairndex output but no manifest claims it
+	Altered  []string // cairndex's own output, no longer holding what cairndex wrote
 	Checked  int      // artifacts re-hashed against a SHA256SUMS
 	Compared int      // generated outputs re-hashed against the manifest
-	// Claims is how many paths the manifest recorded. Zero means cairn owns
+	// Claims is how many paths the manifest recorded. Zero means cairndex owns
 	// nothing — every generated-looking file is then reported as orphaned, which
 	// is a statement about the manifest rather than about the tree, and
 	// RemoveOrphaned refuses to act on it.
@@ -80,7 +80,7 @@ type verifier struct {
 	compared int
 }
 
-// Run verifies the output under outDir against what cairn recorded.
+// Run verifies the output under outDir against what cairndex recorded.
 //
 // rootDir and outDir are separate arguments because SHA256SUMS names resolve
 // against the first and the manifest's claims against the second; passing one

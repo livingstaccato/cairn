@@ -1,4 +1,4 @@
-![Cairndex](https://raw.githubusercontent.com/livingstaccato/cairndex/main/docs/images/brand/cairndex-banner.png)
+![Cairndex](docs/images/brand/cairndex-banner.png)
 
 # Cairndex
 
@@ -93,7 +93,10 @@ exactly the files it holds and nothing else, so a directory with no
 `index.html` is just a 404 or an XML listing meant for a client library, not a
 person. Cairndex writes the index pages as ordinary files alongside the ones
 they describe, so the bucket gets real browsable listings the same way
-nginx's autoindex does, without running anything.
+nginx's autoindex does, without running anything else — on a static-website
+endpoint or CDN configured to resolve directory URLs to `index.html`. A plain
+object endpoint (no directory-index resolution) needs the explicit
+`/index.html` in the link.
 
 ```sh
 # a provisioning script finding what it needs, without hardcoded paths

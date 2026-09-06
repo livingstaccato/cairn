@@ -1,30 +1,30 @@
-# Deploying a cairndex site
+# Deploying a Cairndex site
 
-A cairndex site has two shapes on disk, and a client cannot tell them apart. Which
-one you want follows from who owns the artifact tree: if cairndex may write into
+A Cairndex site has two shapes on disk, and a client cannot tell them apart. Which
+one you want follows from who owns the artifact tree: if Cairndex may write into
 it, use one tree; if it must stay untouched, keep two and let the server put
 them at one URL prefix.
 
 ![Two disk layouts producing the same URLs. In the first, root and out name the
 same directory, so /srv/mirror/pool/ holds the artifact and the index.html,
-index.json and SHA256SUMS cairndex wrote beside it; it rsyncs whole and sha256sum
+index.json and SHA256SUMS Cairndex wrote beside it; it rsyncs whole and sha256sum
 -c works where it sits. In the second, /srv/artifacts/pool/ holds only the
-artifact and /srv/site/public/pool/ holds only what cairndex wrote, so the artifact
+artifact and /srv/site/public/pool/ holds only what Cairndex wrote, so the artifact
 tree is never written to. Both serve /pool/ubuntu.iso, /pool/index.html,
 /pool/index.json and /pool/SHA256SUMS.](diagrams/mirror-overlay.svg)
 
 Nothing is ever copied in either shape.
 
-There is a third arrangement: `out` as a subdirectory of `root`. cairndex skips
+There is a third arrangement: `out` as a subdirectory of `root`. Cairndex skips
 that subtree whole — it is neither listed nor walked — which is the same
 exclusion it already applies to its own generated filenames, one level up. A
-directory cairndex fills is no more part of the tree it describes than a file cairndex
+directory Cairndex fills is no more part of the tree it describes than a file Cairndex
 wrote.
 
 ## Write the indexes into the tree
 
 You never copy the repository. Point `root` and `out` at the same directory and
-cairndex writes `index.html`, `index.json`, `index.csv`, `index.txt` and
+Cairndex writes `index.html`, `index.json`, `index.csv`, `index.txt` and
 `SHA256SUMS` beside the files they describe:
 
 ```yaml
@@ -53,7 +53,7 @@ where it sits rather than needing a second path:
 cd /srv/mirror/pool && sha256sum -c SHA256SUMS
 ```
 
-Builds reach a fixed point: cairndex excludes its own output from the listings, so
+Builds reach a fixed point: Cairndex excludes its own output from the listings, so
 a second run produces byte-identical `SHA256SUMS` rather than checksumming the
 first run's `index.json`. Re-running is cheap — hashes are cached on
 `(path, size, mtime)`, so nothing unchanged is read again.
@@ -69,7 +69,7 @@ rsync -a --delete \
 cairndex build --config /srv/mirror/cairndex.yaml
 ```
 
-Running cairndex after each sync is what you want anyway: the content changed.
+Running Cairndex after each sync is what you want anyway: the content changed.
 
 ## Styled listings, which need Hugo
 
@@ -83,7 +83,7 @@ hugo --source /srv/site                    # renders public/
 cp -R /srv/site/public/. /srv/mirror/      # deposits pages into the tree
 ```
 
-Hugo never sees the artifacts. In `hugo` mode cairndex writes one small `_index.md`
+Hugo never sees the artifacts. In `hugo` mode Cairndex writes one small `_index.md`
 per directory plus `index.txt` and `SHA256SUMS`; the example site's `content/` is
 68 KB for a tree Hugo never reads. Nothing in `public/` is a mirrored byte, so
 depositing it is proportional to the number of directories, not to the size of
@@ -96,7 +96,7 @@ which is what most of a mirror should be anyway.
 The two settings are not independent. The styled presenter *is* a Hugo template,
 so `direct` mode can only render `bare`. Asking for `outputs: [html]` in `direct`
 mode while `present:` is `styled` — which is the default — writes no HTML at all,
-and cairndex says so once per run:
+and Cairndex says so once per run:
 
 ```
 no HTML written: the styled presenter needs mode: hugo; use present: bare to render HTML directly
@@ -111,7 +111,7 @@ Measured with `make bench`, which builds one directory holding N entries — the
 shape that scales worst, and the realistic one for a package pool. Numbers from
 an M-series laptop:
 
-| Entries | cairndex direct, cold | warm | cairndex hugo | hugo render | index.html |
+| Entries | Cairndex direct, cold | warm | Cairndex hugo | hugo render | index.html |
 |---|---|---|---|---|---|
 | 1,000 | 0.12s, 21 MB | 0.03s | 0.03s, 36 MB | 0.35s, 87 MB | 704 KB |
 | 10,000 | 0.69s, 51 MB | 0.16s | 0.15s, 180 MB | 0.75s, 256 MB | 6.8 MB |
@@ -178,7 +178,7 @@ rules:
 ## Checksums when the indexes live elsewhere
 
 `SHA256SUMS` names files as they appear to a client, so it verifies from the
-artifact tree, not from the directory cairndex wrote it into:
+artifact tree, not from the directory Cairndex wrote it into:
 
 ```sh
 cd /srv/artifacts/bootstrap
@@ -287,7 +287,7 @@ of the directory itself.
 
 ## Re-running, and what happens when files go away
 
-Builds are repeatable. cairndex records what it generated in `.cairndex-manifest.json`,
+Builds are repeatable. Cairndex records what it generated in `.cairndex-manifest.json`,
 replaces its own output on a later run, and still refuses to touch a file it did
 not create.
 
@@ -296,12 +296,12 @@ deleted, and a directory left holding nothing goes with it — so a removed file
 loses its digest, and a removed directory loses the whole listing published for
 it rather than serving a page of links to things that are gone.
 
-Only paths the manifest recorded are ever considered, so cairndex can delete nothing
+Only paths the manifest recorded are ever considered, so Cairndex can delete nothing
 it did not create. Two consequences worth knowing:
 
 - **Losing the manifest stops the build.** An `rsync --delete` or a `git clean`
-  over the output directory is enough, as is a manifest written by a cairndex old
-  enough to have recorded output in a shape this one does not read. cairndex will
+  over the output directory is enough, as is a manifest written by a Cairndex old
+  enough to have recorded output in a shape this one does not read. Cairndex will
   not overwrite files it can no longer prove it wrote. Recover with
   `cairndex build --adopt`, below. The run says `the manifest could not be read`
   before anything else — without that line the conflicts that follow name a path
@@ -311,7 +311,7 @@ it did not create. Two consequences worth knowing:
   files, and there is no way to tell that apart from a directory that was
   legitimately removed.
 
-- **A build that dies partway is recoverable.** cairndex records what it managed to
+- **A build that dies partway is recoverable.** Cairndex records what it managed to
   write before the error, alongside everything the previous run claimed. Without
   that the partial output would belong to nobody and `on_conflict: error` would
   refuse every later run until someone deleted the files by hand.
@@ -319,7 +319,7 @@ it did not create. Two consequences worth knowing:
 The manifest is replaced by a rename rather than rewritten in place, so a build
 interrupted mid-save leaves either the old manifest or the new one and never a
 half-written file. That matters more than it sounds: a manifest that will not
-parse is read as cairndex claiming nothing, and the next build then refuses every
+parse is read as Cairndex claiming nothing, and the next build then refuses every
 file the last one wrote as somebody else's and prunes none of it. The hash cache
 is written the same way, where the cost of losing it is a full re-hash.
 
@@ -339,7 +339,7 @@ scope.
 Ownership has two states, and one edge leads back out of the bad one.
 
 ![A state diagram. A first build reaches Owned, where the manifest records every
-file cairndex wrote. An rsync --delete, a git clean, or a manifest this cairndex cannot
+file Cairndex wrote. An rsync --delete, a git clean, or a manifest this Cairndex cannot
 parse moves it to Unclaimed, where the output is still there and the manifest is
 not. From Unclaimed a plain build is refused on the first file, and a build with
 on_conflict skip writes nothing and claims nothing; both return to Unclaimed
@@ -358,9 +358,9 @@ cairndex build --dry-run --adopt   # read what it would take
 cairndex build --adopt             # take it
 ```
 
-`--adopt` claims output paths that already exist and cairndex does not own, instead
+`--adopt` claims output paths that already exist and Cairndex does not own, instead
 of refusing them. It exists for one state: the manifest is gone or unreadable,
-so every file cairndex wrote is a file it no longer claims, and `on_conflict: error`
+so every file Cairndex wrote is a file it no longer claims, and `on_conflict: error`
 refuses all of them.
 
 There was no way out of that before. Deleting the output is not one where `root:`
@@ -378,8 +378,8 @@ discover afterwards.
 
 One thing it does not do: output from an earlier config that this build no longer
 generates stays unclaimed, and is therefore never pruned — `Prune` only removes
-what the manifest records. `cairndex check` reports those as output cairndex does not
-own, and `cairndex check --remove-orphaned` deletes the ones it can show are cairndex's
+what the manifest records. `cairndex check` reports those as output Cairndex does not
+own, and `cairndex check --remove-orphaned` deletes the ones it can show are Cairndex's
 once you have read the list. That flag refuses while the manifest claims nothing,
 since everything generated looks unowned in that state; adopt first, then remove.
 
@@ -387,11 +387,11 @@ Expect it to leave some behind, and expect that rather than reading it as a
 failed removal. The report is name-based, which is what makes it useful in a
 mirror; deletion is content-based, because in a mirror a foreign `index.html` is
 an ordinary thing to find and losing it is unrecoverable. A file is removed only
-when its own bytes identify it — a listing's shape, cairndex's CSV header,
-`_index.md` frontmatter, or the `generator` meta tag in a page cairndex rendered.
+when its own bytes identify it — a listing's shape, Cairndex's CSV header,
+`_index.md` frontmatter, or the `generator` meta tag in a page Cairndex rendered.
 
 `index.txt` and `SHA256SUMS` never qualify: one filename per line is what any
-listing looks like, and `SHA256SUMS` is coreutils format, so cairndex's is
+listing looks like, and `SHA256SUMS` is coreutils format, so Cairndex's is
 indistinguishable from the one a Debian or release mirror ships. Stale ones
 survive every `--remove-orphaned` run, stay in the report, and keep the check
 exiting non-zero until you delete them yourself. That last part is worth knowing
@@ -399,7 +399,7 @@ in a pipeline: a run that deleted everything it could still exits non-zero when
 anything was kept.
 
 Pages published before the `generator` meta tag existed do not carry it, and a
-rebuild will not give them one: cairndex writes the paths it currently generates,
+rebuild will not give them one: Cairndex writes the paths it currently generates,
 and a stale page is by definition at a path it no longer does. Those are kept
 permanently and have to be deleted by hand. Only HTML written by a version that
 emits the marker can be removed automatically later, so this is a one-time cost
@@ -429,7 +429,7 @@ cairndex build --dry-run --changed-to /tmp/would-change.txt
 
 `cairndex check` reads back what a build recorded. It re-hashes every file
 `SHA256SUMS` names, reports what the manifest claims and the disk no longer has,
-finds output cairndex does not own, and catches its own output being changed
+finds output Cairndex does not own, and catches its own output being changed
 after it was written.
 
 ```sh
@@ -437,18 +437,18 @@ cairndex check --config cairndex.yaml
 ```
 
 The third finding is the one nothing else can produce. `sha256sum -c` confirms
-the artifacts a client was told about; only the manifest knows which files cairndex
-actually wrote, so only cairndex can tell a current index from one left behind when
+the artifacts a client was told about; only the manifest knows which files Cairndex
+actually wrote, so only Cairndex can tell a current index from one left behind when
 `index_basename` or `outputs:` changed. Stale output is the dangerous kind — it
 is still served, it still looks authoritative, and it describes a directory as
 it was.
 
 That last one needs the manifest's digests, and nothing else can see it.
-Generated files appear in no `SHA256SUMS` — a listing leaves cairndex's own output
+Generated files appear in no `SHA256SUMS` — a listing leaves Cairndex's own output
 out, or the build would never reach a fixed point — so a hand-edited
 `index.json` is invisible to a client verifying checksums. The watcher cannot
 see it either: it discards events on its own output by name, which is what stops
-a rebuild loop, and a name cannot tell cairndex's write from anyone else's. Running
+a rebuild loop, and a name cannot tell Cairndex's write from anyone else's. Running
 `build` again repairs it.
 
 Nothing is repaired. An operator unsure about a mirror needs to know what changed
@@ -486,7 +486,7 @@ does not, and needs its own `--delete` pass.
 
 ## When the indexed tree is not the web root
 
-`Entry.path` is rooted at cairndex's `root:`. That is the site root only when the
+`Entry.path` is rooted at Cairndex's `root:`. That is the site root only when the
 two coincide, and on a site that indexes a subtree they do not:
 
 ```yaml
@@ -521,7 +521,7 @@ rules:
     hide: ["**/.*", "**/_*", "**/*.tmp", "drafts/**"]
 ```
 
-Globs rather than a convention, because cairndex cannot know which prefixes mean
+Globs rather than a convention, because Cairndex cannot know which prefixes mean
 "internal" in someone else's tree. A dot is the filesystem's own answer and is
 the default; an underscore is a Hugo convention about pages, and a tree of
 static artifacts is not pages — a published `_tradewars/` belongs in its
@@ -580,7 +580,7 @@ production      8631d212   60,131 bytes
 ```
 
 Cloudflare injects its Pages Analytics beacon and a bot-detection script before
-`</body>`, so every HTML response is 1,152 bytes longer than the file cairndex
+`</body>`, so every HTML response is 1,152 bytes longer than the file Cairndex
 hashed. `SHA256SUMS` is right and the served bytes are not the served file.
 
 Non-HTML is untouched. PDFs, audio, archives and disk images fetched from the
@@ -596,9 +596,9 @@ HTML is rarely worth it.
 
 ## Beside a package repository
 
-This is the deployment cairndex was built for: an APT or YUM mirror that already
+This is the deployment Cairndex was built for: an APT or YUM mirror that already
 has an owner. `dists/` is signed, `repodata/repomd.xml` is authoritative, and
-both are verified by tools that did not ask for cairndex's opinion. `protect:`
+both are verified by tools that did not ask for Cairndex's opinion. `protect:`
 names what belongs to them:
 
 ```yaml
@@ -609,7 +609,7 @@ protect:
 
 A protected path is skipped, not an error. The glob is you declaring which paths
 another tool owns, so refusing to write there is the whole point; failing the
-build over it would make `protect:` useless for its only job. cairndex reports the
+build over it would make `protect:` useless for its only job. Cairndex reports the
 count on every run, so a glob wider than you meant shows up as a directory with
 no listing and a number that explains it:
 

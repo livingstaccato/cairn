@@ -1,4 +1,4 @@
-# cairndex — working agreement
+# Cairndex — working agreement
 
 Static directory-index and artifact-repo generator. A Go binary and a Hugo
 module in one repo, so emitted data and the templates that render it share a
@@ -75,7 +75,7 @@ test pass.
   no icon font. Icons are an inline SVG sprite. It has to work airgapped.
 - **`bare` presenter emits no `<script>`** and renders in `lynx`.
 - **`emit.Writer` is the only writer.** It checks path containment, `protect:`
-  globs, and conflicts, and it records what cairndex generated so a re-run may
+  globs, and conflicts, and it records what Cairndex generated so a re-run may
   replace its own output and nothing else. Writing around it defeats all four.
 - **`protect:` skips, it does not fail.** The glob is the operator naming paths
   another tool owns — apt's signed `dists/`, dnf's `repodata/` — so refusing to
@@ -83,7 +83,7 @@ test pass.
   written, so no later run can overwrite it and `Prune` cannot delete it.
 - **`--adopt` is the only way to waive the conflict check, and it waives only
   that.** It exists for one state: the manifest is lost or unreadable, so every
-  file cairndex wrote is one it no longer claims and `on_conflict: error` refuses
+  file Cairndex wrote is one it no longer claims and `on_conflict: error` refuses
   all of them. `on_conflict: skip` is not a recovery — it leaves each path
   alone, writes nothing, claims nothing, and freezes the mirror. What `--adopt`
   claims is the set of paths the build produces that already exist, so it cannot
@@ -104,7 +104,7 @@ test pass.
   globs; the default is `["**/.*"]`, the filesystem's own convention and nothing
   else. Baking in the underscore convention beside the dot leaves no setting
   that describes a tree holding both a published `_tradewars/` and a `.DS_Store`.
-  cairndex cannot know which prefixes mean "internal" in someone else's tree.
+  Cairndex cannot know which prefixes mean "internal" in someone else's tree.
 - **A sidecar's `hidden:`, `weight:` and `url:` are honoured, not just parsed.**
   Weight is applied after the walk, so `build` re-sorts: the walker orders
   entries before metadata is merged, and a unit test on `sortEntries` passes
@@ -154,7 +154,7 @@ implement. A test that has never failed has never been verified.
 - Table-driven cases for anything with boundaries (sizes, precedence, globs).
 - Hostile input is a test case, not a review note.
 - **Fuzz what a filename reaches.** Names in a mirror are attacker-influenced,
-  so every guard standing between a scanned tree and what cairndex writes has a
+  so every guard standing between a scanned tree and what Cairndex writes has a
   property over all inputs, not a table of the cases somebody thought of:
   `SHA256SUMS` escaping, `containedPath`, CSV formula neutralisation, HTML and
   PEP 503 escaping, and the server's containment. `make fuzz` runs them all;

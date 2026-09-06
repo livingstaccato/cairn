@@ -1,11 +1,10 @@
 # Changelog
 
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/), and
-versions follow [SemVer](https://semver.org/) once tagged. Nothing has been
-tagged or released yet — see the `--version` flag for the version currently
-embedded in `main`.
+versions follow [SemVer](https://semver.org/) once tagged. See the
+`--version` flag for the version currently embedded in `main`.
 
-## [Unreleased]
+## main
 
 ### Added
 

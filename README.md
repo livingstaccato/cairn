@@ -1,13 +1,12 @@
-![cairndex](https://raw.githubusercontent.com/livingstaccato/cairndex/main/docs/images/brand/cairndex-banner.png)
+![Cairndex](https://raw.githubusercontent.com/livingstaccato/cairndex/main/docs/images/brand/cairndex-banner.png)
 
-# cairndex
+# Cairndex
 
 Static directory-index and artifact-repo generator. A Go binary and a Hugo
 module in one repo, so the data it emits and the templates that render it share
 a single version pin.
 
-> **Status: unreleased.** Track `main`; pin `@vX.Y.Z` once a release is tagged.
-> Pre-1.0, so the config schema and the JSON contract may still change —
+> Pre-1.0: the config schema and the JSON contract may still change —
 > `version: 1` is checked, and a build refuses a schema it does not understand
 > rather than guessing.
 
@@ -40,7 +39,7 @@ defaults:
 ```
 
 Every command reads `./cairndex.yaml` unless `--config` says otherwise, and a key
-cairndex does not recognise is refused rather than ignored — a mistyped `checksum:`
+Cairndex does not recognise is refused rather than ignored — a mistyped `checksum:`
 used to mean no `SHA256SUMS` and a build that called itself complete. Working
 from a clone instead? `cairndex build --config testdata/example/cairndex.yaml` runs
 against the example tree in this repo.
@@ -50,9 +49,9 @@ autoindex — no JavaScript, no icon font, renders in `lynx` — and it needs
 nothing but the binary. The default is `styled`, which themes with your site but
 needs the Hugo module; asked for without Hugo it writes no HTML and says so.
 
-Run the build a second time and nothing moves. cairndex keeps its own output out of
+Run the build a second time and nothing moves. Cairndex keeps its own output out of
 the listings and records what it wrote in `.cairndex-manifest.json`, so a rebuild is
-byte-identical, replaces only what cairndex created, and refuses to touch anything
+byte-identical, replaces only what Cairndex created, and refuses to touch anything
 it did not.
 
 ## What it does
@@ -76,7 +75,8 @@ The page is capped at 1,000 rows by default and the machine formats are not, so
 `index.json` still describes every one of them.
 
 The output is plain files. It works behind nginx, on Cloudflare Pages, under
-`python -m http.server`, and from `file://` on a USB stick.
+`python -m http.server`, from `file://` on a USB stick, and from an object
+storage bucket with no server in front of it at all.
 
 ## Why not just use autoindex
 
@@ -87,6 +87,13 @@ checksums, or a listing that themes with the rest of your site.
 
 That combination is what a file mirror actually needs: humans browse it, and
 scripts discover from it.
+
+Object storage — S3, GCS, R2 — has no autoindex to turn on: a bucket serves
+exactly the files it holds and nothing else, so a directory with no
+`index.html` is just a 404 or an XML listing meant for a client library, not a
+person. Cairndex writes the index pages as ordinary files alongside the ones
+they describe, so the bucket gets real browsable listings the same way
+nginx's autoindex does, without running anything.
 
 ```sh
 # a provisioning script finding what it needs, without hardcoded paths
@@ -143,7 +150,7 @@ server putting both at one URL prefix. A client cannot tell the two apart;
 [Deployment](docs/deployment.md) draws both and says which to pick. Nothing is
 ever copied either way.
 
-`out` may also be a subdirectory of `root`. cairndex skips that subtree whole, so
+`out` may also be a subdirectory of `root`. Cairndex skips that subtree whole, so
 the output is neither listed nor walked, and a rebuild stays a fixed point
 instead of indexing the last build one level deeper.
 
@@ -183,7 +190,7 @@ and says nowhere which ones it dropped leaves an index that is wrong and looks
 fine.
 
 `--settle` (250ms by default) is how long the tree has to be quiet before a
-rebuild. Directories the build hides are not watched, and cairndex's own output
+rebuild. Directories the build hides are not watched, and Cairndex's own output
 never wakes it — including when `root` and `out` are the same directory.
 
 `--serve` runs the viewer in the same process, so a change to the tree and the
@@ -202,7 +209,7 @@ nothing without `--serve`. If either half stops, so does the other.
 
 `cairndex check` reads back what a build recorded: it re-hashes every file
 `SHA256SUMS` names, reports what the manifest claims and the disk no longer has,
-finds output cairndex does not own, and catches its own output being changed after
+finds output Cairndex does not own, and catches its own output being changed after
 it was written.
 
 ```sh
@@ -210,8 +217,8 @@ cairndex check
 ```
 
 That last finding is the one nothing else can produce. `sha256sum -c` confirms
-the artifacts a client was told about; only the manifest knows which files cairndex
-wrote, so only cairndex can tell a current index from one left behind when
+the artifacts a client was told about; only the manifest knows which files Cairndex
+wrote, so only Cairndex can tell a current index from one left behind when
 `index_basename` or `outputs:` changed. A failed check exits non-zero.
 
 A plain check repairs nothing — an operator unsure about a mirror needs to know
@@ -225,22 +232,22 @@ cairndex check --remove-orphaned
 ```
 
 It deletes less than the check reports, on purpose. The report answers whether
-cairndex *could* have written a file with that name, which is the right question to
+Cairndex *could* have written a file with that name, which is the right question to
 put in front of a person and the wrong one to hand to `rm`: in a mirror `root:`
 and `out:` are one directory, so nearly every file is somebody's artifact and the
-names cairndex generates are the most ordinary names in the tree. A mirrored package
+names Cairndex generates are the most ordinary names in the tree. A mirrored package
 index and an extracted documentation tree are both called `index.html`.
 
 So removal asks a stronger question and answers it from the file's own bytes. A
-listing carries its own shape, `index.csv` carries cairndex's column header,
-`_index.md` carries its frontmatter, and a page cairndex rendered carries
+listing carries its own shape, `index.csv` carries Cairndex's column header,
+`_index.md` carries its frontmatter, and a page Cairndex rendered carries
 `<meta name="generator" content="cairndex">`. Anything those tests do not vouch for
 is kept, still reported, and still fails the check — so a name collision is
 something you are told about rather than something you lose a file to.
 
 Two formats can never answer it. `index.txt` is one filename per line, which is
 what a listing of anything looks like, and `SHA256SUMS` is coreutils format by
-design, so every publisher's is the shape cairndex's is. Stale ones are reported and
+design, so every publisher's is the shape Cairndex's is. Stale ones are reported and
 left alone; delete those by hand.
 
 It refuses outright when the manifest claims nothing. Everything generated then
@@ -269,7 +276,7 @@ every file `Prune` would delete:
 cairndex build --dry-run
 ```
 
-Deleting is the one thing cairndex does that running it again cannot undo, and a
+Deleting is the one thing Cairndex does that running it again cannot undo, and a
 mistyped `out:` or a manifest left by a different config makes it delete a lot.
 `--changed-to` still writes the file it names, so a deployment's transfer list
 can be read before anything moves.
@@ -277,7 +284,7 @@ can be read before anything moves.
 ## Getting a wedged tree back
 
 If `.cairndex-manifest.json` is lost — an `rsync --delete` over the output
-directory does it — every file cairndex wrote becomes a file it no longer claims,
+directory does it — every file Cairndex wrote becomes a file it no longer claims,
 and `on_conflict: error` refuses all of them. `--adopt` claims those paths
 instead of refusing them:
 
@@ -317,7 +324,7 @@ half-built mirror is nobody else's to read.
   displayed.
 - **Coexists with real package repositories.** `apt-ftparchive` and
   `createrepo_c` already produce APT and YUM metadata correctly, signing
-  included. cairndex indexes and presents around their output, and refuses to
+  included. Cairndex indexes and presents around their output, and refuses to
   write into `dists/` or `repodata/`.
 - **Never dictates a search record shape.** It exposes entries; your site maps
   them into whatever index it already has. Pagefind needs no integration at
@@ -325,8 +332,8 @@ half-built mirror is nobody else's to read.
 
 ## Environment
 
-`CAIRNDEX_ENVIRONMENT` labels the build in cairndex's log output. It defaults to
-`production`, since cairndex runs as a build step rather than a server. Nothing
+`CAIRNDEX_ENVIRONMENT` labels the build in Cairndex's log output. It defaults to
+`production`, since Cairndex runs as a build step rather than a server. Nothing
 else reads it, and nothing about a listing changes with it.
 
 ## Documentation

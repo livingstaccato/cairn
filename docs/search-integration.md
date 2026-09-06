@@ -1,6 +1,6 @@
-# Contributing cairndex entries to your search index
+# Contributing Cairndex entries to your search index
 
-cairndex does not own a search record shape. The two sites this pattern came from
+Cairndex does not own a search record shape. The two sites this pattern came from
 disagree — one indexes `{title, url, content, tags, date, excerpt}` for Fuse.js,
 the other `{title, summary, kind, source_path, url, text}` — so owning either
 would be wrong for the other.
@@ -23,7 +23,7 @@ Six lines in `layouts/index.json`:
 Worth knowing if your existing index filters by type — one such site indexed
 only `where .Site.RegularPages "Type" "posts"`, which excludes every directory
 listing. The partial finds pages by the presence of `.Params.cairndex` instead,
-because cairndex writes branch bundles and `site.RegularPages` does not include
+because Cairndex writes branch bundles and `site.RegularPages` does not include
 them.
 
 ## A knowledge-corpus host
@@ -38,7 +38,7 @@ them.
 
 ## Two cases needing no integration
 
-**Pagefind** indexes built HTML, and cairndex emits real HTML. It works with no
+**Pagefind** indexes built HTML, and Cairndex emits real HTML. It works with no
 wiring at all.
 
 **No existing search** — build a standalone index from the same partial, or

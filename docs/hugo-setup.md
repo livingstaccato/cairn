@@ -1,6 +1,6 @@
-# Using cairndex from a Hugo site
+# Using Cairndex from a Hugo site
 
-cairndex ships `layouts/` and `assets/` as a Hugo component module. Import it, run
+Cairndex ships `layouts/` and `assets/` as a Hugo component module. Import it, run
 `cairndex build` in `hugo` mode, and Hugo renders HTML, JSON and CSV for every
 directory from one source.
 
@@ -25,11 +25,11 @@ so the templates stay pinned; `go install` takes whatever `main` is at that
 moment. The templates read what the binary writes, so update both together.
 
 That is the whole configuration. There are no output formats to declare and no
-media types to register: cairndex writes `index.json`, `index.csv`, `index.txt` and
+media types to register: Cairndex writes `index.json`, `index.csv`, `index.txt` and
 `SHA256SUMS` into each page's bundle, and Hugo publishes a bundle resource
 verbatim. Hugo renders only the HTML.
 
-Two things follow. The JSON a reader fetches is the exact bytes cairndex produced,
+Two things follow. The JSON a reader fetches is the exact bytes Cairndex produced,
 so the page and the data cannot disagree. And the frontmatter stays small, which
 is what keeps large directories buildable: with the listing inline, Hugo refuses
 anything past roughly ten thousand entries with "too many YAML aliases for
@@ -37,7 +37,7 @@ non-scalar nodes". A 50,000-entry directory renders in under half a second.
 
 ## cairndex.yaml
 
-`out:` points at the site's `content/`, because in `hugo` mode cairndex writes one
+`out:` points at the site's `content/`, because in `hugo` mode Cairndex writes one
 `_index.md` per directory and Hugo publishes the rest.
 
 ```yaml
@@ -49,7 +49,7 @@ out:  ./content
 
 ## What the module gives you
 
-- `layouts/_default/cairndex.html` — bound to `layout: cairndex`, which cairndex stamps
+- `layouts/_default/cairndex.html` — bound to `layout: cairndex`, which Cairndex stamps
   on every page it writes.
 - `layouts/partials/cairndex/listing.html` — the listing, dispatching to a presenter.
   Entries come from the `index.json` resource in the page's bundle, not from
@@ -65,8 +65,8 @@ properties with fallbacks, so it inherits whatever design you already have.
 ## Two things that collide
 
 `html` and `pep503` both target `index.html`. Asking for both in one directory
-is a conflict cairndex refuses rather than picking a winner — they are two
+is a conflict Cairndex refuses rather than picking a winner — they are two
 renderings of the same URL.
 
 `present: styled` produces nothing in `direct` mode. Styled HTML needs your
-theme, which cairndex does not have, so only `bare` renders without Hugo.
+theme, which Cairndex does not have, so only `bare` renders without Hugo.

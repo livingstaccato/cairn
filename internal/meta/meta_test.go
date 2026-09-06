@@ -319,3 +319,21 @@ func TestApplyHonorsHiddenWeightAndURL(t *testing.T) {
 		t.Errorf("got %d entries, want 2 after hiding one", len(got))
 	}
 }
+
+// A source: pages entry's emitted Name is its slug (post, not post.md), but a
+// _meta.yaml written the way it would be for source: fs keys entries by the
+// on-disk filename. Both conventions have to reach the same entry.
+func TestApplyMatchesBySourceNameWhenSlugMisses(t *testing.T) {
+	entries := []model.Entry{
+		{Name: "post", SourceName: "post.md", Path: "/post/"},
+	}
+	m := map[string]FileMeta{
+		"post.md": {Hidden: true},
+	}
+
+	got := Apply(entries, m)
+
+	if len(got) != 0 {
+		t.Errorf("got %d entries, want post.md's hidden: true to hide the post/ slug entry", len(got))
+	}
+}

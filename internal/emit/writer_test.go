@@ -4,6 +4,7 @@
 package emit
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -526,6 +527,54 @@ func TestWriteLeavesAnIdenticalFileAlone(t *testing.T) {
 	}
 	if w2.Unchanged() != 1 {
 		t.Errorf("Unchanged = %d, want 1", w2.Unchanged())
+	}
+}
+
+// cairndex watch --serve reads this same output tree while a rebuild writes it.
+// A truncate-then-write leaves a window where an fd opened before the rewrite
+// sees a partial file. Detected here without an actual race: an fd opened on
+// the old inode before Write() must still read the old bytes in full
+// afterward, which only holds if the replacement is a rename onto a new inode
+// rather than an in-place truncate.
+func TestWriteReplacesFileAtomically(t *testing.T) {
+	out := t.TempDir()
+	oldBody := []byte("old content, held open across the rewrite")
+	newBody := []byte("new content")
+
+	w := NewWriter(cfg(t, config.ConflictError), out)
+	if err := w.Write("docs/index.json", oldBody); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Save(); err != nil {
+		t.Fatal(err)
+	}
+	abs := filepath.Join(out, "docs", "index.json")
+
+	held, err := os.Open(abs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = held.Close() }()
+
+	w2 := NewWriter(cfg(t, config.ConflictError), out)
+	if err := w2.Write("docs/index.json", newBody); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := io.ReadAll(held)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(oldBody) {
+		t.Errorf("fd opened before the rewrite read %q, want the untouched old body %q — the write truncated the file readers already had open", got, oldBody)
+	}
+
+	fresh, err := os.ReadFile(abs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(fresh) != string(newBody) {
+		t.Errorf("path now reads %q, want the new body %q", fresh, newBody)
 	}
 }
 

@@ -234,7 +234,7 @@ func (w *Writer) Write(relPath string, body []byte) error {
 	}
 	// #nosec G306 -- see outFileMode: a published index is world-readable by
 	// design.
-	if err := os.WriteFile(abs, body, outFileMode); err != nil {
+	if _, err := atomicfile.Write(abs, body, outFileMode); err != nil {
 		return fmt.Errorf("write %s: %w", relPath, err)
 	}
 	w.made = append(w.made, relPath)

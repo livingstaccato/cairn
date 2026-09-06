@@ -78,6 +78,13 @@ func TestPagesListsMarkdown(t *testing.T) {
 	if plain, ok := byName["plain"]; !ok || got[plain].Title != "plain" {
 		t.Errorf("plain.md missing or untitled: %v", names(got))
 	}
+	// _meta.yaml's fs convention keys entries by their on-disk filename
+	// (intro.md), not the slug (intro) this package emits as Name. Without the
+	// original filename preserved somewhere on the entry, that convention has
+	// no way to reach a pages entry at all.
+	if got[intro].SourceName != "intro.md" {
+		t.Errorf("SourceName = %q, want the on-disk filename intro.md", got[intro].SourceName)
+	}
 }
 
 func TestPagesMalformedFrontmatterWarns(t *testing.T) {

@@ -288,6 +288,42 @@ func TestAcceptScopesATopLevelChangeToTheRoot(t *testing.T) {
 	}
 }
 
+// A directory renamed or removed must stop being watched under its old name;
+// left registered, the platform keeps the watch on that inode alive and
+// reports later events using a path that no longer resolves to anything.
+func TestAcceptStopsWatchingARenamedOrRemovedDirectory(t *testing.T) {
+	root := tree(t)
+	dir := filepath.Join(root, "bootstrap")
+	sub := filepath.Join(root, "bootstrap", "linux")
+
+	fsw, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = fsw.Close() }()
+	for _, p := range []string{dir, sub} {
+		if err := fsw.Add(p); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	w := &Watcher{Config: conf(nil), Root: root, Out: t.TempDir(), Log: obs.Discard()}
+	w.filter = NewFilter(w.Config, root, w.Out, w.Log)
+	w.fsw = fsw
+
+	pending := map[string]bool{}
+	ev := fsnotify.Event{Name: dir, Op: fsnotify.Rename}
+	if !w.accept(ev, pending) {
+		t.Fatal("a directory rename was discarded")
+	}
+
+	for _, watched := range fsw.WatchList() {
+		if watched == dir || strings.HasPrefix(watched, dir+string(os.PathSeparator)) {
+			t.Errorf("still watching %s after %s was renamed away", watched, dir)
+		}
+	}
+}
+
 // A tree that cannot be registered is a refusal, with the directory named. The
 // alternative is a watcher that runs having registered nothing.
 func TestRunFailsWhenTheTreeCannotBeWatched(t *testing.T) {

@@ -38,6 +38,11 @@ type Entry struct {
 	Weight int            `json:"weight,omitempty"  yaml:"weight,omitempty"`
 	Depth  int            `json:"depth"   yaml:"depth"` // 0 = the listed directory itself
 	Extra  map[string]any `json:"extra,omitempty"   yaml:"extra,omitempty"`
+	// SourceName is the on-disk filename an entry was produced from, when that
+	// differs from Name — a source: pages entry emits its slug (post) as Name
+	// but a _meta.yaml keyed the way it would be for source: fs names the file
+	// (post.md). Internal to metadata lookup, never part of the listing.
+	SourceName string `json:"-" yaml:"-"`
 }
 
 // Listing is the envelope written to index.json and tree.json.

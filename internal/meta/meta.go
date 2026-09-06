@@ -172,7 +172,7 @@ func readIfPresent(p string) ([]byte, error) {
 func Apply(entries []model.Entry, m map[string]FileMeta) []model.Entry {
 	out := make([]model.Entry, 0, len(entries))
 	for _, e := range entries {
-		fm, ok := m[e.Name]
+		fm, ok := lookup(m, e)
 		if ok && fm.Hidden {
 			continue
 		}
@@ -182,6 +182,22 @@ func Apply(entries []model.Entry, m map[string]FileMeta) []model.Entry {
 		out = append(out, e)
 	}
 	return out
+}
+
+// lookup finds an entry's authored metadata. A source: pages entry is named by
+// its slug (post.md becomes post), but a _meta.yaml written the way it would
+// be for source: fs keys entries by the on-disk filename — SourceName is
+// tried as a fallback so either convention reaches the entry.
+func lookup(m map[string]FileMeta, e model.Entry) (FileMeta, bool) {
+	if fm, ok := m[e.Name]; ok {
+		return fm, true
+	}
+	if e.SourceName != "" && e.SourceName != e.Name {
+		if fm, ok := m[e.SourceName]; ok {
+			return fm, true
+		}
+	}
+	return FileMeta{}, false
 }
 
 // applyOne writes one file's authored metadata onto its entry.

@@ -96,7 +96,7 @@ func pageEntry(absDir, relDir string, de os.DirEntry, s config.Settings) (model.
 		title = slug
 	}
 	return model.Entry{
-		Name: slug, Path: "/" + path.Join(relDir, slug) + "/",
+		Name: slug, SourceName: name, Path: "/" + path.Join(relDir, slug) + "/",
 		Size: info.Size(), ModTime: modTime(info.ModTime()),
 		Kind: KindPage, MIME: pageMIME,
 		Title: title, Summary: fm.Summary, Tags: fm.Tags, Depth: 1,

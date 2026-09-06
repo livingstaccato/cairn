@@ -4,19 +4,16 @@
 // Package atomicfile replaces a file's contents without leaving a moment where
 // the path holds neither the old bytes nor the new ones.
 //
-// It exists for cairndex's two sidecar files — the manifest of what cairndex owns and
-// the hash cache. Both are whole-file rewrites of state a later run depends on,
-// and os.WriteFile truncates before it writes: a process killed in that window
-// leaves a half-written JSON object. For the manifest that is not a lost
-// optimization but a wedged tree, because a manifest that will not parse means
-// cairndex claims nothing, refuses every path it wrote last time as somebody
-// else's, and prunes none of it.
-//
-// The generated listings deliberately do not go through here. They are written
-// by the thousand and a rename per file is a cost paid on every build to guard
-// a page that the next build rewrites anyway — and the manifest records their
-// digests, so `cairndex check` names a truncated one rather than leaving it to be
-// found in a browser.
+// It exists for cairndex's sidecar files — the manifest of what cairndex owns and
+// the hash cache — and for every generated listing. Both are whole-file
+// rewrites of state a later run depends on, and os.WriteFile truncates before
+// it writes: a process killed in that window leaves a half-written JSON
+// object. For the manifest that is not a lost optimization but a wedged tree,
+// because a manifest that will not parse means cairndex claims nothing, refuses
+// every path it wrote last time as somebody else's, and prunes none of it. For
+// a generated listing, `cairndex watch --serve` reads the same output tree a
+// rebuild is writing to, so the same truncate window is a request served a
+// partial file — the rename-per-file cost is paid on every build to close it.
 package atomicfile
 
 import (

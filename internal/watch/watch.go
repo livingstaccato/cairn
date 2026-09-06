@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -170,6 +171,9 @@ func (w *Watcher) accept(ev fsnotify.Event, pending map[string]bool) bool {
 	if ev.Has(fsnotify.Create) {
 		w.addTree(ev.Name)
 	}
+	if ev.Has(fsnotify.Remove) || ev.Has(fsnotify.Rename) {
+		w.removeTree(ev.Name)
+	}
 	// The directory that has to be rebuilt is the one holding the entry that
 	// changed: its listing names the entry, and its count and mtime moved.
 	pending[path.Dir(rel)] = true
@@ -219,6 +223,23 @@ func (w *Watcher) addTree(absPath string) {
 	for _, dir := range EnumerateUnder(w.Config, w.Root, w.Out, rel, w.Log).Dirs {
 		if err := w.fsw.Add(dir); err != nil {
 			w.Log.Warn("could not watch a new directory", "path", dir, "err", err)
+		}
+	}
+}
+
+// removeTree drops the watch on a path that no longer names what it did, and
+// everything registered under it. A rename or remove leaves the platform's
+// watch on that inode alive, still reporting later events under a path that
+// no longer resolves to anything — this is the only place fsw.Remove is ever
+// called, so nothing else undoes an addTree.
+func (w *Watcher) removeTree(absPath string) {
+	prefix := absPath + string(os.PathSeparator)
+	for _, watched := range w.fsw.WatchList() {
+		if watched != absPath && !strings.HasPrefix(watched, prefix) {
+			continue
+		}
+		if err := w.fsw.Remove(watched); err != nil {
+			w.Log.Warn("could not stop watching a removed directory", "path", watched, "err", err)
 		}
 	}
 }

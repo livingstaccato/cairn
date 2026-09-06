@@ -17,8 +17,9 @@ coverage.html
 node_modules/
 .DS_Store
 
-# CLAUDE.md is a symlink to AGENTS.md, created locally so Claude Code picks up
-# the same instructions. AGENTS.md is the tracked source of truth.
+# CLAUDE.md is a symlink to AGENTS.md, created locally so a coding agent that
+# looks for that filename picks up the same instructions. AGENTS.md is the
+# tracked source of truth.
 /CLAUDE.md
 
 # Hugo build state

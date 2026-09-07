@@ -158,11 +158,13 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
-      # reuse, detect-secrets, codespell. The repo's Go hooks are skipped here:
-      # they need a toolchain this job deliberately does not install, and the
-      # lint, security and test jobs already run exactly those checks. Without
-      # the skip they fail with "command not found" and report as a hygiene
-      # failure, which points at the wrong thing.
+      # reuse, detect-secrets, codespell. The repo's Go and JS hooks are
+      # skipped here: they need toolchains this job deliberately does not
+      # install (js-test needs npm ci for jsdom, not just a Node binary), and
+      # the lint, security and test jobs already run exactly those checks.
+      # Without the skip they fail with "command not found" / a missing
+      # package and report as a hygiene failure, which points at the wrong
+      # thing.
       - uses: pre-commit/action@v3.0.1
         env:
-          SKIP: go-lint,go-test,go-security,check-private
+          SKIP: go-lint,go-test,go-security,check-private,js-test

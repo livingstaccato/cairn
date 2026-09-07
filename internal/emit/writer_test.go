@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -537,6 +538,20 @@ func TestWriteLeavesAnIdenticalFileAlone(t *testing.T) {
 // afterward, which only holds if the replacement is a rename onto a new inode
 // rather than an in-place truncate.
 func TestWriteReplacesFileAtomically(t *testing.T) {
+	// The guarantee under test is POSIX rename semantics: a reader with the
+	// old file already open keeps reading the old bytes after a concurrent
+	// rename replaces the directory entry, because the rename only detaches
+	// the name — the open inode lives until the last handle closes. NTFS has
+	// no equivalent; MoveFileEx (what os.Rename calls) refuses to replace a
+	// file over an open handle at all unless that handle was opened with
+	// FILE_SHARE_DELETE, which a plain os.Open (here, and by any real reader
+	// this package can't control) does not request. That's a real, permanent
+	// platform gap, not a flaky rename — cairndex watch --serve's safe-read-
+	// during-rewrite guarantee genuinely does not hold on Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("rename over an open file handle is a POSIX guarantee; Windows refuses it outright")
+	}
+
 	out := t.TempDir()
 	oldBody := []byte("old content, held open across the rewrite")
 	newBody := []byte("new content")

@@ -72,7 +72,18 @@ func provenOurs(abs string) bool {
 
 // read returns at most limit bytes of a file, or all of it when limit is 0. A
 // file it cannot read comes back empty, so every recogniser refuses it.
+//
+// Lstat first, and refuse anything that is not a regular file, before either
+// branch below opens it. Opening a FIFO for reading blocks until something
+// opens it for writing — forever, for one nobody is writing to — and a
+// generated basename with no regular file behind it is exactly what
+// --remove-orphaned's walk can meet in a tree it does not fully control.
 func read(abs string, limit int) []byte {
+	fi, err := os.Lstat(abs)
+	if err != nil || !fi.Mode().IsRegular() {
+		return nil
+	}
+
 	if limit == 0 {
 		// #nosec G304 -- abs has already been through containedPath, which
 		// resolves it and refuses anything outside the output root. Nothing

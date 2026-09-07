@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/url"
+	"strings"
 
 	"github.com/livingstaccato/cairndex/internal/model"
 )
@@ -52,6 +53,33 @@ func isHex64(s string) bool {
 	return true
 }
 
+// pep503Name normalizes a project name per PEP 503: lowercase, with any run
+// of "-", "_" or "." collapsed to a single "-". Two spellings of the same
+// project name must normalize identically, or a client that resolved a
+// dependency by one spelling does not recognize an index entry filed under
+// the other.
+//
+// Applied only to a directory entry — one level of a simple index naming the
+// projects beneath it. A file's own name is never touched: it is the
+// download pip fetches, and PEP 503 does not normalize those, only the
+// project names that route to them.
+func pep503Name(name string) string {
+	var b strings.Builder
+	inRun := false
+	for _, r := range name {
+		if r == '-' || r == '_' || r == '.' {
+			if !inRun {
+				b.WriteByte('-')
+				inRun = true
+			}
+			continue
+		}
+		inRun = false
+		b.WriteRune(r)
+	}
+	return strings.ToLower(b.String())
+}
+
 // hrefFor builds the anchor target.
 //
 // template.URL suppresses html/template's contextual escaping, so the value
@@ -77,7 +105,12 @@ func hrefFor(e model.Entry) (template.URL, error) {
 // PEP503 renders a listing as a Python simple-repository index page.
 //
 // A simple index is literally a page of anchor links, so this is near-zero
-// marginal cost over the listing cairndex already has.
+// marginal cost over the listing cairndex already has. The same rendering
+// serves both levels PEP 503 defines: the root page, whose entries are
+// project directories, and each project's own page, whose entries are its
+// download files — PEP503 does not need to be told which, since a directory
+// only ever holds one or the other in a real mirror, and a directory entry's
+// name is normalized while a file entry's is not either way.
 func PEP503(l model.Listing) ([]byte, error) {
 	data := struct {
 		Title string
@@ -85,14 +118,15 @@ func PEP503(l model.Listing) ([]byte, error) {
 	}{Title: l.Path}
 
 	for _, e := range l.Entries {
-		if e.IsDir {
-			continue
-		}
 		href, err := hrefFor(e)
 		if err != nil {
 			return nil, err
 		}
-		data.Files = append(data.Files, pep503File{Name: e.Name, Href: href})
+		name := e.Name
+		if e.IsDir {
+			name = pep503Name(e.Name)
+		}
+		data.Files = append(data.Files, pep503File{Name: name, Href: href})
 	}
 
 	var buf bytes.Buffer

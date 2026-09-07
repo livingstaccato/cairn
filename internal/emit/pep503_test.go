@@ -37,8 +37,52 @@ func TestPEP503(t *testing.T) {
 	if !strings.Contains(s, `<a href="/simple/requests/requests-2.32.3.tar.gz">requests-2.32.3.tar.gz</a>`) {
 		t.Error("an unhashed file should link without a fragment")
 	}
-	if strings.Contains(s, "notes") {
-		t.Error("directories must not appear in a simple index")
+	if !strings.Contains(s, `<a href="/simple/requests/notes/">notes</a>`) {
+		t.Errorf("a directory entry should appear as a linked project, got:\n%s", s)
+	}
+}
+
+// A directory of projects is the other level PEP 503 defines: each entry's
+// text has to be its normalized name, or a client that looked a project up
+// by one spelling of its name does not recognize the entry filed under
+// another. Without this, PEP503() over a real tree of project directories
+// rendered a page with no anchors at all — every entry was a directory, and
+// every one of them was skipped.
+func TestPEP503NormalizesDirectoryNames(t *testing.T) {
+	l := model.Listing{
+		Path: "/simple/",
+		Entries: []model.Entry{
+			{Name: "My_Package.Name", IsDir: true, Path: "/simple/My_Package.Name/"},
+			{Name: "requests", IsDir: true, Path: "/simple/requests/"},
+		},
+	}
+	b, err := PEP503(l)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(b)
+
+	want := `<a href="/simple/My_Package.Name/">my-package-name</a>`
+	if !strings.Contains(s, want) {
+		t.Errorf("directory name was not PEP 503 normalized, want %q in:\n%s", want, s)
+	}
+	if !strings.Contains(s, `<a href="/simple/requests/">requests</a>`) {
+		t.Errorf("an already-normalized name should render unchanged:\n%s", s)
+	}
+}
+
+func TestPEP503Name(t *testing.T) {
+	cases := map[string]string{
+		"requests":        "requests",
+		"My_Package.Name": "my-package-name",
+		"a--b__c..d":      "a-b-c-d",
+		"UPPER":           "upper",
+		"":                "",
+	}
+	for in, want := range cases {
+		if got := pep503Name(in); got != want {
+			t.Errorf("pep503Name(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
 

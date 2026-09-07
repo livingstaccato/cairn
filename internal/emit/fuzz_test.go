@@ -171,6 +171,17 @@ func FuzzPEP503EscapesNames(f *testing.F) {
 				continue
 			}
 			assertNoInjection(t, name, string(body))
+
+			// A directory entry's name reaches the same template through
+			// pep503Name first — lowercased and re-punctuated, never
+			// escaped itself, so the property has to hold for it too.
+			dirBody, err := PEP503(model.Listing{Path: "/x", Entries: []model.Entry{
+				{Name: name, Path: p + "/", IsDir: true},
+			}})
+			if err != nil {
+				continue
+			}
+			assertNoInjection(t, name, string(dirBody))
 		}
 	})
 }

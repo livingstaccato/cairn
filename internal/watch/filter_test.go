@@ -83,6 +83,25 @@ func TestFilterSkipsNoSubtreeWhenOutputIsElsewhere(t *testing.T) {
 	}
 }
 
+// The ancestor climb has to resolve each level's own hide: setting, not one
+// setting borrowed from the changed file's immediate parent and reused all
+// the way to the root. "a" clearing hide: to nothing un-hides ".hidden-dir"
+// as one of a's own entries; a settings lookup pinned to .hidden-dir itself
+// (which no rule matches, so it falls back to the root default hide: **/.*)
+// would hide it anyway and drop every change beneath it.
+func TestFilterResolvesEachAncestorsOwnHideSetting(t *testing.T) {
+	root := t.TempDir()
+	write(t, root, "a/.hidden-dir/file.txt", "")
+	noHide := []string{}
+	c := conf([]config.Rule{{Match: "a", Override: config.Override{Hide: &noHide}}})
+
+	f := NewFilter(c, root, t.TempDir(), obs.Discard())
+	if f.Ignore(filepath.Join(root, "a", ".hidden-dir", "file.txt")) {
+		t.Error("a change inside a directory 'a' un-hid was dropped, using a " +
+			"deeper ancestor's hide setting instead of a's own")
+	}
+}
+
 // hide: is per-directory, so a directory that widens it has to widen what the
 // watcher discards too. Otherwise the build ignores a file and the watcher
 // rebuilds for it.

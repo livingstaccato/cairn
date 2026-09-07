@@ -91,8 +91,8 @@ func (f *Filter) Ignore(absPath string) bool {
 // descends past the first match, so neither may a watcher — a repository's own
 // churn would otherwise rebuild the site on every object it writes.
 func (f *Filter) hidden(rel string) bool {
-	s := build.SettingsFor(f.cfg, f.root, path.Dir(rel), f.log)
 	for p := rel; p != "." && p != "/"; p = path.Dir(p) {
+		s := build.SettingsFor(f.cfg, f.root, path.Dir(p), f.log)
 		if walk.HiddenByGlob(s.Hide, p) {
 			return true
 		}

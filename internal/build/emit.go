@@ -48,6 +48,16 @@ func (r *runner) emitTree(relDir string, s config.Settings, prose string, src me
 func (r *runner) treeEntries(relDir string) ([]model.Entry, error) {
 	var out []model.Entry
 	seen := map[string]bool{}
+	// Seeded with the traversal root's own identity: without this, a link
+	// back to relDir itself is not caught until the second time something
+	// reaches it — first through the link with nothing yet marking relDir,
+	// then again when recursing into relDir's own subtree finds the same
+	// link a second time. One wasted full pass over the tree before the
+	// cycle stops, and every entry under relDir counted twice against
+	// tree_max_entries along the way.
+	if abs, err := filepath.EvalSymlinks(filepath.Join(r.root, filepath.FromSlash(relDir))); err == nil {
+		seen[abs] = true
+	}
 
 	var recurse func(rel string, depth int) error
 	recurse = func(rel string, depth int) error {

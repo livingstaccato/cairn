@@ -55,6 +55,13 @@ func EnumerateUnder(cfg *config.Config, rootDir, outDir, relDir string, log *slo
 		// merely point at the same target.
 		seen: map[string]bool{},
 	}
+	// Seeded with relDir's own identity: without this, a link back to
+	// relDir is not caught until relDir's own subtree has already been
+	// walked once through it — one wasted pass duplicating every directory
+	// underneath into the watch plan before the cycle stops.
+	if abs, err := filepath.EvalSymlinks(filepath.Join(rootDir, filepath.FromSlash(relDir))); err == nil {
+		e.seen[abs] = true
+	}
 	e.descend(relDir)
 	return e.p
 }

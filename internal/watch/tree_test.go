@@ -152,6 +152,42 @@ func TestEnumerateStopsAtASymlinkLoop(t *testing.T) {
 	}
 }
 
+// A link back to the watched root itself — Enumerate's own relDir, "." — has
+// to be caught on the first encounter. Nothing marks relDir's own identity
+// before the first descent otherwise, so the cycle is only caught the second
+// time something reaches it: once through the link with nothing yet marking
+// the root, and again when descending into the link's target — the root
+// itself — finds the same link a second time. One wasted pass duplicating
+// every directory in the tree into the plan before the loop stops.
+func TestEnumerateSeedsTheRootAgainstALoopBackToIt(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	if err := os.Symlink(root, filepath.Join(root, "loop")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	follow := true
+	c := conf([]config.Rule{{Match: "**", Override: config.Override{FollowSymlinks: &follow}}})
+
+	done := make(chan Plan, 1)
+	go func() { done <- Enumerate(c, root, out, obs.Discard()) }()
+	var p Plan
+	select {
+	case p = <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("Enumerate never returned; a symlink loop was not detected")
+	}
+
+	// Seeded: ".", "bootstrap", "bootstrap/linux", "docs" — loop is caught
+	// the moment it is seen and never descended into, so it contributes no
+	// directory of its own. Unseeded, loop's target (the root) is walked
+	// once more through it first, duplicating bootstrap, bootstrap/linux
+	// and docs before the second encounter of loop stops it.
+	if len(p.Dirs) != 4 {
+		t.Errorf("got %d dirs %v, want exactly 4: the cycle was caught only "+
+			"after re-walking the root's own subtree once already", len(p.Dirs), rels(t, root, p))
+	}
+}
+
 // A directory that cannot be read is one directory that will not report its
 // changes, not a reason to refuse to watch the rest of the tree.
 func TestEnumerateSurvivesAnUnreadableDirectory(t *testing.T) {

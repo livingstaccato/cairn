@@ -167,6 +167,23 @@ func TestTreeListingStopsAtAnAncestorLoop(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("treeEntries never returned; an ancestor symlink loop was not caught")
 	}
+
+	// The root's own identity has to be seeded into seen before the first
+	// descent, or a.loop's link back to root is not caught until root's own
+	// subtree has already been walked a second time through it: "a" and
+	// "a/loop" listed once each is the whole tree, seeded; unseeded, "a"
+	// under the second, wasted pass appears again as "a/loop/a", and its
+	// own copy of the loop as "a/loop/a/loop" — four entries instead of two
+	// for a cycle exactly one link deep.
+	got := treeEntries(t, filepath.Join(out, "tree.json"))
+	if len(got) != 2 {
+		names := make([]string, len(got))
+		for i, e := range got {
+			names[i] = e.Path
+		}
+		t.Errorf("got %d entries %v, want exactly 2 (a, a/loop): the cycle was "+
+			"caught only after re-walking root's own subtree once already", len(got), names)
+	}
 }
 
 // The recursive listing is an output like any other, so a rebuild that changed

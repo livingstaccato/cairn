@@ -57,7 +57,7 @@ func FuzzNothingEscapesTheServedDirectory(f *testing.F) {
 		f.Fatal(err)
 	}
 
-	h := &files{root: http.Dir(root), log: obs.Discard(), base: resolveBase(root)}
+	h := &files{log: obs.Discard(), base: resolveBase(root)}
 
 	f.Fuzz(func(t *testing.T, target string) {
 		req, err := http.NewRequest(http.MethodGet, "http://x"+target, nil) //nolint:noctx // no server, no deadline to carry
@@ -90,7 +90,7 @@ func FuzzNoGeneratedDirectoryListing(f *testing.F) {
 		f.Fatal(err)
 	}
 
-	h := &files{root: http.Dir(root), log: obs.Discard(), base: resolveBase(root)}
+	h := &files{log: obs.Discard(), base: resolveBase(root)}
 
 	f.Fuzz(func(t *testing.T, target string) {
 		req, err := http.NewRequest(http.MethodGet, "http://x"+target, nil) //nolint:noctx // no server, no deadline to carry

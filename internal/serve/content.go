@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -69,14 +70,12 @@ var byName = map[string]string{
 
 // files answers requests out of one directory and nothing above it.
 //
-// The root is an http.Dir, which resolves the request path against the
-// directory and rejects what climbs out of it — including the encoded spellings
-// of ".." that a client never sends but a script does. Containment is not
-// re-implemented here; it is delegated to the one place in the standard library
-// that has already had every traversal trick thrown at it.
+// Nothing here opens by request path a second time once contained has
+// resolved it: target and send both open the resolved path contained
+// returns, so the file that gets served is the one just validated rather
+// than whatever a fresh resolution of the client's path finds.
 type files struct {
-	root http.FileSystem
-	log  *slog.Logger
+	log *slog.Logger
 	// index is the filename that answers a directory request, e.g.
 	// "home.html" for a config using index_basename: home. Empty falls back
 	// to IndexFile, so a caller that only has a directory still works.
@@ -138,11 +137,15 @@ func (h *files) accept(w http.ResponseWriter, r *http.Request) bool {
 // target reports which file answers a request path, and whether that path named
 // a directory. A directory is answered by its index and by nothing else.
 func (h *files) target(name string) (string, bool, error) {
-	if _, err := h.contained(name); err != nil {
+	resolved, err := h.contained(name)
+	if err != nil {
 		return "", false, err
 	}
 
-	f, err := h.root.Open(name)
+	// #nosec G304 -- resolved is what contained just validated stays inside
+	// h.base; opening name again here would only re-resolve it and reopen
+	// the TOCTOU gap this exists to narrow.
+	f, err := os.Open(resolved)
 	if err != nil {
 		return "", false, err
 	}
@@ -163,12 +166,16 @@ func (h *files) target(name string) (string, bool, error) {
 // leaves an already-set Content-Type alone — which is the whole reason the type
 // is decided before the call rather than after.
 func (h *files) send(w http.ResponseWriter, r *http.Request, name string) {
-	if _, err := h.contained(name); err != nil {
+	resolved, err := h.contained(name)
+	if err != nil {
 		h.miss(w, r, name, err)
 		return
 	}
 
-	f, err := h.root.Open(name)
+	// #nosec G304 -- resolved is what contained just validated stays inside
+	// h.base; opening name again here would only re-resolve it and reopen
+	// the TOCTOU gap this exists to narrow.
+	f, err := os.Open(resolved)
 	if err != nil {
 		h.miss(w, r, name, err)
 		return
@@ -193,12 +200,24 @@ func (h *files) send(w http.ResponseWriter, r *http.Request, name string) {
 }
 
 // contained resolves name against the served root and refuses a result
-// outside it, following symlinks the way opening the file would.
+// outside it, following symlinks the way opening the file would. Callers
+// open the resolved path this returns rather than resolving name a second
+// time, so the file that gets served is the one this check actually looked
+// at.
 //
 // h.base is resolved once at startup; name is what may hide a symlink, so it
 // is the half resolved here, on every request. A missing file resolves with
 // an error too, which is fine: the caller treats that the same as any other
 // miss.
+//
+// This narrows the race to the syscall gap between EvalSymlinks here and the
+// os.Open a caller makes right after; it does not close it. A concurrent
+// writer able to replace the resolved path between those two calls still
+// wins — a portable, no-follow, descriptor-relative open would close it, but
+// that is platform-specific (Linux's openat2 with RESOLVE_NO_SYMLINKS) and
+// this serves macOS and Windows too. Retargeting h.base itself is not
+// covered either: base is resolved once at startup, the same trade cairndex
+// already makes for verifiedAncestors in internal/verify.
 func (h *files) contained(name string) (string, error) {
 	candidate := filepath.Join(h.base, filepath.FromSlash(strings.TrimPrefix(name, "/")))
 	resolved, err := filepath.EvalSymlinks(candidate)

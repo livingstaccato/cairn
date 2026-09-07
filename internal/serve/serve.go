@@ -196,7 +196,7 @@ func (s *Server) bind() (net.Listener, error) {
 // diagnostic-by-print problem arriving through a side door.
 func (s *Server) server() *http.Server {
 	return &http.Server{
-		Handler:           &files{root: http.Dir(s.Dir), log: s.Log, index: s.Index, base: resolveBase(s.Dir)},
+		Handler:           &files{log: s.Log, index: s.Index, base: resolveBase(s.Dir)},
 		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       readTimeout,
 		IdleTimeout:       idleTimeout,

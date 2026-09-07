@@ -1,31 +1,60 @@
-{{- /* Single-pass breadcrumb. Takes a dict of the cairndex path, e.g.
-       "/bootstrap/linux/", and the base_path the tree is published under.
-       Accumulates each href as it goes rather than rebuilding the prefix from
-       scratch per crumb, which is what made the implementation this replaces
-       quadratic in the depth of the path.
+{{- /* Ancestors-based breadcrumb. Takes the current directory's own Page.
 
-       base_path is why this takes a dict rather than the path alone. The root
-       anchor is site-absolute, and hardcoded to "/" it pointed above the tree
-       cairndex published — outside the mirror under base_path, and at the
-       filesystem root from file://. The crumbs were always right, because
-       listing paths already carry the prefix; the anchor in front of them was
-       not, and no amount of reading the path can tell a template where the
-       prefix ends. */ -}}
-{{- $base := .base | default "" -}}
-{{- $path := .path | strings.TrimPrefix $base | strings.TrimPrefix "/" | strings.TrimSuffix "/" -}}
-{{- $parts := split $path "/" -}}
-{{- $acc := $base -}}
+       cairndex stamps exactly one page per indexed tree at_root: true in its
+       own frontmatter — the top of that tree, wherever the site actually
+       mounted it. Walking .Ancestors.Reverse (outermost first) and watching
+       for that marker finds the same boundary the old base_path-prefix trim
+       was reconstructing from a string, without needing base_path at all:
+       everything from the root marker down to (not including) this page
+       becomes a crumb, and everything above it collapses into the root
+       anchor. Every href is a real Page.RelPermalink, so a crumb can never
+       point somewhere base_path did not actually agree with the site's
+       real mount — the class of bug the trim kept needing patched again.
+
+       Home is treated as a root boundary too, not only the at_root marker:
+       a site that mounts its own content at the same path cairndex's root
+       page would occupy — exampleSite-corpus's home page is exactly this,
+       a theme's own hero page standing where content/_index.md would be —
+       wins that path outright, and cairndex's frontmatter for it is never
+       part of the page graph to find. Home is always a real ancestor
+       regardless, so treating it as a fallback boundary keeps the "/"
+       anchor correct even when the marker itself is unreachable; an
+       at_root marker actually found further in still overrides it, for a
+       tree mounted deeper than the site's own home. */ -}}
+{{- $self := . -}}
+{{- $selfAtRoot := false -}}
+{{- with $self.Params.cairndex }}{{ $selfAtRoot = .at_root }}{{ end -}}
+{{- $root := $self -}}
+{{- $crumbs := slice -}}
+{{- if not $selfAtRoot -}}
+  {{- range $self.Ancestors.Reverse -}}
+    {{- $atRoot := false -}}
+    {{- with .Params.cairndex }}{{ $atRoot = .at_root }}{{ end -}}
+    {{- if or $atRoot .IsHome -}}
+      {{- $root = . -}}
+      {{- $crumbs = slice -}}
+    {{- else -}}
+      {{- $crumbs = $crumbs | append . -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- $items := slice (dict "href" $root.RelPermalink "text" "/" "link" true) -}}
+{{- range $crumbs -}}
+  {{- $items = $items | append (dict "href" .RelPermalink "text" .Title "link" true) -}}
+{{- end -}}
+{{- if not $selfAtRoot -}}
+  {{- $items = $items | append (dict "text" $self.Title "link" false) -}}
+{{- end -}}
 <nav class="cairndex-breadcrumb" aria-label="Breadcrumb">
-  <a href="{{ $base }}/">/</a>
-  {{- if ne $path "" -}}
-    {{- range $i, $crumb := $parts -}}
-      {{- $acc = printf "%s/%s" $acc $crumb -}}
-      {{- if $i }}<span class="sep">/</span>{{ end -}}
-      {{- if eq $i (sub (len $parts) 1) -}}
-        <span class="current">{{ $crumb }}</span>
-      {{- else -}}
-        <a href="{{ $acc }}/">{{ $crumb }}</a>
-      {{- end -}}
+  {{- /* No separator right after the root anchor: "/" reads as its own
+         separator ahead of the first named crumb, the same as it always
+         has. Only a second item onward gets one before it. */ -}}
+  {{- range $i, $it := $items -}}
+    {{- if gt $i 1 }}<span class="sep">/</span>{{ end -}}
+    {{- if $it.link -}}
+      <a href="{{ $it.href }}">{{ $it.text }}</a>
+    {{- else -}}
+      <span class="current">{{ $it.text }}</span>
     {{- end -}}
   {{- end -}}
 </nav>

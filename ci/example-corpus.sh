@@ -58,5 +58,18 @@ if ! grep -oE '<script[^>]*type=.?module[^>]*cairndex[^>]*\.js' "$pub/index.html
   echo "FAIL: cairndex.js is not loaded as type=module"; fail=1
 fi
 
+# The breadcrumb is built from real Hugo Ancestors and RelPermalinks, not a
+# manual base_path-prefix trim, so it has to agree with what Hugo actually
+# mounted the tree at: downloads is one level under the indexed root and
+# should render as a real crumb, not swallowed into the root anchor or
+# duplicated by it.
+if ! grep -oE '<a href=.?/.?>/</a><span class=.?current.?>downloads</span>' "$pub/downloads/index.html" >/dev/null; then
+  echo "FAIL: downloads breadcrumb does not match root + current"; fail=1
+fi
+if ! grep -oE '<a href=.?/.?>/</a><a href=.?/downloads/.?>downloads</a><span class=.?sep.?>/</span><span class=.?current.?>linux</span>' \
+    "$pub/downloads/linux/index.html" >/dev/null; then
+  echo "FAIL: nested breadcrumb does not chain root, downloads, current linux"; fail=1
+fi
+
 [ "$fail" -eq 0 ] && echo "OK: corpus-hugo example passed"
 exit "$fail"

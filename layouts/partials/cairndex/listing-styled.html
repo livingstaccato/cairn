@@ -38,7 +38,7 @@
 <div class="cairndex cairndex--styled" data-cairndex-present="styled">
 
   <header class="cairndex-head">
-    {{ partial "cairndex/breadcrumb.html" (dict "path" $c.path "base" $c.base_path) }}
+    {{ partial "cairndex/breadcrumb.html" . }}
     <div class="cairndex-head-sub">
       <p class="cairndex-head-count">
         {{ $n := int $c.count }}{{ $n }} item{{ if ne $n 1 }}s{{ end }}

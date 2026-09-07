@@ -147,6 +147,22 @@ func (c *Config) validate(p string) error {
 	return nil
 }
 
+// ValidateOverride runs the same checks the root cairndex.yaml's defaults: and
+// rules go through against one override on its own, for a caller reading a
+// directory's own .cairndex.yaml. Without this, a checksum: typo there does
+// not fail the build the way the identical typo at the root does — it just
+// never gives that directory's entries a digest, and SHA256SUMS is not
+// written for it, silently.
+func ValidateOverride(p string, o Override) error {
+	if err := validateSources(p, o, nil); err != nil {
+		return err
+	}
+	if err := validateHide(p, o, nil); err != nil {
+		return err
+	}
+	return validateChecksums(p, o, nil)
+}
+
 // eachOverride runs check against the root defaults and every rule. The three
 // validators below all ask the same question in two places, and writing the
 // walk once is what stops one of them growing a third place to look and the

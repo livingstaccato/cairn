@@ -167,5 +167,13 @@ func (r *runner) dirOverride(absDir string) *config.Override {
 		r.log.Warn("ignoring malformed .cairndex.yaml", "path", p, "err", err)
 		return nil
 	}
+	// The same checks the root cairndex.yaml's defaults: and every rule go
+	// through — otherwise a checksum: typo here does not fail the way the
+	// identical typo at the root does. It just never gives this directory's
+	// entries a digest, silently.
+	if err := config.ValidateOverride(p, o); err != nil {
+		r.log.Warn("ignoring invalid .cairndex.yaml", "path", p, "err", err)
+		return nil
+	}
 	return &o
 }

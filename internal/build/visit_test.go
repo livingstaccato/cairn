@@ -65,6 +65,37 @@ func TestRunHonorsDirectoryOverride(t *testing.T) {
 	}
 }
 
+// A per-directory .cairndex.yaml goes through no validation at all today: the
+// root cairndex.yaml refuses an unknown checksum: outright, but the identical
+// typo in a directory's own file is unmarshaled, applied, and produces no
+// error — just a directory that silently never gets a SHA256SUMS, the same
+// failure validateChecksums exists to catch at the root.
+func TestDirOverrideRejectsAnInvalidSetting(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "docs", ".cairndex.yaml"),
+		[]byte("checksum: sha257\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	c := conf(nil)
+	sha := config.ChecksumSHA256
+	outs := []string{config.OutputJSON, config.OutputSums}
+	c.Defaults = config.Override{Checksum: &sha, Outputs: &outs}
+
+	var buf bytes.Buffer
+	log := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	if _, err := Run(c, root, out, log); err != nil {
+		t.Fatalf("an invalid per-directory override must not fail the whole build: %v", err)
+	}
+	if !strings.Contains(buf.String(), ".cairndex.yaml") {
+		t.Errorf("expected a warning naming the rejected override, got %q", buf.String())
+	}
+	if _, err := os.Stat(filepath.Join(out, "docs", "SHA256SUMS")); err != nil {
+		t.Error("the invalid checksum: silently fell through instead of being " +
+			"rejected — docs should still get the root default, sha256")
+	}
+}
+
 // The three producers are dispatched on config, and until now only the fs branch
 // was exercised through a build — the others were tested one layer down, which
 // says nothing about whether a rule reaches them.

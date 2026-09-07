@@ -3,7 +3,7 @@
 
 GO_COVER_MIN ?= 90.0
 
-.PHONY: templates pageweight gate lint security test cover example example-corpus bench fuzz tools act act-job diagrams clean build
+.PHONY: templates pageweight gate private lint security test cover example example-corpus bench fuzz tools act act-job diagrams clean build
 
 gate: private lint security test ## Everything a commit must pass
 

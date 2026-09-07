@@ -3,7 +3,7 @@
 
 GO_COVER_MIN ?= 90.0
 
-.PHONY: templates pageweight gate lint security test cover example bench fuzz tools act act-job diagrams clean build
+.PHONY: templates pageweight gate lint security test cover example example-corpus bench fuzz tools act act-job diagrams clean build
 
 gate: private lint security test ## Everything a commit must pass
 
@@ -35,6 +35,9 @@ act-job: ## Run one CI job locally, e.g. make act-job JOB=security
 
 example: ## End-to-end: cairndex build -> hugo -> assert both halves agree
 	ci/example.sh
+
+example-corpus: ## Same, themed with corpus-hugo instead of themes/reference
+	ci/example-corpus.sh
 
 templates: ## Render the templates against an awkward tree and assert the output
 	ci/templates.sh

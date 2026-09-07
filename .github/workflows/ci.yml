@@ -67,6 +67,13 @@ jobs:
       - name: End-to-end
         run: ci/example.sh
 
+      # Same, against corpus-hugo — a real, separately-published theme, not
+      # the bare-bones themes/reference. This is what actually exercises the
+      # "colors read your theme's custom properties" contract, and it's the
+      # only check in this repo that reaches the network for a module import.
+      - name: End-to-end (real theme)
+        run: ci/example-corpus.sh
+
       # The Go emitters have golden tests; the templates had greps. Three
       # defects shipped through a green gate in one day, each found by reading
       # a rendered page.

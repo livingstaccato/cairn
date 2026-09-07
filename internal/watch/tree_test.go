@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/livingstaccato/cairndex/internal/config"
 	"github.com/livingstaccato/cairndex/internal/obs"
@@ -93,6 +94,61 @@ func TestEnumerateUnderResolvesAgainstTheRoot(t *testing.T) {
 	p := EnumerateUnder(c, root, out, "bootstrap/linux", obs.Discard())
 	if p.Files != 0 {
 		t.Errorf("Files = %d, want 0; the subtree's own rule was not applied", p.Files)
+	}
+}
+
+// follow_symlinks: true makes the build descend into a symlinked directory
+// and index it, so a watcher that never descends the same link can build
+// forever behind changes it never sees.
+func TestEnumerateDescendsAFollowedSymlink(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	target := t.TempDir()
+	write(t, target, "release.md", "# release notes\n")
+	if err := os.Symlink(target, filepath.Join(root, "bootstrap", "linked")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	follow := true
+	c := conf([]config.Rule{{Match: "bootstrap/**", Override: config.Override{FollowSymlinks: &follow}}})
+	p := EnumerateUnder(c, root, out, "bootstrap", obs.Discard())
+
+	if !slices.Contains(rels(t, root, p), "bootstrap/linked") {
+		t.Errorf("a followed symlinked directory was not watched: %v", rels(t, root, p))
+	}
+}
+
+// Without follow_symlinks a symlinked directory stays a leaf, matching what
+// the build itself lists it as: an entry, never a subtree to descend into.
+func TestEnumerateDoesNotDescendAnUnfollowedSymlink(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	target := t.TempDir()
+	if err := os.Symlink(target, filepath.Join(root, "bootstrap", "linked")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	p := EnumerateUnder(conf(nil), root, out, "bootstrap", obs.Discard())
+	if slices.Contains(rels(t, root, p), "bootstrap/linked") {
+		t.Errorf("an unfollowed symlink was watched as a directory: %v", rels(t, root, p))
+	}
+}
+
+// A symlink cycle must not recurse forever: an ancestor directory reached
+// again through a followed link is where descending stops.
+func TestEnumerateStopsAtASymlinkLoop(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	if err := os.Symlink(root, filepath.Join(root, "bootstrap", "loop")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	follow := true
+	c := conf([]config.Rule{{Match: "bootstrap/**", Override: config.Override{FollowSymlinks: &follow}}})
+
+	done := make(chan Plan, 1)
+	go func() { done <- EnumerateUnder(c, root, out, "bootstrap", obs.Discard()) }()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("EnumerateUnder never returned; a symlink loop was not detected")
 	}
 }
 

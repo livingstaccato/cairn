@@ -6,5 +6,5 @@
   <link rel="stylesheet" href="{{ .RelPermalink }}">
 {{ end }}
 {{ with resources.Get "cairndex/cairndex.js" }}
-  <script src="{{ (. | resources.Fingerprint).RelPermalink }}" defer></script>
+  <script type="module" src="{{ (. | resources.Fingerprint).RelPermalink }}" defer></script>
 {{ end }}

@@ -49,5 +49,14 @@ if ! grep -oE '<button[^>]*data-sort=.?name' "$pub/downloads/index.html" >/dev/n
   echo "FAIL: the sortable header is not a real button"; fail=1
 fi
 
+# cairndex.js is an ES module; loaded as a classic script every page throws
+# Uncaught SyntaxError on load. Checked against the home page rather than a
+# downloads listing: a listing page also loads its own second copy of the
+# script through the reference theme's listing-styled.html, correctly, which
+# would mask this exact regression in head-end.html's own copy.
+if ! grep -oE '<script[^>]*type=.?module[^>]*cairndex[^>]*\.js' "$pub/index.html" >/dev/null; then
+  echo "FAIL: cairndex.js is not loaded as type=module"; fail=1
+fi
+
 [ "$fail" -eq 0 ] && echo "OK: corpus-hugo example passed"
 exit "$fail"

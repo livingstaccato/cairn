@@ -87,13 +87,14 @@ func TestEveryOutputCairndexWritesIsDeclared(t *testing.T) {
 		})
 	}
 
-	// The other half of the rule: cairndex declares what it wrote and nothing
-	// else. A release artifact is ServeContent's guess to make, because it has
-	// the bytes to make it with.
+	// The other half of the rule: cairndex declares what it wrote, and declares
+	// the safe unknown default for anything else — never leaves Content-Type
+	// for ServeContent to sniff from the bytes, which is how an extensionless
+	// file shaped like HTML used to come back declared text/html.
 	w := httptest.NewRecorder()
 	setType(w, "/anywhere/release.bin")
-	if got := w.Header().Get("Content-Type"); got != "" {
-		t.Errorf("setType declared %q for a file cairndex did not write, want nothing", got)
+	if got := w.Header().Get("Content-Type"); got != unknownType {
+		t.Errorf("setType declared %q for a file cairndex did not write, want %q", got, unknownType)
 	}
 }
 
@@ -139,8 +140,30 @@ func TestUnknownTypesAreLeftToBeWorkedOut(t *testing.T) {
 	// text on the strength of having no rule.
 	_, base := start(t, tree(t))
 	resp, _ := get(t, base+"/release.bin")
-	if got := resp.Header.Get("Content-Type"); strings.HasPrefix(got, "text/") {
-		t.Errorf("Content-Type is %q; binary content must not be announced as text", got)
+	if got := resp.Header.Get("Content-Type"); got != unknownType {
+		t.Errorf("Content-Type is %q, want %q; binary content must not be announced as text", got, unknownType)
+	}
+}
+
+// TestUnknownExtensionlessContentIsNotSniffedAsHTML is the failure
+// TestUnknownTypesAreLeftToBeWorkedOut's binary fixture cannot reach: leaving
+// Content-Type unset does not mean the browser decides. net/http.ServeContent
+// sniffs an unset Content-Type itself and had been declaring this text/html,
+// server-side, before nosniff ever had a say — nosniff only stops a browser
+// from overriding a type the server already declared.
+func TestUnknownExtensionlessContentIsNotSniffedAsHTML(t *testing.T) {
+	out := tree(t)
+	write(t, out, "uploaded-artifact", "<script>document.title='pwned'</script>\n")
+
+	_, base := start(t, out)
+	resp, body := get(t, base+"/uploaded-artifact")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d, want 200", resp.StatusCode)
+	}
+	if got := resp.Header.Get("Content-Type"); got == textHTMLUTF8 || strings.HasPrefix(got, "text/html") {
+		t.Errorf("Content-Type is %q for an extensionless file shaped like HTML; "+
+			"a browser renders that, whatever nosniff says, because the server chose "+
+			"it, not the browser. Body: %q", got, body)
 	}
 }
 
@@ -243,6 +266,32 @@ func TestNothingEscapesTheServedDirectory(t *testing.T) {
 				t.Errorf("GET %s returned a file from outside the served directory", c.target)
 			}
 		})
+	}
+}
+
+// TestSymlinkedFileDoesNotEscapeTheServedDirectory covers what
+// TestNothingEscapesTheServedDirectory does not: a symlink physically present
+// in the served tree, rather than an encoded ".." in the request path.
+// http.Dir rejects the latter on its own; it does nothing about the former,
+// since opening a symlink is exactly what following it means.
+func TestSymlinkedFileDoesNotEscapeTheServedDirectory(t *testing.T) {
+	out := tree(t)
+	outside := filepath.Join(filepath.Dir(out), "secret.txt")
+	if _, err := os.Stat(outside); err != nil {
+		t.Fatalf("the fixture has no file outside the served root, so this test proves nothing: %v", err)
+	}
+	if err := os.Symlink(outside, filepath.Join(out, "leak.txt")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	_, base := start(t, out)
+	resp, body := get(t, base+"/leak.txt")
+	if resp.StatusCode == http.StatusOK {
+		t.Errorf("GET /leak.txt returned 200; a symlink in the served tree followed its "+
+			"target outside the served root instead of being refused, body: %q", body)
+	}
+	if strings.Contains(body, "not yours") {
+		t.Errorf("GET /leak.txt returned a file from outside the served directory")
 	}
 }
 

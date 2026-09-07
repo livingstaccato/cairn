@@ -22,6 +22,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -195,12 +196,29 @@ func (s *Server) bind() (net.Listener, error) {
 // diagnostic-by-print problem arriving through a side door.
 func (s *Server) server() *http.Server {
 	return &http.Server{
-		Handler:           &files{root: http.Dir(s.Dir), log: s.Log, index: s.Index},
+		Handler:           &files{root: http.Dir(s.Dir), log: s.Log, index: s.Index, base: resolveBase(s.Dir)},
 		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       readTimeout,
 		IdleTimeout:       idleTimeout,
 		ErrorLog:          slog.NewLogLogger(s.Log.Handler(), slog.LevelWarn),
 	}
+}
+
+// resolveBase makes dir absolute and follows any symlink standing at it, once,
+// so every request afterwards checks against a root that cannot itself be
+// mistaken for something outside the tree. Best-effort: bind has already
+// confirmed dir exists and is a directory, so Abs failing here would mean the
+// working directory disappeared mid-call, and an EvalSymlinks failure leaves
+// the absolute form, which is still a correct — if unresolved — root.
+func resolveBase(dir string) string {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return dir
+	}
+	if resolved, err := filepath.EvalSymlinks(abs); err == nil {
+		abs = resolved
+	}
+	return abs
 }
 
 // stop shuts the server down within the grace period and waits for Serve to

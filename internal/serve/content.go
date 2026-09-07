@@ -4,10 +4,12 @@
 package serve
 
 import (
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"path"
+	"path/filepath"
 	"strings"
 )
 
@@ -79,6 +81,14 @@ type files struct {
 	// "home.html" for a config using index_basename: home. Empty falls back
 	// to IndexFile, so a caller that only has a directory still works.
 	index string
+	// base is the served directory, absolute and with its own symlinks
+	// resolved once at startup. http.Dir rejects the encoded spellings of
+	// ".." a client sends, but it does nothing about a symlink already
+	// standing in the tree: opening one follows it to wherever it points,
+	// which is how a build artifact that happens to be a symlink hands back
+	// a file from outside the served root. Every path is checked against
+	// this before it is opened.
+	base string
 }
 
 // indexName is the file this directory request is answered with.
@@ -128,6 +138,10 @@ func (h *files) accept(w http.ResponseWriter, r *http.Request) bool {
 // target reports which file answers a request path, and whether that path named
 // a directory. A directory is answered by its index and by nothing else.
 func (h *files) target(name string) (string, bool, error) {
+	if _, err := h.contained(name); err != nil {
+		return "", false, err
+	}
+
 	f, err := h.root.Open(name)
 	if err != nil {
 		return "", false, err
@@ -149,6 +163,11 @@ func (h *files) target(name string) (string, bool, error) {
 // leaves an already-set Content-Type alone — which is the whole reason the type
 // is decided before the call rather than after.
 func (h *files) send(w http.ResponseWriter, r *http.Request, name string) {
+	if _, err := h.contained(name); err != nil {
+		h.miss(w, r, name, err)
+		return
+	}
+
 	f, err := h.root.Open(name)
 	if err != nil {
 		h.miss(w, r, name, err)
@@ -171,6 +190,29 @@ func (h *files) send(w http.ResponseWriter, r *http.Request, name string) {
 
 	setType(w, name)
 	http.ServeContent(w, r, fi.Name(), fi.ModTime(), f)
+}
+
+// contained resolves name against the served root and refuses a result
+// outside it, following symlinks the way opening the file would.
+//
+// h.base is resolved once at startup; name is what may hide a symlink, so it
+// is the half resolved here, on every request. A missing file resolves with
+// an error too, which is fine: the caller treats that the same as any other
+// miss.
+func (h *files) contained(name string) (string, error) {
+	candidate := filepath.Join(h.base, filepath.FromSlash(strings.TrimPrefix(name, "/")))
+	resolved, err := filepath.EvalSymlinks(candidate)
+	if err != nil {
+		return "", err
+	}
+	rel, err := filepath.Rel(h.base, resolved)
+	if err != nil {
+		return "", err
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("%s resolves outside the served root", name)
+	}
+	return resolved, nil
 }
 
 // miss answers everything that could not be served with the same 404.
@@ -211,12 +253,20 @@ func redirect(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusMovedPermanently)
 }
 
-// setType declares the media type, or declares nothing.
+// unknownType is declared for anything cairndex did not write and does not
+// recognize.
 //
-// Leaving the header unset is a real answer: for anything cairndex did not write
-// — a tarball, a package, an image in a directory being indexed — the host's
-// table and then content sniffing are better guesses than a table that has
-// never seen the file.
+// Leaving Content-Type unset used to be the answer here, on the theory that
+// content sniffing was a better guess than a table that had never seen the
+// file. It is not: net/http's ServeContent sniffs an unset Content-Type
+// itself, server-side, before the response ever reaches a browser, and bytes
+// shaped like HTML in an extensionless release artifact come back declared
+// text/html — X-Content-Type-Options: nosniff stops a browser from
+// second-guessing a declared type, it does nothing about the type this
+// process just declared. octet-stream downloads rather than executes.
+const unknownType = "application/octet-stream"
+
+// setType declares the media type cairndex chose, or the safe unknown default.
 func setType(w http.ResponseWriter, name string) {
 	base := path.Base(name)
 	if ct, ok := byName[base]; ok {
@@ -225,5 +275,7 @@ func setType(w http.ResponseWriter, name string) {
 	}
 	if ct, ok := byExtension[strings.ToLower(path.Ext(base))]; ok {
 		w.Header().Set("Content-Type", ct)
+		return
 	}
+	w.Header().Set("Content-Type", unknownType)
 }

@@ -26,6 +26,7 @@ entries:
   - name: notes
     path: /bootstrap/notes/
     kind: dir
+    size: 4096
 `
 	if err := os.WriteFile(filepath.Join(dir, ".cairndex.yaml"), []byte(body), 0o644); err != nil {
 		t.Fatal(err)
@@ -52,8 +53,16 @@ entries:
 	if iso.Kind != KindImage {
 		t.Errorf("Kind = %q, want the declared image", iso.Kind)
 	}
-	if !got[byName["notes"]].IsDir {
+	notes := got[byName["notes"]]
+	if !notes.IsDir {
 		t.Error("an entry with kind: dir must set IsDir")
+	}
+	// fs.go's own entry() zeroes Size for a directory; an authored size: on
+	// a dir entry — plausibly just copied from a filesystem's own directory
+	// inode size — must not survive into a manifest entry either, or a
+	// client sorting by size sees a directory with a real byte count.
+	if notes.Size != 0 {
+		t.Errorf("Size = %d for a directory entry, want 0", notes.Size)
 	}
 }
 

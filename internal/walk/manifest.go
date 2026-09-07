@@ -84,9 +84,19 @@ func (me ManifestEntry) entry() model.Entry {
 	if me.Kind != "" {
 		kind = me.Kind
 	}
+	isDir := kind == KindDir
+	size := me.Size
+	if isDir {
+		// Matches fs.go's own entry(): Entry.Size is exact bytes, and a
+		// directory does not have a meaningful one. An authored size: on a
+		// dir row — plausibly copied from a filesystem's own directory
+		// inode size — must not reach a client sorting by size as though it
+		// were a real file.
+		size = 0
+	}
 	return model.Entry{
-		Name: me.Name, Path: me.Path, IsDir: kind == KindDir,
-		Size: me.Size, ModTime: modTime(me.Modified),
+		Name: me.Name, Path: me.Path, IsDir: isDir,
+		Size: size, ModTime: modTime(me.Modified),
 		Kind: kind, MIME: mimeType, SHA256: me.SHA256,
 		Title: me.Title, Summary: me.Summary, Tags: me.Tags, Depth: 1,
 	}

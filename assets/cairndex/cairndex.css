@@ -199,6 +199,14 @@
 
 .cairndex-listing-head a { color: inherit; text-decoration: none; }
 .cairndex-listing-head a:hover { color: var(--c-signal); text-decoration: underline; }
+/* The sort control is a real <button> now (keyboard-operable by default,
+   unlike a span with only a click handler); strip its native chrome back to
+   the plain-text look the old span had. */
+.cairndex-listing-head button[data-sort] {
+  all: unset;
+  cursor: pointer;
+  user-select: none;
+}
 .cairndex-listing-head [data-sort] { cursor: pointer; user-select: none; }
 .cairndex-listing-head [data-sort]:hover { color: var(--c-ink); }
 .cairndex-listing-head [data-sort]:focus-visible { outline: 2px solid var(--c-signal); outline-offset: 2px; }

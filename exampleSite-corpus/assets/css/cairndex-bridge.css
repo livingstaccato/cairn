@@ -1,0 +1,21 @@
+/* Maps corpus-hugo's CSS custom properties onto the names cairndex.css reads
+   with a fallback (see cairndex's assets/cairndex/cairndex.css). --accent
+   already matches by name in both, so it needs no line here. */
+:root {
+  --text-1: var(--fg);
+  --text-2: var(--fg-muted);
+  --bg-1: var(--bg);
+  --bg-2: var(--surface);
+  --bg-3: var(--border);
+}
+
+/* cairndex uses --accent as bare text/outline color (the digest, every
+   focus-visible ring). corpus-hugo's own README says --accent is only safe
+   as a filled background with --on-accent text on top — measured 2.65:1
+   against a dark background otherwise, under WCAG's 3:1 floor for UI
+   indicators. --link is the token corpus-hugo already uses for that job in
+   both modes; scoped to .cairndex so the theme's own use of --accent as a
+   filled background elsewhere is untouched. */
+.cairndex {
+  --accent: var(--link);
+}

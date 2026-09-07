@@ -1,0 +1,10 @@
+install.sh:
+  title: Installer
+  summary: Run this first
+  weight: 1
+toolkit.tar.gz:
+  title: Toolkit bundle
+config.yaml:
+  title: Sample config
+data.csv:
+  title: Sample dataset

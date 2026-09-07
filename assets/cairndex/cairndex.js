@@ -81,11 +81,15 @@ function init(root) {
 
   bindCopy(root, navigator.clipboard);
 
-  for (const th of root.querySelectorAll('[data-sort]')) {
-    th.addEventListener('click', () => {
-      const key = th.dataset.sort;
+  // The sort control is a <button> inside its role=columnheader cell —
+  // aria-sort belongs on the cell (APG sortable-table pattern), not the
+  // button, so it's read and written on the ancestor, not the click target.
+  for (const btn of root.querySelectorAll('[data-sort]')) {
+    const th = btn.closest('[role="columnheader"]') || btn;
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.sort;
       const order = th.getAttribute('aria-sort') === 'ascending' ? 'desc' : 'asc';
-      for (const other of root.querySelectorAll('[data-sort]')) {
+      for (const other of root.querySelectorAll('[role="columnheader"]')) {
         other.removeAttribute('aria-sort');
       }
       th.setAttribute('aria-sort', order === 'asc' ? 'ascending' : 'descending');

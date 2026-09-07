@@ -1,0 +1,10 @@
+{{- /* Loads cairndex's assets and the token bridge that maps corpus-hugo's
+       CSS custom properties onto the names cairndex.css reads. */ -}}
+{{ $bridge := resources.Get "css/cairndex-bridge.css" }}
+{{ $cairndex := resources.Get "cairndex/cairndex.css" }}
+{{ with slice $bridge $cairndex | resources.Concat "css/cairndex-theme.css" | resources.Minify | resources.Fingerprint }}
+  <link rel="stylesheet" href="{{ .RelPermalink }}">
+{{ end }}
+{{ with resources.Get "cairndex/cairndex.js" }}
+  <script src="{{ (. | resources.Fingerprint).RelPermalink }}" defer></script>
+{{ end }}

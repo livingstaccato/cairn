@@ -1,0 +1,7 @@
+{{ define "main" }}
+  {{/* corpus-hugo's .page-shell gives the listing the theme's max-width and
+       padding; cairndex.html itself ships no wrapper, by design. */}}
+  <div class="page-shell">
+    {{ partial "cairndex/listing.html" . }}
+  </div>
+{{ end }}

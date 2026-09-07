@@ -1,0 +1,3 @@
+{{- /* cairndex's icons are <use href="#cairndex-kind">; the sprite defining
+       those ids has to be inline in the DOM, not a fetched file. */ -}}
+{{ with resources.Get "cairndex/icons.svg" }}{{ .Content | safeHTML }}{{ end }}

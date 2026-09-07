@@ -30,6 +30,7 @@ path = [
   "assets/cairndex/icons.svg",
   "themes/**",
   "exampleSite/**",
+  "exampleSite-corpus/**",
   ".provide/**",
 ]
 precedence = "aggregate"

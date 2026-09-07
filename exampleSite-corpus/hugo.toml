@@ -1,0 +1,33 @@
+baseURL = "/"
+title = "Downloads"
+
+[params]
+  description = "cairndex, themed with corpus-hugo"
+  tagline = "A directory listing, rendered by a real theme"
+  copyrightHolder = "cairndex"
+
+[[menu.main]]
+  name = "Downloads"
+  url = "/downloads/"
+  weight = 1
+
+# cairndex is imported for its layouts/assets; corpus-hugo supplies baseof,
+# header, footer and its CSS custom properties. Import order doesn't matter
+# here — the two modules define no overlapping template names — but cairndex
+# first, theme last mirrors the convention in exampleSite/hugo.toml.
+[module]
+  [[module.imports]]
+    path = "github.com/livingstaccato/cairndex"
+  [[module.imports]]
+    path = "github.com/livingstaccato/corpus-hugo"
+
+  # Mounting just downloads/, not the generated root _index.md, keeps
+  # corpus-hugo's own hero/search homepage in charge of "/" — closer to how a
+  # real site would add a cairndex-generated section alongside normal pages
+  # than replacing the whole home page with a directory listing.
+  [[module.mounts]]
+    source = "content/downloads"
+    target = "content/downloads"
+
+[markup.goldmark.renderer]
+  unsafe = true

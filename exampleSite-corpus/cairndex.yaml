@@ -1,0 +1,11 @@
+version: 1
+mode: hugo
+root: ./tree
+out: ./content
+index_basename: index
+on_conflict: error
+
+defaults:
+  present: styled
+  outputs: [html, json, csv, sums]
+  checksum: sha256

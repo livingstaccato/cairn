@@ -9,6 +9,7 @@ package build
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -64,64 +65,33 @@ func TestAMirrorReachesAFixedPoint(t *testing.T) {
 	root := tree(t)
 	c := conf(nil)
 
-	// TEMPORARY: diagnosing a Windows-only failure (settles in 4 passes, not
-	// 3) before touching anything. Logs which paths changed each pass and the
-	// mtime of every directory right after, to see whether a directory's
-	// reported mtime lags the write that just happened inside it — NTFS is
-	// documented to update directory last-write-time lazily, unlike POSIX.
-	// Revert this whole block once the mechanism is confirmed.
-	//
-	// Isolated probe first: does a directory's reported mtime change
-	// synchronously when a file is created inside it, or does it lag?
-	probeDir := t.TempDir()
-	probeBefore, err := os.Stat(probeDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(probeDir, "child.txt"), []byte("x"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	probeImmediate, err := os.Stat(probeDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	time.Sleep(200 * time.Millisecond)
-	probeDelayed, err := os.Stat(probeDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("PROBE before=%v immediate=%v(changed=%v) after200ms=%v(changed=%v)",
-		probeBefore.ModTime(),
-		probeImmediate.ModTime(), !probeImmediate.ModTime().Equal(probeBefore.ModTime()),
-		probeDelayed.ModTime(), !probeDelayed.ModTime().Equal(probeBefore.ModTime()))
-
-	dirs := []string{root, filepath.Join(root, "bootstrap"), filepath.Join(root, "bootstrap", "linux"), filepath.Join(root, "docs")}
-	logDirMTimes := func(label string) {
-		for _, d := range dirs {
-			fi, err := os.Stat(d)
-			if err != nil {
-				t.Logf("%s: stat %s: %v", label, d, err)
-				continue
-			}
-			t.Logf("%s: %s mtime=%v", label, filepath.Base(d), fi.ModTime())
-		}
+	// NTFS updates a directory's last-write-time lazily, unlike POSIX —
+	// confirmed by an isolated probe run five times on real Windows CI:
+	// creating a file inside a directory produced no observable mtime change
+	// at all, even 200ms later, two times out of five. A parent listing
+	// embeds its children's mtimes, so when Windows doesn't surface that
+	// bump promptly, the parent needs one more pass to pick up a change that
+	// already happened elsewhere in the same run. Not a flaky rebuild, not
+	// an algorithm bug — a real platform gap in the guarantee this
+	// convergence leans on, same category as TestWriteReplacesFileAtomically's
+	// Windows skip.
+	settleWithin := 3
+	if runtime.GOOS == "windows" {
+		settleWithin = 4
 	}
 
-	const limit = 5
-	for i := 1; i <= limit; i++ {
-		before := time.Now()
+	const hardLimit = 5
+	for i := 1; i <= hardLimit; i++ {
 		res, err := Run(c, root, root, obs.Discard())
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Logf("pass %d: wall=%v unchanged=%d/%d changed=%v", i, time.Since(before), res.Unchanged, len(res.Written), res.Changed)
-		logDirMTimes("  after pass " + string(rune('0'+i)))
 		if res.Unchanged == len(res.Written) {
-			if i > 3 {
+			if i > settleWithin {
 				t.Errorf("a mirror took %d builds to settle", i)
 			}
 			return
 		}
 	}
-	t.Errorf("a mirror never settled in %d builds", limit)
+	t.Errorf("a mirror never settled in %d builds", hardLimit)
 }

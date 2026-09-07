@@ -39,14 +39,6 @@ jobs:
       # platform shows up here as a drop
       - name: Enforce coverage
         run: ci/check-coverage.sh coverage.out 90.0
-      # TEMPORARY: TestAMirrorReachesAFixedPoint's 3-vs-4-pass outcome on
-      # Windows is stochastic (passed once, failed once already) — -count=5
-      # and -v so the mtime-lag probe's output shows up regardless of which
-      # way any given run lands. Revert with the probe once confirmed.
-      - name: Diagnose Windows fixed-point flake
-        if: matrix.os == 'windows-2025'
-        continue-on-error: true
-        run: go test -v -run TestAMirrorReachesAFixedPoint -count=5 ./internal/build/...
       # The cairndex.css enhancement script has its own suite (pure functions
       # plus a jsdom harness over init()'s DOM wiring) — this used to run only
       # in the local pre-commit hook, so a --no-verify commit or a machine

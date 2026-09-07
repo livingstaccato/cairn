@@ -1,2 +1,7 @@
 [codespell]
 skip = ./.git,./go.sum,./coverage.out,./testdata
+# skip= only filters codespell's own directory walk, not files pre-commit
+# names explicitly — package-lock.json's generated content trips a real
+# false positive (a base64 hash substring, not a word) that skip= can't
+# reach that way, so it's excluded by content instead.
+ignore-words-list = vew

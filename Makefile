@@ -21,7 +21,7 @@ security: ## gosec, govulncheck, go mod verify
 
 test: ## Race-enabled Go suite plus the module's JavaScript
 	go test -race ./...
-	node --test assets/cairndex/cairndex.test.mjs
+	node --test assets/cairndex/*.test.mjs
 
 cover: ## Coverage gate over internal/
 	go test -race -coverprofile=coverage.out ./internal/...

@@ -39,6 +39,17 @@ jobs:
       # platform shows up here as a drop
       - name: Enforce coverage
         run: ci/check-coverage.sh coverage.out 90.0
+      # The cairndex.css enhancement script has its own suite (pure functions
+      # plus a jsdom harness over init()'s DOM wiring) — this used to run only
+      # in the local pre-commit hook, so a --no-verify commit or a machine
+      # without pre-commit installed could merge a broken one.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install JS dev dependencies
+        run: npm ci
+      - name: Run JS tests
+        run: node --test assets/cairndex/*.test.mjs
 
   example:
     runs-on: ubuntu-latest

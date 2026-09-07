@@ -1,0 +1,11 @@
+{
+  "name": "cairndex",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "jsdom": "30.0.1"
+  },
+  "scripts": {
+    "test": "node --test assets/cairndex/*.test.mjs"
+  }
+}

@@ -58,7 +58,7 @@ repos:
 
       - id: js-test
         name: cairndex.js tests
-        entry: node --test assets/cairndex/cairndex.test.mjs
+        entry: node --test assets/cairndex/cairndex.test.mjs assets/cairndex/cairndex.dom.test.mjs
         language: system
         pass_filenames: false
         files: ^assets/cairndex/.*\.(js|mjs)$

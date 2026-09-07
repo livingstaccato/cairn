@@ -66,7 +66,7 @@ export function bindCopy(root, clipboard) {
   }
 }
 
-function init(root) {
+export function init(root) {
   const body = root.querySelector('[data-cairndex-body]');
   if (!body) return;
   const rows = () => Array.from(body.querySelectorAll('.cairndex-row'));
@@ -75,8 +75,16 @@ function init(root) {
   if (toolbar) toolbar.hidden = false;
 
   const filter = root.querySelector('[data-cairndex-filter]');
+  const status = root.querySelector('[data-cairndex-filter-status]');
   if (filter) {
-    filter.addEventListener('input', () => filterRows(rows(), filter.value));
+    filter.addEventListener('input', () => {
+      const all = rows();
+      filterRows(all, filter.value);
+      if (status) {
+        const shown = all.filter((r) => !r.hidden).length;
+        status.textContent = `Showing ${shown} of ${all.length}`;
+      }
+    });
   }
 
   bindCopy(root, navigator.clipboard);

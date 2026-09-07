@@ -8,6 +8,8 @@ SPDX-PackageDownloadLocation = "https://github.com/livingstaccato/cairndex"
 path = [
   "go.mod",
   "go.sum",
+  "package.json",
+  "package-lock.json",
   ".gitignore",
   ".codespellrc",
   ".golangci.yml",

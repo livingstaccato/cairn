@@ -66,6 +66,10 @@
            silently covers 2% of a pool is worse than no search box. */ -}}
     {{- $scope := cond (lt (len $shown) $total) (printf "Filter the first %s" (lang.FormatNumber 0 (len $shown))) "Filter by name" -}}
     <input class="cairndex-filter" type="search" placeholder="{{ $scope }}" aria-label="{{ $scope }}" data-cairndex-filter>
+    {{- /* Filtering hides rows silently — nothing else on the page changes, so
+           a screen reader gets no signal that anything happened. aria-live
+           announces the new count without moving visual focus. */ -}}
+    <p class="cairndex-filter-status" aria-live="polite" data-cairndex-filter-status></p>
   </div>
 
   {{- /* role=table/row/columnheader/cell complete the table semantics aria-sort

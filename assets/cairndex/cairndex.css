@@ -181,6 +181,19 @@
 
 .cairndex-filter:focus-visible { outline: 2px solid var(--c-signal); outline-offset: 1px; }
 
+/* Announced, not shown — the filtered list itself is the visible result. */
+.cairndex-filter-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ── Listing ──────────────────────────────────────────────────────────────
    Hairlines, no card. The rows are the object; a container around them would
    just be a box drawn around a box. */

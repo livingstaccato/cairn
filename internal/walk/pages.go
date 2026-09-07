@@ -113,17 +113,33 @@ func readFrontmatter(p string) (pageFrontmatter, error) {
 	if err != nil {
 		return fm, err
 	}
-	const fence = "---\n"
-	if !bytes.HasPrefix(b, []byte(fence)) {
+	rest, ok := cutFrontmatterFence(b)
+	if !ok {
 		return fm, nil
 	}
-	rest := b[len(fence):]
 	end := bytes.Index(rest, []byte("\n---"))
 	if end < 0 {
 		return fm, fmt.Errorf("unterminated frontmatter")
 	}
-	if err := yaml.Unmarshal(rest[:end], &fm); err != nil {
+	// A CRLF closing fence leaves this dangling: the match starts at the "\n"
+	// of "\r\n---", so the slice up to it keeps the "\r" with nothing after.
+	block := bytes.TrimSuffix(rest[:end], []byte("\r"))
+	if err := yaml.Unmarshal(block, &fm); err != nil {
 		return fm, fmt.Errorf("parse frontmatter: %w", err)
 	}
 	return fm, nil
+}
+
+// cutFrontmatterFence reports whether b opens with a "---" fence and returns
+// what follows it. A page checked out with CRLF line endings opens the same
+// fence with "---\r\n", which the exact "---\n" prefix this used to require
+// never matched — the page was silently treated as carrying no frontmatter
+// at all, draft: true included.
+func cutFrontmatterFence(b []byte) ([]byte, bool) {
+	for _, fence := range [][]byte{[]byte("---\r\n"), []byte("---\n")} {
+		if bytes.HasPrefix(b, fence) {
+			return b[len(fence):], true
+		}
+	}
+	return nil, false
 }

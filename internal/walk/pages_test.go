@@ -107,6 +107,59 @@ func TestPagesMalformedFrontmatterWarns(t *testing.T) {
 	}
 }
 
+// A CRLF-checked-out page is still a page with frontmatter — readFrontmatter
+// matched only the exact "---\n" fence, so a CRLF file's fence never matched
+// at all, and a draft: true CRLF page was published as though it had no
+// frontmatter to say so.
+func TestPagesHonoursDraftInCRLFFrontmatter(t *testing.T) {
+	root := contentFixture(t)
+	crlf := "---\r\ntitle: CRLF Draft\r\ndraft: true\r\n---\r\n"
+	if err := os.WriteFile(filepath.Join(root, "docs", "crlf-draft.md"), []byte(crlf), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, warns, err := Pages(root, "docs", config.Defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(warns) != 0 {
+		t.Errorf("warnings: %v", warns)
+	}
+	for _, e := range got {
+		if e.Name == "crlf-draft" {
+			t.Error("a CRLF page's draft: true was not honoured; it was published")
+		}
+	}
+}
+
+// The same CRLF fence, read correctly, for a page that is not a draft — the
+// title still has to come through, proving the fix reads the frontmatter
+// rather than merely refusing to publish it.
+func TestPagesReadsCRLFFrontmatter(t *testing.T) {
+	root := contentFixture(t)
+	crlf := "---\r\ntitle: CRLF Title\r\nsummary: CRLF Summary\r\n---\r\n\r\nBody.\r\n"
+	if err := os.WriteFile(filepath.Join(root, "docs", "crlf.md"), []byte(crlf), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, warns, err := Pages(root, "docs", config.Defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(warns) != 0 {
+		t.Errorf("warnings: %v", warns)
+	}
+	for _, e := range got {
+		if e.Name == "crlf" {
+			if e.Title != "CRLF Title" || e.Summary != "CRLF Summary" {
+				t.Errorf("CRLF frontmatter not read: %+v", e)
+			}
+			return
+		}
+	}
+	t.Fatalf("crlf.md missing from %v", names(got))
+}
+
 func TestPagesMissingDirIsError(t *testing.T) {
 	if _, _, err := Pages(t.TempDir(), "nope", config.Defaults()); err == nil {
 		t.Fatal("expected an error for a missing content directory")

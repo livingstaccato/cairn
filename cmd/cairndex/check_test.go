@@ -41,7 +41,7 @@ func checkFixture(t *testing.T) (configPath, root, out string) {
 func TestCheckPassesOnAnIntactTree(t *testing.T) {
 	configPath, _, _ := checkFixture(t)
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
+	if err := runBuild(context.Background(), configPath, "", build.Options{}, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 	if err := runCheck(context.Background(), configPath, false, &stderr); err != nil {
@@ -54,7 +54,7 @@ func TestCheckPassesOnAnIntactTree(t *testing.T) {
 func TestCheckFindsATamperedArtifact(t *testing.T) {
 	configPath, root, _ := checkFixture(t)
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
+	if err := runBuild(context.Background(), configPath, "", build.Options{}, &stderr); err != nil {
 		t.Fatal(err)
 	}
 
@@ -78,7 +78,7 @@ func TestCheckFindsATamperedArtifact(t *testing.T) {
 func TestCheckFindsOutputCairndexDoesNotOwn(t *testing.T) {
 	configPath, _, out := checkFixture(t)
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
+	if err := runBuild(context.Background(), configPath, "", build.Options{}, &stderr); err != nil {
 		t.Fatal(err)
 	}
 
@@ -127,7 +127,7 @@ func TestRootCommandHasCheck(t *testing.T) {
 func TestCheckRemovesOrphanedOutputWhenAsked(t *testing.T) {
 	configPath, out := fixture(t)
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
+	if err := runBuild(context.Background(), configPath, "", build.Options{}, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 
@@ -166,7 +166,7 @@ func TestCheckRemovesOrphanedOutputWhenAsked(t *testing.T) {
 func TestCheckRefusesToRemoveWhenTheManifestClaimsNothing(t *testing.T) {
 	configPath, out := fixture(t)
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
+	if err := runBuild(context.Background(), configPath, "", build.Options{}, &stderr); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Remove(filepath.Join(out, emit.ManifestFile)); err != nil {
@@ -193,7 +193,7 @@ func TestCheckRefusesToRemoveWhenTheManifestClaimsNothing(t *testing.T) {
 func TestCheckKeepsOrphansItCannotProveAreCairndexsOwn(t *testing.T) {
 	configPath, out := fixture(t)
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
+	if err := runBuild(context.Background(), configPath, "", build.Options{}, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 
@@ -231,7 +231,7 @@ func TestCheckKeepsOrphansItCannotProveAreCairndexsOwn(t *testing.T) {
 func TestCheckDoesNotReportRemovedOrphansAsErrors(t *testing.T) {
 	configPath, out := fixture(t)
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
+	if err := runBuild(context.Background(), configPath, "", build.Options{}, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 
@@ -259,7 +259,7 @@ func TestCheckDoesNotReportRemovedOrphansAsErrors(t *testing.T) {
 func TestCheckReportsDirectoriesTheSweepRemoved(t *testing.T) {
 	configPath, out := fixture(t)
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
+	if err := runBuild(context.Background(), configPath, "", build.Options{}, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 

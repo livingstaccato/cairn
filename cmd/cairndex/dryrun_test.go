@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,7 +18,7 @@ func TestBuildDryRunWritesNothing(t *testing.T) {
 	configPath, out := fixture(t)
 
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", build.Options{Dry: true}, &stderr); err != nil {
+	if err := runBuild(context.Background(), configPath, "", build.Options{Dry: true}, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 
@@ -37,7 +38,7 @@ func TestBuildDryRunStillWritesTheChangedList(t *testing.T) {
 	list := filepath.Join(t.TempDir(), "changed.txt")
 
 	var stderr strings.Builder
-	if err := runBuild(configPath, list, build.Options{Dry: true}, &stderr); err != nil {
+	if err := runBuild(context.Background(), configPath, list, build.Options{Dry: true}, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 
@@ -57,7 +58,7 @@ func TestBuildDryRunStillWritesTheChangedList(t *testing.T) {
 func TestBuildDryRunReportsWhatPruneWouldRemove(t *testing.T) {
 	configPath, out := fixture(t)
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
+	if err := runBuild(context.Background(), configPath, "", build.Options{}, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 
@@ -68,7 +69,7 @@ func TestBuildDryRunReportsWhatPruneWouldRemove(t *testing.T) {
 	stale := filepath.Join(out, "bootstrap", "index.json")
 
 	stderr.Reset()
-	if err := runBuild(configPath, "", build.Options{Dry: true}, &stderr); err != nil {
+	if err := runBuild(context.Background(), configPath, "", build.Options{Dry: true}, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 

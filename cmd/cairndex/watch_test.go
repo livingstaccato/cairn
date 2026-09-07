@@ -149,7 +149,7 @@ func TestAMissingRootNamesTheSettingAndThePath(t *testing.T) {
 	}
 
 	var stderr strings.Builder
-	err := runBuild(configPath, "", build.Options{}, &stderr)
+	err := runBuild(context.Background(), configPath, "", build.Options{}, &stderr)
 	if err == nil {
 		t.Fatal("a build whose root: does not exist must fail")
 	}
@@ -176,7 +176,7 @@ func TestARootThatIsAFileIsRefusedClearly(t *testing.T) {
 	}
 
 	var stderr strings.Builder
-	err := runBuild(configPath, "", build.Options{}, &stderr)
+	err := runBuild(context.Background(), configPath, "", build.Options{}, &stderr)
 	if err == nil {
 		t.Fatal("a root: pointing at a file must fail")
 	}

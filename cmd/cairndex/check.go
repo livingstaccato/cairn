@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
+	"os/signal"
 
 	"github.com/spf13/cobra"
 
@@ -32,7 +34,15 @@ func newCheckCmd() *cobra.Command {
 			"claims and the disk no longer has, and finds output cairndex does not own.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runCheck(cmd.Context(), configPath, removeOrphaned, cmd.ErrOrStderr())
+			// Claims SIGINT's disposition for the whole command, the same
+			// reason build's RunE does: --remove-orphaned deletes as it
+			// goes, and a Ctrl-C reaching the OS default action mid-removal
+			// is a process killed with no record of what it had already
+			// removed.
+			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt)
+			defer stop()
+			afterSignalRegistered()
+			return runCheck(ctx, configPath, removeOrphaned, cmd.ErrOrStderr())
 		},
 	}
 	cmd.Flags().StringVarP(&configPath, "config", "c", DefaultConfigFile, "path to the root cairndex.yaml")
@@ -54,7 +64,7 @@ func runCheck(ctx context.Context, configPath string, removeOrphaned bool, stder
 		return err
 	}
 	defer func() {
-		if err := shutdown(ctx); err != nil {
+		if err := shutdown(context.WithoutCancel(ctx)); err != nil {
 			_, _ = fmt.Fprintln(stderr, "cairndex: telemetry shutdown:", err)
 		}
 	}()

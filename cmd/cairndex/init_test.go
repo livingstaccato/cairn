@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,7 +31,7 @@ func TestInitWritesAConfigThatBuilds(t *testing.T) {
 	if err := runInit(configPath, &stderr); err != nil {
 		t.Fatalf("init: %v, stderr:\n%s", err, stderr.String())
 	}
-	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
+	if err := runBuild(context.Background(), configPath, "", build.Options{}, &stderr); err != nil {
 		t.Fatalf("a build of the config init wrote must succeed: %v\nstderr:\n%s", err, stderr.String())
 	}
 

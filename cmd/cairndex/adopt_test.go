@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,7 +28,7 @@ func wedge(t *testing.T, out string) {
 func TestBuildAdoptRecoversALostManifest(t *testing.T) {
 	configPath, out := fixture(t)
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
+	if err := runBuild(context.Background(), configPath, "", build.Options{}, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 	wedge(t, out)
@@ -35,12 +36,12 @@ func TestBuildAdoptRecoversALostManifest(t *testing.T) {
 	// Without the flag the tree stays wedged, which is the state --adopt exists
 	// for and the reason it must not be the default.
 	stderr.Reset()
-	if err := runBuild(configPath, "", build.Options{}, &stderr); err == nil {
+	if err := runBuild(context.Background(), configPath, "", build.Options{}, &stderr); err == nil {
 		t.Fatal("expected a plain build to refuse output it no longer claims")
 	}
 
 	stderr.Reset()
-	if err := runBuild(configPath, "", build.Options{Adopt: true}, &stderr); err != nil {
+	if err := runBuild(context.Background(), configPath, "", build.Options{Adopt: true}, &stderr); err != nil {
 		t.Fatalf("--adopt did not recover the tree: %v, stderr:\n%s", err, stderr.String())
 	}
 	if !strings.Contains(stderr.String(), "claimed output cairndex had no record of writing") {
@@ -49,7 +50,7 @@ func TestBuildAdoptRecoversALostManifest(t *testing.T) {
 
 	// And the claim sticks: the next ordinary build needs no flag.
 	stderr.Reset()
-	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
+	if err := runBuild(context.Background(), configPath, "", build.Options{}, &stderr); err != nil {
 		t.Errorf("a later ordinary build must own the adopted output: %v", err)
 	}
 }
@@ -59,13 +60,13 @@ func TestBuildAdoptRecoversALostManifest(t *testing.T) {
 func TestBuildDryAdoptReportsAndClaimsNothing(t *testing.T) {
 	configPath, out := fixture(t)
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
+	if err := runBuild(context.Background(), configPath, "", build.Options{}, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 	wedge(t, out)
 
 	stderr.Reset()
-	if err := runBuild(configPath, "", build.Options{Adopt: true, Dry: true}, &stderr); err != nil {
+	if err := runBuild(context.Background(), configPath, "", build.Options{Adopt: true, Dry: true}, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 	if !strings.Contains(stderr.String(), "would claim output cairndex has no record of writing") {
@@ -73,7 +74,7 @@ func TestBuildDryAdoptReportsAndClaimsNothing(t *testing.T) {
 	}
 
 	stderr.Reset()
-	if err := runBuild(configPath, "", build.Options{}, &stderr); err == nil {
+	if err := runBuild(context.Background(), configPath, "", build.Options{}, &stderr); err == nil {
 		t.Error("a dry run claimed the output it was only asked to describe")
 	}
 }

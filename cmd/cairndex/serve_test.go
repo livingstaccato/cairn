@@ -22,7 +22,7 @@ import (
 func TestServeServesTheOutputDirectory(t *testing.T) {
 	configPath, _ := fixture(t)
 	var stderr strings.Builder
-	if err := runBuild(configPath, "", build.Options{}, &stderr); err != nil {
+	if err := runBuild(context.Background(), configPath, "", build.Options{}, &stderr); err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 

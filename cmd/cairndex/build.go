@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"os/signal"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -19,6 +20,13 @@ import (
 
 // DefaultConfigFile is the config cairndex reads when --config is not given.
 const DefaultConfigFile = "cairndex.yaml"
+
+// afterSignalRegistered runs immediately after a command's RunE claims a
+// signal's disposition via signal.NotifyContext. A test hook, a no-op in
+// production: it is the only way to know that the claim has already
+// happened without racing a real signal delivery against wall-clock time,
+// the same reason internal/build's buildStep is a var.
+var afterSignalRegistered = func() {}
 
 func newBuildCmd() *cobra.Command {
 	var configPath string
@@ -32,7 +40,14 @@ func newBuildCmd() *cobra.Command {
 			"directory the config covers.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runBuild(configPath, changedTo, opts, cmd.ErrOrStderr())
+			// Claims SIGINT's disposition for the whole command: without
+			// this a Ctrl-C mid-build reaches the OS default action and
+			// kills the process outright, skipping the manifest save that
+			// turns a partial build into one a later run can own.
+			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt)
+			defer stop()
+			afterSignalRegistered()
+			return runBuild(ctx, configPath, changedTo, opts, cmd.ErrOrStderr())
 		},
 	}
 	// pflag reads a single dash as shorthand, so the stdlib flag package's
@@ -54,15 +69,13 @@ func newBuildCmd() *cobra.Command {
 // Diagnostics go to the supplied writer, which is stderr in production: stdout
 // stays clean so a caller can pipe generated output without filtering log lines
 // out of it.
-func runBuild(configPath, changedTo string, opts build.Options, stderr io.Writer) error {
-	ctx := context.Background()
-
+func runBuild(ctx context.Context, configPath, changedTo string, opts build.Options, stderr io.Writer) error {
 	log, shutdown, err := obs.Setup(ctx, "cairndex", stderr)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		if err := shutdown(ctx); err != nil {
+		if err := shutdown(context.WithoutCancel(ctx)); err != nil {
 			_, _ = fmt.Fprintln(stderr, "cairndex: telemetry shutdown:", err)
 		}
 	}()

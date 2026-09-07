@@ -40,12 +40,17 @@ func newBuildCmd() *cobra.Command {
 			"directory the config covers.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			// Claims SIGINT's disposition for the whole command: without
-			// this a Ctrl-C mid-build reaches the OS default action and
-			// kills the process outright, skipping the manifest save that
-			// turns a partial build into one a later run can own.
+			// Claims SIGINT's disposition so a Ctrl-C mid-build cancels ctx
+			// instead of reaching the OS default action and killing the
+			// process outright, skipping the manifest save that turns a
+			// partial build into one a later run can own. stopOnCancel hands
+			// the disposition back the moment that happens rather than
+			// holding it for the rest of the run, so a build this ctx
+			// cancellation does not stop on its own still has a second
+			// Ctrl-C left to end it.
 			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt)
 			defer stop()
+			stopOnCancel(ctx, stop)
 			afterSignalRegistered()
 			return runBuild(ctx, configPath, changedTo, opts, cmd.ErrOrStderr())
 		},

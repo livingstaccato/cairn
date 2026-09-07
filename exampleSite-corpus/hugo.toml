@@ -11,6 +11,11 @@ title = "Downloads"
   url = "/downloads/"
   weight = 1
 
+[[menu.main]]
+  name = "Docs"
+  url = "/docs/"
+  weight = 2
+
 # cairndex is imported for its layouts/assets; corpus-hugo supplies baseof,
 # header, footer and its CSS custom properties. Import order doesn't matter
 # here — the two modules define no overlapping template names — but cairndex
@@ -21,13 +26,23 @@ title = "Downloads"
   [[module.imports]]
     path = "github.com/livingstaccato/corpus-hugo"
 
-  # Mounting just downloads/, not the generated root _index.md, keeps
-  # corpus-hugo's own hero/search homepage in charge of "/" — closer to how a
-  # real site would add a cairndex-generated section alongside normal pages
-  # than replacing the whole home page with a directory listing.
+  # Mounting just downloads/ and docs/, not the generated root _index.md,
+  # keeps corpus-hugo's own hero/search homepage in charge of "/" — closer to
+  # how a real site would add a cairndex-generated section alongside normal
+  # pages than replacing the whole home page with a directory listing.
   [[module.mounts]]
     source = "content/downloads"
     target = "content/downloads"
+
+  # source: pages content has to be mounted twice: the authored markdown as
+  # content Hugo renders normally, and cairndex's own generated content/docs
+  # (just the section's _index.md — the listing) over the top of it.
+  [[module.mounts]]
+    source = "tree/docs"
+    target = "content/docs"
+  [[module.mounts]]
+    source = "content/docs"
+    target = "content/docs"
 
 [markup.goldmark.renderer]
   unsafe = true

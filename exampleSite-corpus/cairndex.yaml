@@ -9,3 +9,15 @@ defaults:
   present: styled
   outputs: [html, json, csv, sums]
   checksum: sha256
+
+rules:
+  # Real, Hugo-authored pages, not files walked from disk — mounted as
+  # content in hugo.toml. This is what proves an authored corpus and a
+  # cairndex index coexist in the same site: these two pages render through
+  # corpus-hugo's own single.html, same as any other content page, while
+  # /docs/ itself is a cairndex listing of them.
+  - match: "docs/**"
+    source: pages
+    present: styled
+    outputs: [html, json, csv]
+    checksum: none

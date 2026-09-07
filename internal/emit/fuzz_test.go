@@ -98,9 +98,16 @@ func FuzzCSVSafeNeutralizesFormulas(f *testing.F) {
 		if got == "" {
 			return
 		}
-		switch got[0] {
-		case '=', '+', '-', '@', '\t', '\r':
+		if isFormulaTrigger(got[0]) {
 			t.Fatalf("name %q produced a field a spreadsheet executes: %q", name, got)
+		}
+		// The property that actually matters: what the spreadsheet sees
+		// after it trims leading spaces and tabs on its own, not just this
+		// field's own first byte. This is the check " =cmd()" used to pass
+		// while still reaching the spreadsheet as a formula.
+		trimmed := strings.TrimLeft(got, " \t")
+		if trimmed != "" && isFormulaTrigger(trimmed[0]) {
+			t.Fatalf("name %q produced %q, a formula once a spreadsheet trims its leading whitespace", name, got)
 		}
 	})
 }

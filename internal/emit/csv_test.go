@@ -76,6 +76,31 @@ func TestCSVSafeCoversEveryTrigger(t *testing.T) {
 	}
 }
 
+// Excel and LibreOffice trim leading spaces and tabs before deciding whether
+// a cell is a formula, so a name wearing that padding is still a formula to
+// the spreadsheet even though csvSafe's own first-byte check used to see
+// only the whitespace and let it through unmodified.
+func TestCSVSafeCatchesLeadingWhitespaceBeforeATrigger(t *testing.T) {
+	for _, s := range []string{" =cmd()", "  +1+1", "\t-1+1", " \t@SUM(1)"} {
+		if got := csvSafe(s); !strings.HasPrefix(got, "'") {
+			t.Errorf("csvSafe(%q) = %q, want an apostrophe prefix", s, got)
+		}
+	}
+	// No trigger character anywhere before the real content: unchanged is
+	// correct, plain space or not.
+	for _, s := range []string{" ", "  ", " x", "a =cmd()"} {
+		if got := csvSafe(s); got != s {
+			t.Errorf("csvSafe(%q) = %q, want it unchanged", s, got)
+		}
+	}
+	// A leading tab is a trigger in its own right, whatever follows it —
+	// unrelated to the leading-whitespace case above, but worth pinning so
+	// a future change to the trim logic cannot quietly drop it.
+	if got := csvSafe("\t\tx"); !strings.HasPrefix(got, "'") {
+		t.Errorf(`csvSafe("\t\tx") = %q, want an apostrophe prefix`, got)
+	}
+}
+
 func TestCSVQuotesInjectedCommas(t *testing.T) {
 	l := sample()
 	l.Entries[1].Title = `Comma, "quote" and more`

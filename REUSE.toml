@@ -24,6 +24,10 @@ path = [
   ".actrc",
   "commitlint.config.cjs",
   "testdata/**",
+  # A committed fuzz-failure fixture is arbitrary bytes a fuzzer generated,
+  # not authored content, and lives under a package's own testdata/, not
+  # only at the repo root.
+  "**/testdata/**",
   # Templates carry no header of their own: an HTML comment would be copied into
   # every page cairndex generates, licensing a user's output as though it were this
   # project's source.

@@ -8,6 +8,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/livingstaccato/cairndex/internal/model"
@@ -26,8 +27,11 @@ const (
 
 // csvSafe neutralizes spreadsheet formula injection. Excel and LibreOffice
 // execute a field beginning with =, +, -, @, tab or CR as a formula when the
-// file is opened. Names in a mirrored tree are attacker-influenced, so such
-// fields get an apostrophe prefix, which those programs read as "this is text".
+// file is opened — and both trim leading spaces and tabs before making that
+// decision, so "  =cmd()" is a formula to the spreadsheet even though its
+// first byte is a space. Names in a mirrored tree are attacker-influenced,
+// so such fields get an apostrophe prefix, which those programs read as
+// "this is text".
 //
 // encoding/csv handles quoting; it does not handle this, because it is a
 // spreadsheet behavior rather than a CSV one.
@@ -35,11 +39,28 @@ func csvSafe(s string) string {
 	if s == "" {
 		return s
 	}
-	switch s[0] {
-	case '=', '+', '-', '@', '\t', '\r':
+	// The literal first byte, so a leading tab or CR is still caught in its
+	// own right — trimming it away below to look past it would stop
+	// treating it as a trigger at all.
+	if isFormulaTrigger(s[0]) {
+		return "'" + s
+	}
+	// The first byte after leading spaces and tabs, so "  =cmd()" is caught
+	// even though its own first byte is a space.
+	if trimmed := strings.TrimLeft(s, " \t"); trimmed != "" && isFormulaTrigger(trimmed[0]) {
 		return "'" + s
 	}
 	return s
+}
+
+// isFormulaTrigger reports whether b is one of the bytes Excel and
+// LibreOffice treat as opening a formula.
+func isFormulaTrigger(b byte) bool {
+	switch b {
+	case '=', '+', '-', '@', '\t', '\r':
+		return true
+	}
+	return false
 }
 
 // CSV renders a listing as index.csv or tree.csv.

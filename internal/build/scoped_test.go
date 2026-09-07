@@ -33,6 +33,36 @@ func readListing(t *testing.T, path string) model.Listing {
 	return l
 }
 
+// A panic mid-rebuild must not leave what it already wrote unclaimed.
+// RunScoped is the only entrypoint cairndex watch calls on every rebuild, so a
+// panic here is the one this package is most likely to hit outside a test —
+// and unlike Run, it had no recovery at all: the panic reached the watcher
+// bare and SavePartial never ran. buildScopedStep is a var, like buildStep,
+// because a panic mid-build is a failure this package otherwise has no way to
+// produce in a test.
+func TestPanicMidScopedBuildStillClaimsPartialOutput(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+
+	orig := buildScopedStep
+	t.Cleanup(func() { buildScopedStep = orig })
+	buildScopedStep = func(r *runner, scope string) error {
+		if err := r.writer.Write("index.json", []byte(`{"entries":[]}`)); err != nil {
+			t.Fatal(err)
+		}
+		panic("simulated panic mid-scoped-build")
+	}
+	if _, err := RunScoped(conf(nil), root, out, obs.Discard(), "."); err == nil {
+		t.Fatal("expected the recovered panic to surface as an error")
+	}
+	buildScopedStep = orig
+
+	// A second, ordinary build must find index.json already claimed by the
+	// panicked run — proof SavePartial ran on the panic path too.
+	if _, err := Run(conf(nil), root, out, obs.Discard()); err != nil {
+		t.Fatalf("a later build must own what the panicked run wrote, got: %v", err)
+	}
+}
+
 // The whole point: a scoped rebuild must not delete the listings it did not
 // write. The unscoped Prune deletes everything the previous run owned and this
 // one did not rewrite, which on a watch event is most of the tree.

@@ -61,7 +61,7 @@ func RunScoped(cfg *config.Config, rootDir, outDir string, log *slog.Logger, sco
 	}
 	r.warnAboutTheManifest()
 
-	err := r.buildScoped(scope)
+	err := r.safeBuildScoped(scope)
 	if err != nil {
 		if saveErr := r.writer.SavePartial(); saveErr != nil {
 			r.log.Warn("could not record partial output; a retry may report conflicts",
@@ -74,6 +74,25 @@ func RunScoped(cfg *config.Config, rootDir, outDir string, log *slog.Logger, sco
 	r.result.Changed = r.writer.Changed()
 	r.result.Adopted = r.writer.Adopted()
 	return r.result, err
+}
+
+// buildScopedStep runs one scoped build. A var, like buildStep, because a
+// panic mid-build is a failure this package otherwise has no way to produce
+// in a test.
+var buildScopedStep = (*runner).buildScoped
+
+// safeBuildScoped runs a scoped build and turns a panic into an error, the
+// same recovery Run's safeBuild does. RunScoped is the only entrypoint
+// cairndex watch calls on every rebuild, so a panic reaching a caller bare here
+// crashes the watcher and skips SavePartial, leaving whatever this run had
+// already written unclaimed by the manifest.
+func (r *runner) safeBuildScoped(scope string) (err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			err = fmt.Errorf("panic: %v", p)
+		}
+	}()
+	return buildScopedStep(r, scope)
 }
 
 func (r *runner) buildScoped(scope string) error {

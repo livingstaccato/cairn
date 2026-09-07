@@ -70,14 +70,13 @@ func (r *runner) treeEntries(relDir string) ([]model.Entry, error) {
 				continue
 			}
 			child := path.Join(rel, e.Name)
-			if resolved, err := filepath.EvalSymlinks(filepath.Join(r.root, filepath.FromSlash(child))); err == nil {
-				if seen[resolved] {
-					r.warn([]walk.Warning{{Path: child, Err: fmt.Errorf("symlink loop, skipped")}})
-					continue
-				}
-				seen[resolved] = true
+			leave, loop := r.enterSymlink(seen, child)
+			if loop {
+				continue
 			}
-			if err := recurse(child, depth+1); err != nil {
+			err := recurse(child, depth+1)
+			leave()
+			if err != nil {
 				return err
 			}
 		}
@@ -88,6 +87,27 @@ func (r *runner) treeEntries(relDir string) ([]model.Entry, error) {
 		return nil, err
 	}
 	return out, nil
+}
+
+// enterSymlink resolves child's real identity and, if it is already on the
+// current descent's own path, reports a loop rather than recursing into it
+// again. leave removes the mark once the caller is done descending — not
+// left standing for the rest of the walk, which is what let two unrelated
+// symlinks resolving to the same real directory falsely flag the second one:
+// siblings sharing a target are not a cycle, only an ancestor reached again
+// through a link is. A path with nothing to resolve (not a symlink, or one
+// that is broken) returns a no-op leave and never loops.
+func (r *runner) enterSymlink(seen map[string]bool, child string) (leave func(), loop bool) {
+	abs, err := filepath.EvalSymlinks(filepath.Join(r.root, filepath.FromSlash(child)))
+	if err != nil {
+		return func() {}, false
+	}
+	if seen[abs] {
+		r.warn([]walk.Warning{{Path: child, Err: fmt.Errorf("symlink loop, skipped")}})
+		return func() {}, true
+	}
+	seen[abs] = true
+	return func() { delete(seen, abs) }, false
 }
 
 // emitCtx is one directory's rendering job, bundled so the format handlers

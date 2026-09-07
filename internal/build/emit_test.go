@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/livingstaccato/cairndex/internal/config"
 	"github.com/livingstaccato/cairndex/internal/model"
@@ -88,6 +89,83 @@ func TestTreeListingExcludesGeneratedNames(t *testing.T) {
 		if e.Name == "index.json" || e.Name == "tree.json" {
 			t.Errorf("the recursive listing names cairndex's own output: %+v", e)
 		}
+	}
+}
+
+// treeEntries' symlink-loop guard has to catch an ancestor reached again
+// through a link without also refusing two unrelated links that merely
+// point at the same target — sibling directories a real tree can hold, not
+// a cycle. A seen set spanning the whole recursive walk instead of just the
+// current descent's own path cannot tell the two apart: whichever sibling
+// is visited second gets falsely flagged and its subtree dropped from the
+// recursive listing.
+func TestTreeListingDoesNotFlagTwoLinksToTheSameTarget(t *testing.T) {
+	root, out := t.TempDir(), t.TempDir()
+	// The target has to resolve inside root: a followed symlink pointing
+	// outside it is refused as escaping the root, a different check from
+	// the one this test is after.
+	target := filepath.Join(root, "real")
+	if err := os.MkdirAll(target, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(target, "shared.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, filepath.Join(root, "link1")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if err := os.Symlink(target, filepath.Join(root, "link2")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	c := recursing()
+	follow := true
+	c.Defaults.FollowSymlinks = &follow
+
+	run(t, c, root, out)
+
+	var sawReal, sawLink1, sawLink2 bool
+	for _, e := range treeEntries(t, filepath.Join(out, "tree.json")) {
+		switch e.Path {
+		case "/real/shared.txt":
+			sawReal = true
+		case "/link1/shared.txt":
+			sawLink1 = true
+		case "/link2/shared.txt":
+			sawLink2 = true
+		}
+	}
+	if !sawReal || !sawLink1 || !sawLink2 {
+		t.Errorf("three siblings resolving to the same real directory should each be "+
+			"descended, got real=%v link1=%v link2=%v", sawReal, sawLink1, sawLink2)
+	}
+}
+
+// A symlink pointing back to an ancestor is the real cycle the seen set has
+// to catch, unwinding it per-branch must not have traded that away for the
+// two-siblings fix above.
+func TestTreeListingStopsAtAnAncestorLoop(t *testing.T) {
+	root, out := t.TempDir(), t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "a"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(root, filepath.Join(root, "a", "loop")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	c := recursing()
+	follow := true
+	c.Defaults.FollowSymlinks = &follow
+
+	done := make(chan error, 1)
+	go func() { _, err := Run(c, root, out, obs.Discard()); done <- err }()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("treeEntries never returned; an ancestor symlink loop was not caught")
 	}
 }
 

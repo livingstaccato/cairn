@@ -102,6 +102,32 @@ func hrefFor(e model.Entry) (template.URL, error) {
 	return template.URL(u.String()), nil
 }
 
+// PEP503Mixed reports whether l holds both directory and non-directory
+// entries.
+//
+// PEP 503 defines two levels — a root page whose entries are project
+// directories, and each project's own page whose entries are its download
+// files — and PEP503 renders both with the same code: a directory entry
+// normalized as a project link, a file entry left as a download. That only
+// renders a page faithful to either level so long as a listing actually
+// holds just one kind of entry, which nothing enforces; a caller configuring
+// which directories get outputs: [pep503] is what makes that true or not,
+// and PEP503Mixed is how a caller checks it rather than assuming it.
+func PEP503Mixed(l model.Listing) bool {
+	var dir, file bool
+	for _, e := range l.Entries {
+		if e.IsDir {
+			dir = true
+		} else {
+			file = true
+		}
+		if dir && file {
+			return true
+		}
+	}
+	return false
+}
+
 // PEP503 renders a listing as a Python simple-repository index page.
 //
 // A simple index is literally a page of anchor links, so this is near-zero
@@ -110,7 +136,9 @@ func hrefFor(e model.Entry) (template.URL, error) {
 // project directories, and each project's own page, whose entries are its
 // download files — PEP503 does not need to be told which, since a directory
 // only ever holds one or the other in a real mirror, and a directory entry's
-// name is normalized while a file entry's is not either way.
+// name is normalized while a file entry's is not either way. PEP503Mixed is
+// how a caller checks that assumption before trusting this renders either
+// level correctly.
 func PEP503(l model.Listing) ([]byte, error) {
 	data := struct {
 		Title string

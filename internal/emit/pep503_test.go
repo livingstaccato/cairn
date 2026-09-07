@@ -127,6 +127,33 @@ func TestPEP503RejectsNonHexDigest(t *testing.T) {
 	}
 }
 
+// PEP503 renders every directory as a normalized project link and every
+// file as a download, on the assumption that a real listing only ever holds
+// one or the other. PEP503Mixed is how a caller checks that assumption
+// before trusting the page it gets back.
+func TestPEP503Mixed(t *testing.T) {
+	dir := model.Entry{Name: "notes", IsDir: true, Path: "/simple/requests/notes/"}
+	file := model.Entry{Name: "requests-2.32.3.tar.gz", Path: "/simple/requests/requests-2.32.3.tar.gz"}
+
+	cases := map[string]struct {
+		entries []model.Entry
+		want    bool
+	}{
+		"pure files":  {[]model.Entry{file, file}, false},
+		"pure dirs":   {[]model.Entry{dir, dir}, false},
+		"empty":       {nil, false},
+		"mixed":       {[]model.Entry{file, dir}, true},
+		"mixed other": {[]model.Entry{dir, file}, true},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			if got := PEP503Mixed(model.Listing{Entries: c.entries}); got != c.want {
+				t.Errorf("PEP503Mixed(%s) = %v, want %v", name, got, c.want)
+			}
+		})
+	}
+}
+
 func TestIsHex64(t *testing.T) {
 	if !isHex64(strings.Repeat("aF0", 21) + "b") {
 		t.Error("mixed-case 64-char hex should be accepted")

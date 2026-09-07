@@ -4,7 +4,9 @@
 package build
 
 import (
+	"bytes"
 	"encoding/json"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,6 +42,28 @@ func treeEntries(t *testing.T, path string) []struct{ Name, Path string } {
 		t.Fatalf("unmarshal %s: %v", path, err)
 	}
 	return l.Entries
+}
+
+// PEP503 renders a directory entry as a normalized project link and a file
+// entry as a download, on the assumption that a real listing holds only one
+// or the other. Nothing in config enforces that a rule's outputs: [pep503]
+// only ever matches a directory shaped that way, so a mixed one — bootstrap
+// holds bootstrap.sh and apt.list beside the linux/ subdirectory — has to be
+// reported rather than silently rendered as if it were faithful to either
+// PEP 503 level.
+func TestEmitPEP503WarnsOnAMixedDirectory(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	outs := []string{config.OutputPEP503}
+	c := conf([]config.Rule{{Match: "bootstrap", Override: config.Override{Outputs: &outs}}})
+
+	var buf bytes.Buffer
+	log := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	if _, err := Run(c, root, out, log); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if !strings.Contains(buf.String(), "bootstrap") {
+		t.Errorf("expected a warning naming the mixed directory, got %q", buf.String())
+	}
 }
 
 // The recursive listing has to leave out exactly what the per-directory listing

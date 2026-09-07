@@ -369,6 +369,17 @@ func (r *runner) emitPEP503(c emitCtx) error {
 	if c.basename != r.cfg.IndexBasename {
 		return nil
 	}
+	if emit.PEP503Mixed(c.listing) {
+		// PEP 503 defines two separate levels — a root page of project
+		// directories, a project's own page of its download files — and
+		// this renders both with the same code, trusting a directory this
+		// rule matches to hold only one kind of entry. A mixed one renders
+		// a page true to neither: a subdirectory reads to a client as
+		// another downloadable project, a stray file reads as one.
+		r.log.Warn("pep503: directory holds both project directories and "+
+			"files; PEP 503 defines two separate levels and this page is not "+
+			"faithful to either", "path", c.relDir)
+	}
 	b, err := emit.PEP503(c.listing)
 	if err != nil {
 		return err

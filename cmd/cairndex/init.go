@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/livingstaccato/cairndex/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -24,8 +25,11 @@ import (
 // The comments are the point as much as the values. This file is the first
 // thing an operator edits, and the decoder refuses a key it does not know, so
 // the names have to be right in front of them.
-const starterConfig = `# yaml-language-server: $schema=https://raw.githubusercontent.com/livingstaccato/cairndex/main/cairndex.schema.json
-# cairndex.yaml — see https://github.com/livingstaccato/cairndex
+const schemaDirective = "# yaml-language-server: $schema=https://raw.githubusercontent.com/livingstaccato/cairndex/main/cairndex.schema.json\n"
+
+// starterConfigDirect is what init writes by default: a config that renders
+// its own HTML with no other tool involved.
+const starterConfigDirect = schemaDirective + `# cairndex.yaml — see https://github.com/livingstaccato/cairndex
 version: 1
 
 # The tree to index, and where the indexes go. Point both at the same directory
@@ -56,8 +60,39 @@ defaults:
 #     outputs:   [html, json, csv, sums]
 `
 
+// starterConfigHugo is --mode hugo's starter: Hugo renders the HTML from a
+// single _index.md per directory, so there is no present:/outputs: to pick —
+// see docs/hugo-setup.md. Importing the module is a step this file cannot do
+// for you, so it says so rather than writing a config that fails on first
+// build with no clue why.
+const starterConfigHugo = schemaDirective + `# cairndex.yaml — see https://github.com/livingstaccato/cairndex/blob/main/docs/hugo-setup.md
+#
+# Import the module first, or the build has nothing to render with:
+#   hugo mod get github.com/livingstaccato/cairndex@main
+#   go install github.com/livingstaccato/cairndex/cmd/cairndex@main
+version: 1
+mode: hugo
+
+# The tree to index. out: is content/, not site/: in hugo mode cairndex writes
+# one _index.md per directory and Hugo publishes the rest from there.
+root: ./tree
+out:  ./content
+`
+
+// starterFor names the config a mode writes, refusing one it does not
+// recognise rather than guessing which the operator meant.
+func starterFor(mode string) (string, error) {
+	switch mode {
+	case "", config.ModeDirect:
+		return starterConfigDirect, nil
+	case config.ModeHugo:
+		return starterConfigHugo, nil
+	}
+	return "", fmt.Errorf("--mode must be %s or %s, got %q", config.ModeDirect, config.ModeHugo, mode)
+}
+
 func newInitCmd() *cobra.Command {
-	var configPath string
+	var configPath, mode string
 
 	cmd := &cobra.Command{
 		Use:   cmdInit,
@@ -66,10 +101,12 @@ func newInitCmd() *cobra.Command {
 			"replace a config that is already there.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runInit(configPath, cmd.ErrOrStderr())
+			return runInit(configPath, mode, cmd.ErrOrStderr())
 		},
 	}
 	cmd.Flags().StringVarP(&configPath, "config", "c", DefaultConfigFile, "path to write the config to")
+	cmd.Flags().StringVar(&mode, "mode", config.ModeDirect,
+		"starter config to write: "+config.ModeDirect+" or "+config.ModeHugo)
 	return cmd
 }
 
@@ -88,7 +125,11 @@ func newInitCmd() *cobra.Command {
 //
 // Not internal/atomicfile, which replaces a file's contents by rename and would
 // do precisely what this must not.
-func runInit(configPath string, stderr io.Writer) error {
+func runInit(configPath, mode string, stderr io.Writer) error {
+	content, err := starterFor(mode)
+	if err != nil {
+		return err
+	}
 	// #nosec G304,G302 -- the path is the operator's own --config value, and a
 	// config file is readable by whatever runs the build.
 	f, err := os.OpenFile(configPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
@@ -103,7 +144,7 @@ func runInit(configPath string, stderr io.Writer) error {
 	// back: an identity to clean up against rather than a path to trust.
 	fi, statErr := f.Stat()
 
-	if err := writeStarter(f); err != nil {
+	if err := writeStarter(f, content); err != nil {
 		// Take the file this run made back out of the way — but only if
 		// configPath still names it. O_EXCL made the create exclusive; it says
 		// nothing about the moment writeStarter fails, when an editor racing to
@@ -135,8 +176,8 @@ func removeIfSameFile(path string, fi os.FileInfo) {
 // writeStarter fills the created file and closes it, reporting whichever of the
 // two failed. Close is checked because a buffered write can fail there and
 // nowhere else.
-func writeStarter(f *os.File) error {
-	if _, err := f.WriteString(starterConfig); err != nil {
+func writeStarter(f *os.File, content string) error {
+	if _, err := f.WriteString(content); err != nil {
 		_ = f.Close()
 		return err
 	}

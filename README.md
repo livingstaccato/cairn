@@ -24,6 +24,10 @@ cairndex build     # writes ./site
 cairndex serve     # read it back at http://127.0.0.1:22476
 ```
 
+Already running a Hugo site? `cairndex init --mode hugo` writes the other starter
+instead: Hugo renders the HTML, so there is no `present:`/`outputs:` to pick — see
+[Hugo setup](docs/hugo-setup.md).
+
 `cairndex init` writes this, with the reasoning alongside each setting. It refuses
 to replace a config that is already there.
 

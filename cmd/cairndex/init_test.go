@@ -19,8 +19,8 @@ import (
 // comment on its own — a YAML comment line, not a key — or it stops meaning
 // anything to the editor and starts meaning something to the decoder.
 func TestInitConfigCarriesTheSchemaDirective(t *testing.T) {
-	if !strings.HasPrefix(starterConfig, "# yaml-language-server: $schema=") {
-		t.Errorf("starterConfig does not open with the schema directive:\n%s", starterConfig)
+	if !strings.HasPrefix(starterConfigDirect, "# yaml-language-server: $schema=") {
+		t.Errorf("starterConfigDirect does not open with the schema directive:\n%s", starterConfigDirect)
 	}
 }
 
@@ -38,7 +38,7 @@ func TestInitWritesAConfigThatBuilds(t *testing.T) {
 	}
 
 	var stderr strings.Builder
-	if err := runInit(configPath, &stderr); err != nil {
+	if err := runInit(configPath, "", &stderr); err != nil {
 		t.Fatalf("init: %v, stderr:\n%s", err, stderr.String())
 	}
 	if err := runBuild(context.Background(), configPath, "", build.Options{}, &stderr); err != nil {
@@ -53,6 +53,53 @@ func TestInitWritesAConfigThatBuilds(t *testing.T) {
 	}
 }
 
+// --mode hugo writes a different starter: no present:/outputs: to pick, since
+// Hugo renders the HTML, and a reminder to import the module first — a
+// config that otherwise fails on its first build with no clue why.
+func TestInitModeHugoWritesAConfigThatBuilds(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, DefaultConfigFile)
+	if err := os.MkdirAll(filepath.Join(dir, "tree", "pool"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "tree", "pool", "a.txt"), []byte("a\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stderr strings.Builder
+	if err := runInit(configPath, "hugo", &stderr); err != nil {
+		t.Fatalf("init: %v, stderr:\n%s", err, stderr.String())
+	}
+	if err := runBuild(context.Background(), configPath, "", build.Options{}, &stderr); err != nil {
+		t.Fatalf("a build of the hugo starter must succeed: %v\nstderr:\n%s", err, stderr.String())
+	}
+	body, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), "mode: hugo") {
+		t.Errorf("the hugo starter does not set mode: hugo:\n%s", body)
+	}
+	if !strings.Contains(string(body), "out:  ./content") {
+		t.Errorf("the hugo starter does not point out: at content/:\n%s", body)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "content", "pool", "_index.md")); err != nil {
+		t.Error("the hugo starter produced no branch bundle for pool/")
+	}
+}
+
+func TestInitRejectsAnUnknownMode(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), DefaultConfigFile)
+	var stderr strings.Builder
+	err := runInit(configPath, "wat", &stderr)
+	if err == nil {
+		t.Fatal("init must refuse a mode it does not recognise")
+	}
+	if _, statErr := os.Stat(configPath); statErr == nil {
+		t.Error("init wrote a config despite refusing the mode")
+	}
+}
+
 // present: styled is cairndex's default and needs Hugo; in direct mode it writes no
 // HTML at all and warns. A newcomer's first build producing no page is the
 // wrong first impression, so the starter must set bare explicitly.
@@ -60,7 +107,7 @@ func TestInitSetsPresentBare(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, DefaultConfigFile)
 	var stderr strings.Builder
-	if err := runInit(configPath, &stderr); err != nil {
+	if err := runInit(configPath, "", &stderr); err != nil {
 		t.Fatal(err)
 	}
 	body, err := os.ReadFile(configPath)
@@ -84,7 +131,7 @@ func TestInitRefusesToOverwriteAnExistingConfig(t *testing.T) {
 	}
 
 	var stderr strings.Builder
-	err := runInit(configPath, &stderr)
+	err := runInit(configPath, "", &stderr)
 	if err == nil {
 		t.Fatal("init must not overwrite a config that is already there")
 	}
@@ -128,7 +175,7 @@ func TestInitCreatesExclusively(t *testing.T) {
 			defer wg.Done()
 			var discard strings.Builder
 			<-start
-			errs[i] = runInit(configPath, &discard)
+			errs[i] = runInit(configPath, "", &discard)
 		}()
 	}
 	close(start)
@@ -147,7 +194,7 @@ func TestInitCreatesExclusively(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(got) != starterConfig {
+	if string(got) != starterConfigDirect {
 		t.Errorf("the config is not what init writes:\n%s", got)
 	}
 }
@@ -164,7 +211,7 @@ func TestInitLeavesNothingBehindWhenTheWriteFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	var stderr strings.Builder
-	if err := runInit(configPath, &stderr); err == nil {
+	if err := runInit(configPath, "", &stderr); err == nil {
 		t.Fatal("writing over a directory must fail")
 	}
 	fi, err := os.Lstat(configPath)

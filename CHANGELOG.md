@@ -29,6 +29,11 @@ versions follow [SemVer](https://semver.org/) once tagged. See the
   `search-index.json` — dependency-free, no CDN, in both modes. Previously
   the JSON existed but nothing let a visitor actually search it short of
   wiring up Fuse.js or similar themselves.
+- A JSON Schema for `cairndex.yaml` (`cairndex.schema.json`), and
+  `cairndex init` now writes a `yaml-language-server` directive pointing at
+  it, so a mistyped key shows up in an editor before the build ever runs.
+- `cairndex init --mode hugo` writes the other starter: no `present:`/
+  `outputs:` to pick, since Hugo renders the HTML.
 
 ### Changed
 

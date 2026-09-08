@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/livingstaccato/cairndex/internal/config"
 	"github.com/livingstaccato/cairndex/internal/model"
 )
 
@@ -126,6 +127,27 @@ func PEP503Mixed(l model.Listing) bool {
 		}
 	}
 	return false
+}
+
+// ValidatePEP503Level rejects a listing that does not match the PEP 503
+// level an operator explicitly declared for it with pep503_level: root
+// holds only project directories, project holds only distribution files.
+//
+// Unlike PEP503Mixed's warning, an operator who set pep503_level staked a
+// specific, checkable claim about the directory, so a violation fails the
+// build rather than rendering a page that is silently untrue to it.
+func ValidatePEP503Level(level string, l model.Listing) error {
+	for _, e := range l.Entries {
+		switch {
+		case level == config.PEP503LevelRoot && !e.IsDir:
+			return fmt.Errorf("pep503_level: %s but %s is a file, not a project directory",
+				config.PEP503LevelRoot, e.Name)
+		case level == config.PEP503LevelProject && e.IsDir:
+			return fmt.Errorf("pep503_level: %s but %s is a directory, not a distribution file",
+				config.PEP503LevelProject, e.Name)
+		}
+	}
+	return nil
 }
 
 // PEP503 renders a listing as a Python simple-repository index page.

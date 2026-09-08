@@ -52,6 +52,21 @@ func TestAnUnknownChecksumIsRefused(t *testing.T) {
 	}
 }
 
+// pep503_level declares which of PEP 503's two index levels a directory's
+// entries actually are, so a mismatch can be caught at build time instead of
+// rendering a page silently untrue to what was declared. An unrecognized
+// value is refused the same way an unrecognized checksum: is.
+func TestAnUnknownPEP503LevelIsRefused(t *testing.T) {
+	err := mustFail(t, "version: 1\ndefaults:\n  pep503_level: projects\n")
+	if !strings.Contains(err.Error(), "projects") ||
+		!strings.Contains(err.Error(), PEP503LevelRoot) || !strings.Contains(err.Error(), PEP503LevelProject) {
+		t.Errorf("error should name what was given and what is accepted: %v", err)
+	}
+	if _, err := Load(writeConfig(t, "version: 1\nrules:\n  - match: \"a/**\"\n    pep503_level: files\n")); err == nil {
+		t.Error("an unknown pep503_level in a rule must be refused too")
+	}
+}
+
 // hidden: was removed and kept declared so it could be refused by name. Strict
 // decoding must not swallow that: "field hidden not found" is true and tells an
 // operator nothing about where the setting went.
@@ -86,6 +101,7 @@ defaults:
   recursive: true
   max_rendered: 1000
   follow_symlinks: false
+  pep503_level: root
 rules:
   - match: "bootstrap/**"
     present: bare

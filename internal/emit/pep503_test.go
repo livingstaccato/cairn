@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/livingstaccato/cairndex/internal/config"
 	"github.com/livingstaccato/cairndex/internal/model"
 )
 
@@ -149,6 +150,44 @@ func TestPEP503Mixed(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			if got := PEP503Mixed(model.Listing{Entries: c.entries}); got != c.want {
 				t.Errorf("PEP503Mixed(%s) = %v, want %v", name, got, c.want)
+			}
+		})
+	}
+}
+
+// ValidatePEP503Level is the hard check for a directory the operator
+// explicitly declared a level for, unlike PEP503Mixed's best-effort warning
+// for one that was not.
+func TestValidatePEP503Level(t *testing.T) {
+	dir := model.Entry{Name: "requests", IsDir: true}
+	file := model.Entry{Name: "requests-2.32.3.tar.gz"}
+
+	cases := map[string]struct {
+		level   string
+		entries []model.Entry
+		wantErr bool
+		names   []string
+	}{
+		"root of only directories": {config.PEP503LevelRoot, []model.Entry{dir, dir}, false, nil},
+		"root with a stray file":   {config.PEP503LevelRoot, []model.Entry{dir, file}, true, []string{config.PEP503LevelRoot, file.Name}},
+		"project of only files":    {config.PEP503LevelProject, []model.Entry{file, file}, false, nil},
+		"project with a stray dir": {config.PEP503LevelProject, []model.Entry{file, dir}, true, []string{config.PEP503LevelProject, dir.Name}},
+		"empty root is fine":       {config.PEP503LevelRoot, nil, false, nil},
+		"empty project is fine":    {config.PEP503LevelProject, nil, false, nil},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			err := ValidatePEP503Level(c.level, model.Listing{Entries: c.entries})
+			if c.wantErr && err == nil {
+				t.Fatalf("expected an error, got nil")
+			}
+			if !c.wantErr && err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+			for _, want := range c.names {
+				if err != nil && !strings.Contains(err.Error(), want) {
+					t.Errorf("error %v does not mention %q", err, want)
+				}
 			}
 		})
 	}

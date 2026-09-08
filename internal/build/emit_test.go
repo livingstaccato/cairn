@@ -66,6 +66,36 @@ func TestEmitPEP503WarnsOnAMixedDirectory(t *testing.T) {
 	}
 }
 
+// pep503_level: root is an explicit, checkable claim, unlike the bare
+// outputs: [pep503] case above, which only warns. bootstrap holds files
+// beside its linux/ subdirectory, so declaring it root must fail the build
+// rather than silently render a page untrue to the claim.
+func TestEmitPEP503FailsOnADeclaredLevelMismatch(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	outs := []string{config.OutputPEP503}
+	level := config.PEP503LevelRoot
+	c := conf([]config.Rule{{Match: "bootstrap", Override: config.Override{Outputs: &outs, PEP503Level: &level}}})
+
+	if _, err := Run(c, root, out, obs.Discard()); err == nil {
+		t.Fatal("a directory violating its declared pep503_level must fail the build")
+	} else if !strings.Contains(err.Error(), "bootstrap") {
+		t.Errorf("error should name the offending directory: %v", err)
+	}
+}
+
+// The same declaration succeeds when the directory actually matches it:
+// docs holds only intro.md, a file, no subdirectory — a real project level.
+func TestEmitPEP503AcceptsAMatchingDeclaredLevel(t *testing.T) {
+	root, out := tree(t), t.TempDir()
+	outs := []string{config.OutputPEP503}
+	level := config.PEP503LevelProject
+	c := conf([]config.Rule{{Match: "docs", Override: config.Override{Outputs: &outs, PEP503Level: &level}}})
+
+	if _, err := Run(c, root, out, obs.Discard()); err != nil {
+		t.Fatalf("docs holds only a file, no subdirectory: %v", err)
+	}
+}
+
 // The recursive listing has to leave out exactly what the per-directory listing
 // leaves out.
 //

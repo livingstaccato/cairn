@@ -49,6 +49,14 @@ const (
 	OutputSums   = "sums"
 	OutputPEP503 = "pep503"
 	OutputSearch = "search"
+
+	// PEP503Level values declare which of PEP 503's two index levels a
+	// directory's entries actually are: root holds project directories,
+	// project holds a project's own distribution files. Unset (the zero
+	// value, ""), nothing is declared and emit.PEP503Mixed's warning is the
+	// only check — see internal/emit/pep503.go.
+	PEP503LevelRoot    = "root"
+	PEP503LevelProject = "project"
 )
 
 // Settings is fully-resolved behavior for one directory. No pointers: every
@@ -71,6 +79,8 @@ type Settings struct {
 	// one. The machine formats are never capped: the page is what has a reader
 	// waiting on it, and index.json is what has a script waiting on it.
 	MaxRendered int `yaml:"max_rendered"`
+	// PEP503Level is PEP503LevelRoot, PEP503LevelProject, or "" (undeclared).
+	PEP503Level string `yaml:"pep503_level"`
 }
 
 // Defaults returns the built-in settings, used when a root config omits them.
@@ -116,6 +126,7 @@ type Override struct {
 	Recursive      *bool   `yaml:"recursive"`
 	MaxRendered    *int    `yaml:"max_rendered"`
 	FollowSymlinks *bool   `yaml:"follow_symlinks"`
+	PEP503Level    *string `yaml:"pep503_level"`
 }
 
 // deref returns *p when p is set, and fallback otherwise. It exists so Apply
@@ -144,6 +155,7 @@ func (o Override) Apply(s Settings) Settings {
 	s.Recursive = deref(o.Recursive, s.Recursive)
 	s.MaxRendered = deref(o.MaxRendered, s.MaxRendered)
 	s.FollowSymlinks = deref(o.FollowSymlinks, s.FollowSymlinks)
+	s.PEP503Level = deref(o.PEP503Level, s.PEP503Level)
 	if o.Outputs != nil {
 		s.Outputs = append([]string(nil), *o.Outputs...)
 	}

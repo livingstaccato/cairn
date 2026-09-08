@@ -140,6 +140,9 @@ func (c *Config) validate(p string) error {
 	if err := validateChecksums(p, c.Defaults, c.Rules); err != nil {
 		return err
 	}
+	if err := validatePEP503Levels(p, c.Defaults, c.Rules); err != nil {
+		return err
+	}
 	if c.Mode != ModeDirect && c.Mode != ModeHugo {
 		return fmt.Errorf("config %s: mode must be %s or %s, got %q",
 			p, ModeDirect, ModeHugo, c.Mode)
@@ -160,7 +163,10 @@ func ValidateOverride(p string, o Override) error {
 	if err := validateHide(p, o, nil); err != nil {
 		return err
 	}
-	return validateChecksums(p, o, nil)
+	if err := validateChecksums(p, o, nil); err != nil {
+		return err
+	}
+	return validatePEP503Levels(p, o, nil)
 }
 
 // eachOverride runs check against the root defaults and every rule. The three
@@ -197,6 +203,23 @@ func validateChecksums(p string, defaults Override, rules []Rule) error {
 		}
 		return fmt.Errorf("config %s: checksum must be %s or %s, got %q",
 			p, ChecksumNone, ChecksumSHA256, *o.Checksum)
+	})
+}
+
+// validatePEP503Levels rejects an unknown pep503_level anywhere in the
+// config. Left unset it is not a mistake — emit.PEP503Mixed's warning covers
+// that case — so only a value that names neither level is refused.
+func validatePEP503Levels(p string, defaults Override, rules []Rule) error {
+	return eachOverride(defaults, rules, func(o Override) error {
+		if o.PEP503Level == nil {
+			return nil
+		}
+		switch *o.PEP503Level {
+		case PEP503LevelRoot, PEP503LevelProject:
+			return nil
+		}
+		return fmt.Errorf("config %s: pep503_level must be %s or %s, got %q",
+			p, PEP503LevelRoot, PEP503LevelProject, *o.PEP503Level)
 	})
 }
 

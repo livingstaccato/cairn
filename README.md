@@ -119,6 +119,13 @@ per-directory override file. Three axes:
   autoindex: no JavaScript, no icon font, renders in `lynx`).
 - **`outputs`** — `html`, `json`, `csv`, `txt`, `sums`, `pep503`, `search`.
 
+`pep503` renders both levels PEP 503 defines with the same code — a
+directory entry as a normalized project link, a file entry as a download —
+trusting that a directory this matches holds only one kind. A mixed one
+only warns by default; `pep503_level: root` or `pep503_level: project`
+turns that into a build error if the directory does not actually hold only
+projects or only files, catching a misconfigured rule before it publishes.
+
 ```yaml
 version: 1
 root: ./tree

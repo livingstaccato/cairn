@@ -76,10 +76,12 @@ func OutRel(rootDir, outDir string) string {
 // asks cairndex to write it again.
 func GeneratedNames(cfg *config.Config) map[string]bool {
 	names := map[string]bool{
-		emit.SumsFile:     true,
-		emit.SearchFile:   true,
-		emit.ManifestFile: true,
-		hash.CacheFile:    true,
+		emit.SumsFile:         true,
+		emit.SearchFile:       true,
+		emit.SearchScriptFile: true,
+		emit.SearchPageDir:    true,
+		emit.ManifestFile:     true,
+		hash.CacheFile:        true,
 	}
 	for _, base := range []string{cfg.IndexBasename, treeBasename} {
 		for _, ext := range []string{".html", ".json", ".csv", ".txt"} {

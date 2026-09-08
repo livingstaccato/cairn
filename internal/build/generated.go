@@ -61,7 +61,10 @@ func (r *runner) treeFilter() walk.Filter {
 		if r.isOutputDir(relDir, e) {
 			return false
 		}
-		generated := !e.IsDir && skip[e.Name] &&
+		// A directory can be generated too now (emit.SearchPageDir): the old
+		// !e.IsDir guard predates that and would leave search/ walked and
+		// listed like any real subdirectory.
+		generated := skip[e.Name] &&
 			!r.cfg.IsProtected(path.Join(relDir, e.Name))
 		return !generated
 	}

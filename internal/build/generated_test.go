@@ -106,6 +106,42 @@ func TestOutEqualToRootStillBuilds(t *testing.T) {
 	}
 }
 
+// outputs: [search] writes both a file (search.js) and a directory
+// (emit.SearchPageDir) into the tree it indexes, and neither name was in
+// GeneratedNames. In a mirror, the second build finds search/ sitting in
+// root like any other directory, indexes it, and writes it a search/
+// of its own — the same runaway nesting TestOutInsideRootIsNotIndexed
+// covers for the top-level output directory, one rebuild deeper each time.
+func TestSearchOutputIsNotIndexedInAMirror(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "a.txt"), []byte("a\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c := conf(nil)
+	outs := []string{config.OutputJSON, config.OutputSearch}
+	c.Defaults = config.Override{Outputs: &outs}
+
+	first := run(t, c, root, root)
+	for i := range 3 {
+		got := run(t, c, root, root)
+		if got.Dirs != first.Dirs {
+			t.Fatalf("rebuild %d covered %d directories, first build covered %d: "+
+				"search's own output is being indexed", i+2, got.Dirs, first.Dirs)
+		}
+	}
+
+	b, err := os.ReadFile(filepath.Join(root, "index.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), `"search.js"`) {
+		t.Errorf("the listing names search.js as content: %s", b)
+	}
+	if strings.Contains(string(b), `"name":"search"`) {
+		t.Errorf("the listing names the search/ subdirectory as content: %s", b)
+	}
+}
+
 // hugo mode writes its own page into the tree it indexes, so the same exclusion
 // has to cover it.
 

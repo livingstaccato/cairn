@@ -153,22 +153,27 @@ func ValidateOverride(p string, o Override) error {
 
 // validateOverrides runs every override-level check against defaults: and
 // rules — or, from ValidateOverride, a single directory override on its
-// own. Factored out so validate itself stays a flat sequence of top-level
-// config checks rather than growing a branch per override validator.
+// own. One eachOverride walk running all five checks per override, rather
+// than each check walking defaults: and rules on its own: five walks over
+// the same rule list on every config load and one root cairndex.yaml, doing
+// nothing an extra field on this function couldn't, was the cost of adding
+// each new validator here as its own top-level pass.
 func validateOverrides(p string, defaults Override, rules []Rule) error {
-	if err := validateSources(p, defaults, rules); err != nil {
-		return err
-	}
-	if err := validateHide(p, defaults, rules); err != nil {
-		return err
-	}
-	if err := validateChecksums(p, defaults, rules); err != nil {
-		return err
-	}
-	if err := validatePEP503Levels(p, defaults, rules); err != nil {
-		return err
-	}
-	return validateOutputConflicts(p, defaults, rules)
+	return eachOverride(defaults, rules, func(o Override) error {
+		if err := validateSource(p, o); err != nil {
+			return err
+		}
+		if err := validateHideOverride(p, o); err != nil {
+			return err
+		}
+		if err := validateChecksum(p, o); err != nil {
+			return err
+		}
+		if err := validatePEP503Level(p, o); err != nil {
+			return err
+		}
+		return validateOutputConflict(p, o)
+	})
 }
 
 // eachOverride runs check against the root defaults and every rule. The three
@@ -187,88 +192,90 @@ func eachOverride(defaults Override, rules []Rule, check func(Override) error) e
 	return nil
 }
 
-// validateChecksums rejects an unknown digest anywhere in the config.
+// validateChecksum rejects an unknown digest on one override.
 //
 // This was the one setting nothing checked, and it fails in the worst possible
 // direction: with outputs: [sums] and a mistyped algorithm, no entry is ever
 // given a digest, so SHA256SUMS is not written at all and the build reports
 // success. A mirror serving no integrity when it was configured for integrity
 // is the failure this project exists to prevent.
-func validateChecksums(p string, defaults Override, rules []Rule) error {
-	return eachOverride(defaults, rules, func(o Override) error {
-		if o.Checksum == nil {
-			return nil
-		}
-		switch *o.Checksum {
-		case ChecksumNone, ChecksumSHA256:
-			return nil
-		}
-		return fmt.Errorf("config %s: checksum must be %s or %s, got %q",
-			p, ChecksumNone, ChecksumSHA256, *o.Checksum)
-	})
-}
-
-// validatePEP503Levels rejects an unknown pep503_level anywhere in the
-// config. Left unset it is not a mistake — emit.PEP503Mixed's warning covers
-// that case — so only a value that names neither level is refused.
-func validatePEP503Levels(p string, defaults Override, rules []Rule) error {
-	return eachOverride(defaults, rules, func(o Override) error {
-		if o.PEP503Level == nil {
-			return nil
-		}
-		switch *o.PEP503Level {
-		case PEP503LevelRoot, PEP503LevelProject:
-			return nil
-		}
-		return fmt.Errorf("config %s: pep503_level must be %s or %s, got %q",
-			p, PEP503LevelRoot, PEP503LevelProject, *o.PEP503Level)
-	})
-}
-
-// validateOutputConflicts rejects an outputs: list asking for both html and
-// pep503. Both render index.html, and mode: direct's write guard happens to
-// refuse the second write within one run — but mode: hugo skips both from
-// its own per-format write path entirely, relying on its template to decide
-// which one wins, which it does silently. Refused up front instead, so the
-// rule holds the same way in both modes rather than one enforcing it as a
-// side effect and the other not at all.
-func validateOutputConflicts(p string, defaults Override, rules []Rule) error {
-	return eachOverride(defaults, rules, func(o Override) error {
-		if o.Outputs == nil {
-			return nil
-		}
-		hasHTML, hasPEP503 := false, false
-		for _, out := range *o.Outputs {
-			switch out {
-			case OutputHTML:
-				hasHTML = true
-			case OutputPEP503:
-				hasPEP503 = true
-			}
-		}
-		if hasHTML && hasPEP503 {
-			return fmt.Errorf("config %s: outputs: cannot ask for both %s and %s, "+
-				"they render the same index.html", p, OutputHTML, OutputPEP503)
-		}
+func validateChecksum(p string, o Override) error {
+	if o.Checksum == nil {
 		return nil
-	})
+	}
+	switch *o.Checksum {
+	case ChecksumNone, ChecksumSHA256:
+		return nil
+	}
+	return fmt.Errorf("config %s: checksum must be %s or %s, got %q",
+		p, ChecksumNone, ChecksumSHA256, *o.Checksum)
 }
 
-// validateSources rejects an unknown source anywhere in the config. Without
-// this a typo falls through to the fs default and silently indexes the wrong
+// validatePEP503Level rejects an unknown pep503_level on one override. Left
+// unset it is not a mistake — emit.PEP503Mixed's warning covers that case —
+// so only a value that names neither level is refused.
+func validatePEP503Level(p string, o Override) error {
+	if o.PEP503Level == nil {
+		return nil
+	}
+	switch *o.PEP503Level {
+	case PEP503LevelRoot, PEP503LevelProject:
+		return nil
+	}
+	return fmt.Errorf("config %s: pep503_level must be %s or %s, got %q",
+		p, PEP503LevelRoot, PEP503LevelProject, *o.PEP503Level)
+}
+
+// outputTargets maps an output format that renders the index page itself to
+// the file it writes there. Two formats sharing a target conflict: both try
+// to own the same URL within one directory, and only one write can survive
+// it — html and pep503 both land on index.html today, and a format added
+// later that also renders the index page joins this table rather than
+// needing its own bespoke pairwise check.
+var outputTargets = map[string]string{
+	OutputHTML:   "index.html",
+	OutputPEP503: "index.html",
+}
+
+// validateOutputConflict rejects an outputs: list asking for two formats
+// that render the same target. mode: direct's write guard happens to catch
+// two writes landing on one path within a run, but mode: hugo skips both
+// from its own per-format write path entirely, relying on its template to
+// decide which one wins, which it does silently. Refused up front instead,
+// so the rule holds the same way in both modes rather than one enforcing it
+// as a side effect and the other not at all.
+func validateOutputConflict(p string, o Override) error {
+	if o.Outputs == nil {
+		return nil
+	}
+	byTarget := map[string][]string{}
+	for _, out := range *o.Outputs {
+		if target, ok := outputTargets[out]; ok {
+			byTarget[target] = append(byTarget[target], out)
+		}
+	}
+	for target, names := range byTarget {
+		if len(names) > 1 {
+			return fmt.Errorf("config %s: outputs: cannot ask for both %s, they all render %s",
+				p, strings.Join(names, " and "), target)
+		}
+	}
+	return nil
+}
+
+// validateSource rejects an unknown source on one override. Without this a
+// typo falls through to the fs default and silently indexes the wrong
 // thing, which is worse than refusing to start.
-func validateSources(p string, defaults Override, rules []Rule) error {
-	return eachOverride(defaults, rules, func(o Override) error {
-		if o.Source == nil {
-			return nil
-		}
-		switch *o.Source {
-		case SourceFS, SourcePages, SourceManifest:
-			return nil
-		}
-		return fmt.Errorf("config %s: source must be %s, %s or %s, got %q",
-			p, SourceFS, SourcePages, SourceManifest, *o.Source)
-	})
+func validateSource(p string, o Override) error {
+	if o.Source == nil {
+		return nil
+	}
+	switch *o.Source {
+	case SourceFS, SourcePages, SourceManifest:
+		return nil
+	}
+	return fmt.Errorf("config %s: source must be %s, %s or %s, got %q",
+		p, SourceFS, SourcePages, SourceManifest, *o.Source)
 }
 
 // Resolve returns the effective Settings for relDir. Precedence, lowest first:
@@ -299,25 +306,23 @@ func (c *Config) IsProtected(relPath string) bool {
 	return false
 }
 
-// validateHide rejects a config that cannot mean what it says: a glob that will
-// never compile, or the removed hidden: key.
-func validateHide(p string, defaults Override, rules []Rule) error {
-	return eachOverride(defaults, rules, func(o Override) error {
-		if o.Hidden != nil {
-			return fmt.Errorf("config %s: hidden: has been replaced by hide:, "+
-				"a list of globs matched against the path relative to root "+
-				"(the old default is hide: [%q])", p, DefaultHideGlob)
-		}
-		if o.Hide == nil {
-			return nil
-		}
-		for _, g := range *o.Hide {
-			if _, err := doublestar.Match(g, "probe"); err != nil {
-				return fmt.Errorf("config %s: hide: %q is not a valid glob: %w", p, g, err)
-			}
-		}
+// validateHideOverride rejects a config that cannot mean what it says: a
+// glob that will never compile, or the removed hidden: key.
+func validateHideOverride(p string, o Override) error {
+	if o.Hidden != nil {
+		return fmt.Errorf("config %s: hidden: has been replaced by hide:, "+
+			"a list of globs matched against the path relative to root "+
+			"(the old default is hide: [%q])", p, DefaultHideGlob)
+	}
+	if o.Hide == nil {
 		return nil
-	})
+	}
+	for _, g := range *o.Hide {
+		if _, err := doublestar.Match(g, "probe"); err != nil {
+			return fmt.Errorf("config %s: hide: %q is not a valid glob: %w", p, g, err)
+		}
+	}
+	return nil
 }
 
 // matchDir reports whether a rule glob covers a directory. A glob such as

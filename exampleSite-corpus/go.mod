@@ -9,6 +9,6 @@ go 1.26.0
 replace github.com/livingstaccato/cairndex => ../
 
 require (
-	github.com/livingstaccato/cairndex v0.0.0-20260906223642-7546476fe7b9 // indirect
+	github.com/livingstaccato/cairndex v0.0.0-20260908154955-84be95e650d7 // indirect
 	github.com/livingstaccato/corpus-hugo v0.0.0-20260907170211-89eaa4a4e682 // indirect
 )

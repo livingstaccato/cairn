@@ -167,27 +167,37 @@ type Options struct {
 	Version string
 }
 
-// RunWith is Run with the one-run departures a command line asked for.
-func RunWith(ctx context.Context, cfg *config.Config, rootDir, outDir string, log *slog.Logger, opts Options) (*Result, error) {
-	startedAt := time.Now()
-	r := &runner{
+// newRunner builds the fields every entry point needs, so a field added to
+// runner later means one call site to update rather than two that can
+// silently drift — RunWith and RunScoped used to each build their own
+// &runner{} literal, and nothing caught either one forgetting a field the
+// other set. What genuinely differs between them — writer, dry — stays
+// explicit at each call site, set on the value this returns.
+func newRunner(ctx context.Context, cfg *config.Config, rootDir, outDir string, log *slog.Logger, version string, startedAt time.Time) *runner {
+	return &runner{
 		cfg:     cfg,
 		root:    rootDir,
 		out:     outDir,
 		log:     log,
 		cache:   hash.NewCache(filepath.Join(outDir, hash.CacheFile)),
-		writer:  emit.NewWriterWith(cfg, outDir, emit.Options{Dry: opts.Dry, Adopt: opts.Adopt}),
 		result:  &Result{},
 		outRel:  OutRel(rootDir, outDir),
-		dry:     opts.Dry,
 		ctx:     ctx,
-		version: opts.Version,
+		version: version,
 		started: startedAt,
 		// The throttle's baseline: the interval is measured from when the
 		// build started, not from an unset zero value a first call would
 		// otherwise always beat.
 		lastProgress: startedAt,
 	}
+}
+
+// RunWith is Run with the one-run departures a command line asked for.
+func RunWith(ctx context.Context, cfg *config.Config, rootDir, outDir string, log *slog.Logger, opts Options) (*Result, error) {
+	startedAt := time.Now()
+	r := newRunner(ctx, cfg, rootDir, outDir, log, opts.Version, startedAt)
+	r.writer = emit.NewWriterWith(cfg, outDir, emit.Options{Dry: opts.Dry, Adopt: opts.Adopt})
+	r.dry = opts.Dry
 	r.warnAboutTheManifest()
 
 	err := r.safeBuild()

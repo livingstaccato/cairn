@@ -14,7 +14,6 @@ import (
 
 	"github.com/livingstaccato/cairndex/internal/config"
 	"github.com/livingstaccato/cairndex/internal/emit"
-	"github.com/livingstaccato/cairndex/internal/hash"
 	"github.com/livingstaccato/cairndex/internal/meta"
 )
 
@@ -40,6 +39,17 @@ func Scope(cfg *config.Config, rootDir, relDir string, log *slog.Logger) string 
 	return scope
 }
 
+// ScopePath is the directory (relative to root) a rebuild starts from — the
+// return value of Scope(), above. Its own type, not a second plain string
+// beside version in RunScoped's signature: the two used to be adjacent and
+// interchangeable to the compiler, so a caller passing them in the wrong
+// order built nothing wrong on its own machine and the mistake waited for
+// a case where scope and version happened to differ meaningfully. A value
+// assigned from a plain string still needs no conversion — only a
+// variable already typed string does, which is exactly where the swap
+// this exists to catch would show up.
+type ScopePath string
+
 // RunScoped rebuilds one subtree and the listings above it that name it.
 //
 // The ancestors matter and are easy to miss: a parent's entry for a directory
@@ -47,25 +57,14 @@ func Scope(cfg *config.Config, rootDir, relDir string, log *slog.Logger) string 
 // three levels down changes what every listing above it should say. Each
 // ancestor is re-emitted without recursing, since its other children have not
 // moved.
-func RunScoped(ctx context.Context, cfg *config.Config, rootDir, outDir string, log *slog.Logger, scope, version string) (*Result, error) {
+func RunScoped(ctx context.Context, cfg *config.Config, rootDir, outDir string, log *slog.Logger, scopeArg ScopePath, version string) (*Result, error) {
+	scope := string(scopeArg)
 	if scope == "" {
 		scope = "."
 	}
 	startedAt := time.Now()
-	r := &runner{
-		cfg:          cfg,
-		root:         rootDir,
-		out:          outDir,
-		log:          log,
-		cache:        hash.NewCache(filepath.Join(outDir, hash.CacheFile)),
-		writer:       emit.NewWriter(cfg, outDir),
-		result:       &Result{},
-		outRel:       OutRel(rootDir, outDir),
-		ctx:          ctx,
-		version:      version,
-		started:      startedAt,
-		lastProgress: startedAt,
-	}
+	r := newRunner(ctx, cfg, rootDir, outDir, log, version, startedAt)
+	r.writer = emit.NewWriter(cfg, outDir)
 	r.warnAboutTheManifest()
 
 	err := r.safeBuildScoped(scope)

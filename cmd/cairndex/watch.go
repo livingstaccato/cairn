@@ -124,7 +124,7 @@ func runWatch(ctx context.Context, o watchOpts, stderr io.Writer) error {
 	w := &watch.Watcher{
 		Config: cfg, Root: rootDir, Out: outDir, Log: log, Settle: o.settle,
 		Rebuild: func(scope string) error {
-			_, err := build.RunScoped(ctx, cfg, rootDir, outDir, log, scope, version)
+			_, err := build.RunScoped(ctx, cfg, rootDir, outDir, log, build.ScopePath(scope), version)
 			return err
 		},
 	}

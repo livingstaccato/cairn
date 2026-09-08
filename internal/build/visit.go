@@ -66,6 +66,7 @@ func (r *runner) visit(relDir string) error {
 	}
 
 	r.result.Dirs++
+	r.reportProgress()
 	return r.recurse(relDir, entries)
 }
 

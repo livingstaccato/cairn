@@ -9,12 +9,21 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"time"
 
 	"github.com/livingstaccato/cairndex/internal/config"
 	"github.com/livingstaccato/cairndex/internal/emit"
 	"github.com/livingstaccato/cairndex/internal/hash"
 	"github.com/livingstaccato/cairndex/internal/walk"
 )
+
+// progressInterval throttles how often a build logs how far it has gotten,
+// so a mirror of any size gets feedback without a line per directory. A
+// build that finishes faster than this — nearly every one — never logs a
+// progress line at all, only the final "build complete". 0 disables the
+// throttle entirely, which a test sets for a deterministic assertion
+// instead of racing wall-clock time against how long a run takes.
+var progressInterval = 2 * time.Second
 
 // Result summarizes a run for the caller to report.
 type Result struct {
@@ -65,6 +74,24 @@ type runner struct {
 	// cancelled context observed only by the process dying under it, taking
 	// the manifest save in build's own error path down with it.
 	ctx context.Context
+	// lastProgress is when reportProgress last logged, seeded to the
+	// build's own start time so the interval is measured from there rather
+	// than from an unset zero value a first call would otherwise always
+	// beat. Runner state rather than a package var: two concurrent Run
+	// calls (real in cmd/cairndex's tests) must not throttle each other.
+	lastProgress time.Time
+}
+
+// reportProgress logs how far the build has gotten, throttled by
+// progressInterval so it says something on a mirror large enough for that
+// to matter and nothing at all on one finished before the first interval.
+func (r *runner) reportProgress() {
+	now := time.Now()
+	if now.Sub(r.lastProgress) < progressInterval {
+		return
+	}
+	r.lastProgress = now
+	r.log.Info("build in progress", "directories", r.result.Dirs, "files", r.result.Files)
 }
 
 // Run walks rootDir and writes every configured output under outDir. Warnings
@@ -128,6 +155,10 @@ func RunWith(ctx context.Context, cfg *config.Config, rootDir, outDir string, lo
 		outRel: OutRel(rootDir, outDir),
 		dry:    opts.Dry,
 		ctx:    ctx,
+		// The throttle's baseline: the interval is measured from when the
+		// build started, not from an unset zero value a first call would
+		// otherwise always beat.
+		lastProgress: time.Now(),
 	}
 	r.warnAboutTheManifest()
 

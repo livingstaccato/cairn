@@ -34,6 +34,9 @@ versions follow [SemVer](https://semver.org/) once tagged. See the
   it, so a mistyped key shows up in an editor before the build ever runs.
 - `cairndex init --mode hugo` writes the other starter: no `present:`/
   `outputs:` to pick, since Hugo renders the HTML.
+- `cairndex build` now logs "build in progress" periodically on a build
+  long enough for that to matter, instead of staying silent until the final
+  "build complete" line whatever the tree's size.
 
 ### Changed
 

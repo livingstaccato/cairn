@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/livingstaccato/cairndex/internal/config"
 	"github.com/livingstaccato/cairndex/internal/emit"
@@ -51,15 +52,16 @@ func RunScoped(ctx context.Context, cfg *config.Config, rootDir, outDir string, 
 		scope = "."
 	}
 	r := &runner{
-		cfg:    cfg,
-		root:   rootDir,
-		out:    outDir,
-		log:    log,
-		cache:  hash.NewCache(filepath.Join(outDir, hash.CacheFile)),
-		writer: emit.NewWriter(cfg, outDir),
-		result: &Result{},
-		outRel: OutRel(rootDir, outDir),
-		ctx:    ctx,
+		cfg:          cfg,
+		root:         rootDir,
+		out:          outDir,
+		log:          log,
+		cache:        hash.NewCache(filepath.Join(outDir, hash.CacheFile)),
+		writer:       emit.NewWriter(cfg, outDir),
+		result:       &Result{},
+		outRel:       OutRel(rootDir, outDir),
+		ctx:          ctx,
+		lastProgress: time.Now(),
 	}
 	r.warnAboutTheManifest()
 

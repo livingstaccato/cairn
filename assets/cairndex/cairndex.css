@@ -89,6 +89,19 @@
 }
 
 .cairndex-breadcrumb a {
+  /* The root crumb's text is one character — "/" — too small a hit target
+     on its own: about 16px square measured, WCAG 2.2's minimum is 24px.
+     min-width/min-height set the floor; padding grows longer crumbs the
+     same way, and the matching negative margin keeps any of it from
+     visibly widening the line — the standard trick for a hit target that
+     must not look bigger than the text inside it. box-sizing is border-box
+     (the page's own reset), so min-width already counts the padding. */
+  display: inline-block;
+  min-width: 24px;
+  min-height: 24px;
+  text-align: center;
+  padding: 0.4em 0.3em;
+  margin: -0.4em -0.3em;
   color: var(--c-slate);
   text-decoration: none;
 }

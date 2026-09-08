@@ -65,21 +65,29 @@ array of records, one per entry, carrying the fields a person types — `name`,
 Digests and MIME types are left out; nobody searches for them, and every byte
 is downloaded by every visitor who opens the search box.
 
+It also writes a working search box, at `search/` beside it — no Fuse.js, no
+CDN, dependency-free the same way the styled listing's own sort and filter
+are. Point a browser at `<directory>/search/` and type; `search.js` (the same
+file in both modes) ranks name and title above summary and tags, since on a
+file mirror people search for filenames — `nginx_1.24.0-1_amd64.deb` — far
+more often than for titles, and a title is frequently absent. `search/`
+rather than a sibling `search.html`: `mode: hugo` cannot publish a raw
+`.html` bundle resource as a plain file — Hugo parses it as a page source of
+its own and refuses by policy — so the box is a real page one level under
+the index it searches, in both modes, with relative paths that never need to
+know where the tree is mounted.
+
+Under `recursive: true` the index covers the whole subtree, which is the useful
+case: an index describing one directory of a deep tree finds almost nothing.
+Without it the index describes its own directory, as `index.json` does.
+
 An array rather than an object with the array inside it, because that is what a
-browser search library takes. Fuse.js, MiniSearch and FlexSearch are each
-constructed from an array of records plus the fields to index, so the file is
-usable with no adapter:
+browser search library takes too — the shipped box only reads name, title,
+summary and tags, but the file works with no adapter for a site that already
+has its own:
 
 ```js
 const records = await (await fetch('/bootstrap/search-index.json')).json();
 const fuse = new Fuse(records, { keys: ['name', 'title', 'summary', 'tags'] });
 fuse.search('nginx');
 ```
-
-`name` is worth indexing first. On a file mirror people search for filenames —
-`nginx_1.24.0-1_amd64.deb` — far more often than for titles, and a title is
-frequently absent.
-
-Under `recursive: true` the index covers the whole subtree, which is the useful
-case: an index describing one directory of a deep tree finds almost nothing.
-Without it the index describes its own directory, as `index.json` does.

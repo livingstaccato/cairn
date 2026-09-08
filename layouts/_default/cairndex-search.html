@@ -1,0 +1,5 @@
+{{- /* No {{ define "main" }} block here, deliberately: a template with none
+       is rendered as a complete document instead of being wrapped in the
+       theme's baseof.html — the same reason cairndex-pep503.html has none.
+       search.html already emits its own <!DOCTYPE>, <html> and <head>. */ -}}
+{{- partial "cairndex/search.html" . -}}

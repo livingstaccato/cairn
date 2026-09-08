@@ -67,7 +67,7 @@ page, machine-readable indexes, and optional checksums:
 /bootstrap/linux/tree.json      recursive, opt-in per rule
 /bootstrap/linux/tree.csv       recursive, flattened
 /bootstrap/linux/SHA256SUMS     coreutils format
-/bootstrap/linux/search-index.json  every entry, for a browser search box
+/bootstrap/linux/search-index.json  every entry, searchable at search/
 ```
 
 The page is capped at 1,000 rows by default and the machine formats are not, so

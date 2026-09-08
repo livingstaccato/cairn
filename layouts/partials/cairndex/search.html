@@ -1,0 +1,19 @@
+{{- /* The standalone search box, mode: hugo's twin of emit.SearchPage. One
+       level under the listing it searches (SearchPageDir in
+       internal/emit/search.go), so its own paths to search-index.json and
+       search.js are relative one level up — the same reason pep503.html
+       needs no base_path: a page never has to know where the tree is
+       mounted to link to its own siblings. */ -}}
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>{{ .Title }}</title></head>
+<body>
+<h1>{{ .Title }}</h1>
+<div data-cairndex-search="../search-index.json">
+<input type="search" placeholder="Search…" autofocus data-cairndex-search-input>
+<p data-cairndex-search-status aria-live="polite"></p>
+<ul data-cairndex-search-results></ul>
+</div>
+<script type="module" src="../search.js"></script>
+</body>
+</html>

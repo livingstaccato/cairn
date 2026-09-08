@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"slices"
 
+	cairndexassets "github.com/livingstaccato/cairndex/assets/cairndex"
 	"github.com/livingstaccato/cairndex/internal/config"
 	"github.com/livingstaccato/cairndex/internal/emit"
 	"github.com/livingstaccato/cairndex/internal/meta"
@@ -368,7 +369,39 @@ func (r *runner) emitSearch(c emitCtx) error {
 	if err != nil {
 		return err
 	}
-	return r.write(c.relDir, emit.SearchFile, b)
+	if err := r.write(c.relDir, emit.SearchFile, b); err != nil {
+		return err
+	}
+	// The script the search page runs. cairndexassets.SearchJS is embedded
+	// from assets/cairndex/search.js — the same file mode: hugo reads
+	// through Hugo Pipes for the styled listing's own JS — so both modes
+	// ship identical bytes instead of two copies that can drift.
+	if err := r.write(c.relDir, emit.SearchScriptFile, cairndexassets.SearchJS); err != nil {
+		return err
+	}
+	return r.emitSearchPage(c)
+}
+
+// emitSearchPage writes the search box as its own page, one level under the
+// listing, at emit.SearchPageDir — not a sibling index.html: Hugo parses
+// any .html file inside a content bundle as a page source of its own and
+// refuses to publish raw HTML content by policy, so mode: hugo needs a real
+// page here, the same reason pep503 needs its own layout rather than
+// nesting inside the listing's.
+func (r *runner) emitSearchPage(c emitCtx) error {
+	searchDir := path.Join(c.relDir, emit.SearchPageDir)
+	if r.cfg.Mode == config.ModeHugo {
+		b, err := emit.HugoSearchContent(c.listing.Path)
+		if err != nil {
+			return err
+		}
+		return r.write(searchDir, emit.HugoContentFile, b)
+	}
+	page, err := emit.SearchPage(c.listing)
+	if err != nil {
+		return err
+	}
+	return r.write(searchDir, r.cfg.IndexBasename+".html", page)
 }
 
 // emitPEP503 renders a Python simple index.

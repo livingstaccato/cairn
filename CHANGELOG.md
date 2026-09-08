@@ -25,6 +25,10 @@ versions follow [SemVer](https://semver.org/) once tagged. See the
   `layouts/partials/cairndex/pep503.html` renders it now, and `outputs:
   [html, pep503]` together is refused at config load in both modes, rather
   than only as a side effect of `mode: direct`'s write guard.
+- `outputs: [search]` now writes a working search box at `search/`, beside
+  `search-index.json` — dependency-free, no CDN, in both modes. Previously
+  the JSON existed but nothing let a visitor actually search it short of
+  wiring up Fuse.js or similar themselves.
 
 ### Changed
 

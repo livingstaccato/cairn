@@ -308,3 +308,21 @@ func TestHugoContentOmitsPEP503WhenFalse(t *testing.T) {
 		t.Errorf("pep503: false was written out where omitting it says the same thing:\n%s", b)
 	}
 }
+
+// HugoSearchContent is the frontmatter for the search page's own branch
+// bundle, one level under the listing it searches — a real Hugo page,
+// unlike search.html's plain-file sibling in mode: direct, because Hugo
+// refuses to publish a raw .html bundle resource as a static file at all.
+func TestHugoSearchContentUsesTheStandaloneLayout(t *testing.T) {
+	b, err := HugoSearchContent("/bootstrap/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fm, _ := split(t, b)
+	if fm.Layout != HugoSearchLayout {
+		t.Errorf("layout = %q, want %q so Hugo skips baseof for this page", fm.Layout, HugoSearchLayout)
+	}
+	if fm.Title != "Search /bootstrap/" {
+		t.Errorf("title = %q, want %q", fm.Title, "Search /bootstrap/")
+	}
+}

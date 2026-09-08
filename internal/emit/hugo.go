@@ -26,6 +26,12 @@ const (
 	// no chrome belongs on it, the same reason present:/the format switcher
 	// do not either.
 	HugoPEP503Layout = "cairndex-pep503"
+	// HugoSearchLayout is the layout the search page's own branch bundle
+	// gets, one level under the listing it searches. No {{ define "main" }}
+	// block, same reason as HugoPEP503Layout: Hugo also refuses to publish a
+	// raw .html bundle resource verbatim, so the search box needs a real
+	// page rather than a plain file mode: direct alone could get away with.
+	HugoSearchLayout = "cairndex-search"
 	// HugoContentFile is the branch-bundle filename cairndex writes per directory.
 	HugoContentFile = "_index.md"
 	// rootTitle names the top of the tree, which has no directory name.
@@ -155,6 +161,30 @@ func HugoContent(p HugoPage) ([]byte, error) {
 	}
 	buf.WriteString("---\n")
 	buf.WriteString(p.Prose)
+	return buf.Bytes(), nil
+}
+
+// HugoSearchContent renders the _index.md for the search page's own branch
+// bundle. It carries no cairndex param block: the layout is fully static,
+// unlike the listing's own page, so there is nothing for a template to read
+// beside the title.
+func HugoSearchContent(dirPath string) ([]byte, error) {
+	fm := struct {
+		Title  string `yaml:"title"`
+		Layout string `yaml:"layout"`
+	}{Title: "Search " + dirPath, Layout: HugoSearchLayout}
+
+	var buf bytes.Buffer
+	buf.WriteString("---\n")
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(fm); err != nil {
+		return nil, fmt.Errorf("encode search frontmatter for %s: %w", dirPath, err)
+	}
+	if err := enc.Close(); err != nil {
+		return nil, fmt.Errorf("close search frontmatter encoder for %s: %w", dirPath, err)
+	}
+	buf.WriteString("---\n")
 	return buf.Bytes(), nil
 }
 

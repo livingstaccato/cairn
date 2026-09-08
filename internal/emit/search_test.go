@@ -125,3 +125,38 @@ func TestSearchEmptyListingIsAnEmptyArray(t *testing.T) {
 		t.Errorf("empty listing rendered %q, want []", got)
 	}
 }
+
+// SearchPage is the standalone search box outputs: [search] gives a visitor
+// for free, instead of only the JSON a site author would otherwise have to
+// wire up to Fuse.js or similar themselves.
+func TestSearchPageReferencesTheIndexAndScript(t *testing.T) {
+	b, err := SearchPage(searchListing())
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(b)
+	if !strings.HasPrefix(s, "<!DOCTYPE html>") {
+		t.Error("search page must be a real HTML document")
+	}
+	// One level up: the page is published at SearchPageDir, a subdirectory
+	// of where SearchFile and SearchScriptFile sit.
+	if !strings.Contains(s, `data-cairndex-search="../`+SearchFile+`"`) {
+		t.Errorf("page does not point at ../%s:\n%s", SearchFile, s)
+	}
+	if !strings.Contains(s, `src="../`+SearchScriptFile+`"`) {
+		t.Errorf("page does not load ../%s:\n%s", SearchScriptFile, s)
+	}
+}
+
+// A directory's path becomes the page title. Names in a mirror are
+// attacker-influenced the same way a filename is, so it must be escaped
+// rather than trusted.
+func TestSearchPageEscapesTheDirectoryPath(t *testing.T) {
+	b, err := SearchPage(model.Listing{Path: `/<script>alert(1)</script>/`})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), "<script>alert(1)</script>") {
+		t.Errorf("directory path was not escaped:\n%s", b)
+	}
+}

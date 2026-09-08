@@ -66,8 +66,14 @@ out:  ./content
   `pep503.json` bundle resource, not `index.json`: the name normalization and
   href percent-encoding PEP 503 needs happen once, in Go, the same code
   `mode: direct`'s HTML already uses.
-- `assets/cairndex/cairndex.css`, `cairndex.js`, `icons.svg` — load them through Hugo
-  Pipes. The reference theme in `themes/reference` shows the minimum.
+- `layouts/partials/cairndex/search.html` — the standalone search box for a
+  directory with `outputs: [search]`, published at `search/` beside it. Its
+  own standalone layout too, for the same reason `pep503.html` needs one:
+  Hugo refuses to publish a raw `.html` bundle resource as a plain file, so
+  the box has to be a real page.
+- `assets/cairndex/cairndex.css`, `cairndex.js`, `search.js`, `icons.svg` —
+  load them through Hugo Pipes. The reference theme in `themes/reference`
+  shows the minimum.
 
 It ships no `baseof`, header, footer or brand. Colors read your theme's custom
 properties with fallbacks, so it inherits whatever design you already have.

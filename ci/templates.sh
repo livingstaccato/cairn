@@ -48,7 +48,7 @@ out: ./content
 defaults:
   present: styled
   checksum: sha256
-  outputs: [html, json, csv, txt, sums]
+  outputs: [html, json, csv, txt, sums, search]
 rules:
   - match: "many"
     present: bare
@@ -118,6 +118,25 @@ fi
 for f in index.json index.csv index.txt SHA256SUMS; do
   [ -f "$pub/many/$f" ] || say "many/$f was not published"
 done
+
+# outputs: [search] gives a visitor a working search box, not just the JSON.
+# search-index.json and search.js are bundle resources, published verbatim
+# like SHA256SUMS; the box itself is a real page one level under them —
+# Hugo refuses to publish a raw .html bundle resource as a plain file, so it
+# needs its own standalone layout the same way pep503 does.
+for f in search-index.json search.js search/index.html; do
+  [ -f "$pub/$f" ] || say "$f was not published"
+done
+if ! grep -q 'data-cairndex-search="../search-index.json"' "$pub/search/index.html"; then
+  say "the search page does not point at ../search-index.json"
+fi
+if ! grep -q 'rankResults' "$pub/search.js"; then
+  say "search.js published is not the real script"
+fi
+doctypes=$(grep -oi '<!doctype html>' "$pub/search/index.html" | wc -l | tr -d ' ')
+if [ "$doctypes" != "1" ]; then
+  say "the search page is not one complete document (found $doctypes <!DOCTYPE> declarations)"
+fi
 
 # entries.html: a search-integration host folds these into its own index.
 # Listing data moved from frontmatter to an index.json resource once entries

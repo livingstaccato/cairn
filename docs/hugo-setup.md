@@ -62,7 +62,10 @@ out:  ./content
   breadcrumb nor the format switcher belongs on one. It renders through its
   own layout rather than the usual `cairndex` one, so it comes out as a
   standalone document too — no theme header, no baseof — matching what
-  `mode: direct` writes for the same directory.
+  `mode: direct` writes for the same directory. Its anchors come from a
+  `pep503.json` bundle resource, not `index.json`: the name normalization and
+  href percent-encoding PEP 503 needs happen once, in Go, the same code
+  `mode: direct`'s HTML already uses.
 - `assets/cairndex/cairndex.css`, `cairndex.js`, `icons.svg` — load them through Hugo
   Pipes. The reference theme in `themes/reference` shows the minimum.
 

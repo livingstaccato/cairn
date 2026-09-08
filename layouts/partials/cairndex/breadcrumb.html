@@ -4,12 +4,13 @@
        own frontmatter — the top of that tree, wherever the site actually
        mounted it. Walking .Ancestors.Reverse (outermost first) and watching
        for that marker finds the same boundary the old base_path-prefix trim
-       was reconstructing from a string, without needing base_path at all:
-       everything from the root marker down to (not including) this page
-       becomes a crumb, and everything above it collapses into the root
-       anchor. Every href is a real Page.RelPermalink, so a crumb can never
-       point somewhere base_path did not actually agree with the site's
-       real mount — the class of bug the trim kept needing patched again.
+       was reconstructing from a string: everything from the root marker
+       down to (not including) this page becomes a crumb, named from the
+       real Page.Title rather than a split path segment, and everything
+       above the marker collapses into the root anchor. That structural
+       part — which page is the root, what the crumbs in between are called
+       — no longer depends on base_path agreeing with anything; the class of
+       string-surgery bug the trim kept needing patched again lived here.
 
        Home is treated as a root boundary too, not only the at_root marker:
        a site that mounts its own content at the same path cairndex's root
@@ -17,13 +18,25 @@
        a theme's own hero page standing where content/_index.md would be —
        wins that path outright, and cairndex's frontmatter for it is never
        part of the page graph to find. Home is always a real ancestor
-       regardless, so treating it as a fallback boundary keeps the "/"
-       anchor correct even when the marker itself is unreachable; an
+       regardless, so treating it as a fallback boundary keeps the root
+       anchor findable even when the marker itself is unreachable; an
        at_root marker actually found further in still overrides it, for a
-       tree mounted deeper than the site's own home. */ -}}
+       tree mounted deeper than the site's own home.
+
+       base_path itself still governs every href, same as before: it is an
+       operator declaration about where the tree is published outside
+       Hugo's own knowledge entirely — behind a reverse proxy, folded into
+       a larger site by something that runs after Hugo — and RelPermalink
+       cannot know about that any more than the old trim could skip
+       knowing it. Unset, the root's own RelPermalink is the prefix
+       instead, which — unlike the old hardcoded "/" default — is still
+       correct for a tree mounted below the site root with no base_path
+       configured to say so. */ -}}
 {{- $self := . -}}
 {{- $selfAtRoot := false -}}
 {{- with $self.Params.cairndex }}{{ $selfAtRoot = .at_root }}{{ end -}}
+{{- $basePath := "" -}}
+{{- with $self.Params.cairndex }}{{ $basePath = .base_path }}{{ end -}}
 {{- $root := $self -}}
 {{- $crumbs := slice -}}
 {{- if not $selfAtRoot -}}
@@ -38,9 +51,22 @@
     {{- end -}}
   {{- end -}}
 {{- end -}}
-{{- $items := slice (dict "href" $root.RelPermalink "text" "/" "link" true) -}}
+{{- /* strings.TrimPrefix/TrimSuffix take (cutset, subject) here, not
+       (subject, cutset) — Hugo orders them for piping, so .path |
+       strings.TrimPrefix $base above reads as TrimPrefix($base, .path). */ -}}
+{{- $rootPrefix := strings.TrimSuffix "/" $root.RelPermalink -}}
+{{- /* base_path is omitempty: unset, .base_path is Go nil, not "" — an
+       untyped frontmatter map returns nil for an absent key, and nil != ""
+       is true, so this has to check truthiness rather than compare "". */ -}}
+{{- $prefix := $rootPrefix -}}
+{{- if $basePath }}{{ $prefix = $basePath }}{{ end -}}
+{{- $items := slice (dict
+  "href" (printf "%s%s" $prefix (strings.TrimPrefix $rootPrefix $root.RelPermalink))
+  "text" "/" "link" true) -}}
 {{- range $crumbs -}}
-  {{- $items = $items | append (dict "href" .RelPermalink "text" .Title "link" true) -}}
+  {{- $items = $items | append (dict
+    "href" (printf "%s%s" $prefix (strings.TrimPrefix $rootPrefix .RelPermalink))
+    "text" .Title "link" true) -}}
 {{- end -}}
 {{- if not $selfAtRoot -}}
   {{- $items = $items | append (dict "text" $self.Title "link" false) -}}

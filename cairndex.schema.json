@@ -1,0 +1,136 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/livingstaccato/cairndex/main/cairndex.schema.json",
+  "title": "cairndex.yaml",
+  "description": "Root config for the cairndex directory-index generator. See README.md for the reasoning behind each key.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Schema version this build accepts. A build refuses anything else rather than guessing."
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["direct", "hugo"],
+      "default": "direct",
+      "description": "direct: cairndex writes index.{json,csv,html} itself. hugo: cairndex writes one _index.md per directory and Hugo renders the formats from that single source."
+    },
+    "root": {
+      "type": "string",
+      "description": "The tree to index."
+    },
+    "base_path": {
+      "type": "string",
+      "description": "Where the indexed tree is mounted in the site, if not at the root. Authoritative for links a template cannot otherwise derive, such as behind a reverse proxy."
+    },
+    "out": {
+      "type": "string",
+      "description": "Where the indexes are written. May equal root (indexes land beside the files), a sibling directory, or a subdirectory of root (skipped when walking)."
+    },
+    "index_basename": {
+      "type": "string",
+      "default": "index",
+      "description": "Filename stem for a directory's own page and machine formats, before the extension."
+    },
+    "tree_max_entries": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 50000,
+      "description": "Refuses a recursive: true listing past this many entries, rather than a build that runs unbounded."
+    },
+    "protect": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Globs, matched against the path relative to root, that cairndex never writes into — another tool's own output, such as apt's dists/ or dnf's repodata/."
+    },
+    "on_conflict": {
+      "type": "string",
+      "enum": ["error", "skip"],
+      "default": "error",
+      "description": "What to do when a write would land on a path cairndex does not already own."
+    },
+    "defaults": { "$ref": "#/definitions/override" },
+    "rules": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          { "$ref": "#/definitions/override" },
+          {
+            "type": "object",
+            "required": ["match"],
+            "properties": {
+              "match": {
+                "type": "string",
+                "description": "A doublestar glob, matched against the path relative to root, that this rule's settings apply to."
+              }
+            }
+          }
+        ]
+      },
+      "description": "Path-glob-scoped partial overrides of defaults:, applied in file order, lowest precedence first."
+    }
+  },
+  "definitions": {
+    "override": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "match": { "type": "string" },
+        "source": {
+          "type": "string",
+          "enum": ["fs", "pages", "manifest"],
+          "description": "fs: walk a real tree. pages: an existing Hugo section. manifest: an authored list, for contents not on disk at build time."
+        },
+        "present": {
+          "type": "string",
+          "enum": ["styled", "bare"],
+          "description": "styled: themed, sortable, filterable — needs mode: hugo. bare: a genuine autoindex, no JavaScript, renders in lynx."
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["html", "json", "csv", "txt", "sums", "pep503", "search"]
+          },
+          "description": "html and pep503 both render index.html and cannot be asked for together."
+        },
+        "sort": {
+          "type": "string",
+          "enum": ["name", "size", "modtime", "kind"]
+        },
+        "order": {
+          "type": "string",
+          "enum": ["asc", "desc"]
+        },
+        "dirs_first": { "type": "boolean" },
+        "hide": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Globs, matched against the path relative to root, for what a listing leaves out. Default is [\"**/.*\"], the filesystem's own dotfile convention."
+        },
+        "checksum": {
+          "type": "string",
+          "enum": ["none", "sha256"]
+        },
+        "recursive": {
+          "type": "boolean",
+          "description": "Also write tree.json/tree.csv, a whole-subtree listing beside the per-directory one."
+        },
+        "max_rendered": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Rows shown on the HTML page; 0 renders every one. The machine formats are never capped."
+        },
+        "follow_symlinks": { "type": "boolean" },
+        "pep503_level": {
+          "type": "string",
+          "enum": ["root", "project"],
+          "description": "Turns the mixed-directory warning for outputs: [pep503] into a build error when the directory does not actually hold only projects or only files."
+        }
+      }
+    }
+  }
+}

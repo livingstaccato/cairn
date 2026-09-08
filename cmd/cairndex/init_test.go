@@ -14,6 +14,16 @@ import (
 	"github.com/livingstaccato/cairndex/internal/build"
 )
 
+// The yaml-language-server directive is what gives an editor inline
+// autocomplete and validation before a build ever runs. It has to be a
+// comment on its own — a YAML comment line, not a key — or it stops meaning
+// anything to the editor and starts meaning something to the decoder.
+func TestInitConfigCarriesTheSchemaDirective(t *testing.T) {
+	if !strings.HasPrefix(starterConfig, "# yaml-language-server: $schema=") {
+		t.Errorf("starterConfig does not open with the schema directive:\n%s", starterConfig)
+	}
+}
+
 // The test that matters: what init writes has to build. A starter config that
 // needs editing before it works is a worse start than no starter config, and
 // the decoder is strict now, so a stale key here would refuse outright.

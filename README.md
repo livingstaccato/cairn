@@ -40,9 +40,11 @@ defaults:
 
 Every command reads `./cairndex.yaml` unless `--config` says otherwise, and a key
 Cairndex does not recognise is refused rather than ignored — a mistyped `checksum:`
-used to mean no `SHA256SUMS` and a build that called itself complete. Working
-from a clone instead? `cairndex build --config testdata/example/cairndex.yaml` runs
-against the example tree in this repo.
+used to mean no `SHA256SUMS` and a build that called itself complete.
+`cairndex init` writes a `# yaml-language-server:` line pointing an editor at
+[`cairndex.schema.json`](cairndex.schema.json), so a mistyped key shows up inline,
+before the build ever runs. Working from a clone instead? `cairndex build --config
+testdata/example/cairndex.yaml` runs against the example tree in this repo.
 
 `present: bare` is the one line worth understanding on day one. It is a real
 autoindex — no JavaScript, no icon font, renders in `lynx` — and it needs

@@ -24,7 +24,8 @@ import (
 // The comments are the point as much as the values. This file is the first
 // thing an operator edits, and the decoder refuses a key it does not know, so
 // the names have to be right in front of them.
-const starterConfig = `# cairndex.yaml — see https://github.com/livingstaccato/cairndex
+const starterConfig = `# yaml-language-server: $schema=https://raw.githubusercontent.com/livingstaccato/cairndex/main/cairndex.schema.json
+# cairndex.yaml — see https://github.com/livingstaccato/cairndex
 version: 1
 
 # The tree to index, and where the indexes go. Point both at the same directory

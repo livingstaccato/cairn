@@ -10,6 +10,7 @@ path = [
   "go.sum",
   "package.json",
   "package-lock.json",
+  "cairndex.schema.json",
   ".gitignore",
   ".codespellrc",
   ".golangci.yml",

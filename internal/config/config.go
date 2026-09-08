@@ -72,7 +72,7 @@ type Config struct {
 // build_info: absent — checking it directly at every call site would be a
 // nil check repeated everywhere this matters instead of once here.
 func (c *Config) ShowBuildInfo() bool {
-	return c.BuildInfo == nil || *c.BuildInfo
+	return deref(c.BuildInfo, true)
 }
 
 // Load reads and validates a root cairndex.yaml.

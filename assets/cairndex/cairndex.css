@@ -497,3 +497,7 @@
 }
 
 .cairndex-truncated code { font-family: var(--c-mono); }
+
+.cairndex-truncated a { color: var(--c-ink); text-underline-offset: 2px; }
+.cairndex-truncated a:hover { color: var(--c-signal); }
+.cairndex-truncated a:focus-visible { outline: 2px solid var(--c-signal); outline-offset: 1px; }

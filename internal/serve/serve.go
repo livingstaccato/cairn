@@ -91,6 +91,14 @@ type Server struct {
 	// "home.html" for a config using index_basename: home. Empty falls back
 	// to IndexFile, so a caller that only has a directory still works.
 	Index string
+	// NoFollowSymlinks refuses every symlink in the served tree outright,
+	// rather than resolving it and checking where it lands. Containment
+	// already refuses one that resolves outside Dir; this is for an
+	// operator who wants no symlink followed at all, closing the
+	// resolve-then-open TOCTOU gap contained's own doc comment describes
+	// by removing the case it applies to, at the cost of refusing a
+	// symlinked file or directory that was always going to resolve safely.
+	NoFollowSymlinks bool
 	// Addr is where to listen, host and port. Empty means DefaultAddr. A port
 	// of 0 asks the kernel to choose, which BoundAddr then reports.
 	Addr string
@@ -196,7 +204,7 @@ func (s *Server) bind() (net.Listener, error) {
 // diagnostic-by-print problem arriving through a side door.
 func (s *Server) server() *http.Server {
 	return &http.Server{
-		Handler:           &files{log: s.Log, index: s.Index, base: resolveBase(s.Dir)},
+		Handler:           &files{log: s.Log, index: s.Index, base: resolveBase(s.Dir), noFollowSymlinks: s.NoFollowSymlinks},
 		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       readTimeout,
 		IdleTimeout:       idleTimeout,

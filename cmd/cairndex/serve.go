@@ -18,6 +18,7 @@ import (
 
 func newServeCmd() *cobra.Command {
 	var configPath, addr string
+	var noFollowSymlinks bool
 
 	cmd := &cobra.Command{
 		Use:   cmdServe,
@@ -28,11 +29,14 @@ func newServeCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt)
 			defer stop()
-			return runServe(ctx, configPath, addr, cmd.ErrOrStderr())
+			return runServe(ctx, configPath, addr, noFollowSymlinks, cmd.ErrOrStderr())
 		},
 	}
 	cmd.Flags().StringVarP(&configPath, "config", "c", DefaultConfigFile, "path to the root cairndex.yaml")
 	cmd.Flags().StringVar(&addr, "addr", serve.DefaultAddr, "address to listen on")
+	cmd.Flags().BoolVar(&noFollowSymlinks, "no-follow-symlinks", false,
+		"refuse any request path that traverses a symlink, instead of resolving it and "+
+			"checking where it lands")
 	return cmd
 }
 
@@ -41,7 +45,7 @@ func newServeCmd() *cobra.Command {
 // Nothing is built first. serve shows what is on disk, which is the question it
 // exists to answer — running a build here would mean a directory that looked
 // right in the browser and wrong to whatever published it.
-func runServe(ctx context.Context, configPath, addr string, stderr io.Writer) error {
+func runServe(ctx context.Context, configPath, addr string, noFollowSymlinks bool, stderr io.Writer) error {
 	log, shutdown, err := obs.Setup(ctx, "cairndex", stderr)
 	if err != nil {
 		return err
@@ -58,6 +62,9 @@ func runServe(ctx context.Context, configPath, addr string, stderr io.Writer) er
 		return err
 	}
 
-	s := &serve.Server{Dir: outDir, Addr: addr, Log: log, Index: cfg.IndexBasename + ".html"}
+	s := &serve.Server{
+		Dir: outDir, Addr: addr, Log: log, Index: cfg.IndexBasename + ".html",
+		NoFollowSymlinks: noFollowSymlinks,
+	}
 	return s.Run(ctx)
 }

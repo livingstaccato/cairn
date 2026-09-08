@@ -7,6 +7,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -33,7 +34,7 @@ func TestServeServesTheOutputDirectory(t *testing.T) {
 	done := make(chan error, 1)
 	// Port 0: the kernel picks, so a test never fights another process for a
 	// fixed one. Everywhere else a taken port is an error, never a fallback.
-	go func() { done <- runServe(ctx, configPath, "127.0.0.1:0", logged) }()
+	go func() { done <- runServe(ctx, configPath, "127.0.0.1:0", false, logged) }()
 
 	base := waitForListener(t, logged)
 	resp, err := http.Get(base + "/bootstrap/index.json") //nolint:noctx // bounded by the test's own deadline
@@ -54,6 +55,43 @@ func TestServeServesTheOutputDirectory(t *testing.T) {
 	}
 	if !strings.Contains(string(body), "bootstrap.sh") {
 		t.Errorf("the listing does not name the file it indexes: %s", body)
+	}
+
+	cancel()
+	if err := <-done; err != nil {
+		t.Errorf("runServe: %v", err)
+	}
+}
+
+// TestServeNoFollowSymlinksReachesTheServer proves the flag is actually
+// wired to Server.NoFollowSymlinks, not just parsed. internal/serve covers
+// the refusal itself; this only has to prove runServe passes it through.
+func TestServeNoFollowSymlinksReachesTheServer(t *testing.T) {
+	configPath, out := fixture(t)
+	var stderr strings.Builder
+	if err := runBuild(context.Background(), configPath, "", build.Options{}, &stderr); err != nil {
+		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
+	}
+	if err := os.Symlink(
+		filepath.Join(out, "bootstrap", "index.json"),
+		filepath.Join(out, "linked.json"),
+	); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	logged := &syncBuffer{}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- runServe(ctx, configPath, "127.0.0.1:0", true, logged) }()
+
+	base := waitForListener(t, logged)
+	resp, err := http.Get(base + "/linked.json") //nolint:noctx // bounded by the test's own deadline
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode == http.StatusOK {
+		t.Errorf("GET /linked.json = 200 under --no-follow-symlinks; the flag did not reach the server")
 	}
 
 	cancel()
@@ -110,7 +148,7 @@ func boundAddr(logged string) string {
 
 func TestServeMissingConfigFails(t *testing.T) {
 	var stderr strings.Builder
-	err := runServe(context.Background(), filepath.Join(t.TempDir(), "nope.yaml"), "127.0.0.1:0", &stderr)
+	err := runServe(context.Background(), filepath.Join(t.TempDir(), "nope.yaml"), "127.0.0.1:0", false, &stderr)
 	if err == nil {
 		t.Fatal("missing config must be an error")
 	}

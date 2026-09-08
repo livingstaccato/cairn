@@ -295,6 +295,39 @@ func TestSymlinkedFileDoesNotEscapeTheServedDirectory(t *testing.T) {
 	}
 }
 
+// TestNoFollowSymlinksRefusesAnInTreeSymlink covers what containment does
+// not: NoFollowSymlinks refuses a symlink outright, even one whose target is
+// safely inside the served root — the case containment alone always allows,
+// since nothing about it resolves outside the tree.
+func TestNoFollowSymlinksRefusesAnInTreeSymlink(t *testing.T) {
+	out := tree(t)
+	if err := os.Symlink(filepath.Join(out, "docs", "index.html"), filepath.Join(out, "linked.html")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	_, base := startNoFollowSymlinks(t, out)
+	resp, body := get(t, base+"/linked.html")
+	if resp.StatusCode == http.StatusOK {
+		t.Errorf("GET /linked.html returned 200 under NoFollowSymlinks; "+
+			"an in-tree symlink should be refused outright, body: %q", body)
+	}
+}
+
+// The same request succeeds by default: NoFollowSymlinks is opt-in, and an
+// in-tree symlink is exactly what containment is designed to allow.
+func TestFollowingSymlinksStillWorksByDefault(t *testing.T) {
+	out := tree(t)
+	if err := os.Symlink(filepath.Join(out, "docs", "index.html"), filepath.Join(out, "linked.html")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	_, base := start(t, out)
+	resp, _ := get(t, base+"/linked.html")
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("GET /linked.html = %d, want 200: an in-tree symlink should still resolve by default", resp.StatusCode)
+	}
+}
+
 func TestAnIndexThatIsADirectoryIsNotServed(t *testing.T) {
 	out := tree(t)
 	if err := os.MkdirAll(filepath.Join(out, "odd", "index.html"), 0o755); err != nil {

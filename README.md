@@ -318,6 +318,12 @@ Loopback only, and a port already in use is an error naming the port rather than
 a silent move to another one — this hands out whatever is in a directory, and a
 half-built mirror is nobody else's to read.
 
+`--no-follow-symlinks` refuses any request path that traverses a symlink at
+all, rather than resolving it and checking where it lands. Containment
+already refuses one that resolves outside the served directory; this is for
+serving a tree where no symlink should be followed regardless of where it
+points.
+
 ## Design principles
 
 - **Zero external runtime assets.** No CDN, no web fonts, no icon font. Icons

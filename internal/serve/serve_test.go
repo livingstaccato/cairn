@@ -88,6 +88,20 @@ func start(t *testing.T, dir string) (*Server, string) {
 func startIndexed(t *testing.T, dir, index string) (*Server, string) {
 	t.Helper()
 	s := &Server{Dir: dir, Addr: anyPort, Log: obs.Discard(), Index: index, Ready: make(chan struct{})}
+	return runStarted(t, s)
+}
+
+// startNoFollowSymlinks is start with NoFollowSymlinks on, for a server that
+// refuses every symlink in the served tree rather than resolving and
+// containment-checking it.
+func startNoFollowSymlinks(t *testing.T, dir string) (*Server, string) {
+	t.Helper()
+	s := &Server{Dir: dir, Addr: anyPort, Log: obs.Discard(), NoFollowSymlinks: true, Ready: make(chan struct{})}
+	return runStarted(t, s)
+}
+
+func runStarted(t *testing.T, s *Server) (*Server, string) {
+	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() { done <- s.Run(ctx) }()

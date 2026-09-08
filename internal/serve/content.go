@@ -88,6 +88,10 @@ type files struct {
 	// a file from outside the served root. Every path is checked against
 	// this before it is opened.
 	base string
+	// noFollowSymlinks refuses a request path that traverses any symlink at
+	// all, rather than resolving it and checking containment. See
+	// Server.NoFollowSymlinks.
+	noFollowSymlinks bool
 }
 
 // indexName is the file this directory request is answered with.
@@ -223,6 +227,14 @@ func (h *files) contained(name string) (string, error) {
 	resolved, err := filepath.EvalSymlinks(candidate)
 	if err != nil {
 		return "", err
+	}
+	// EvalSymlinks always returns a Clean path, and so does filepath.Join;
+	// the two differ only when some component of candidate was itself a
+	// symlink, which is exactly what NoFollowSymlinks refuses. This covers
+	// a symlinked ancestor directory the same as the final component,
+	// since either changes what candidate resolved to.
+	if h.noFollowSymlinks && resolved != candidate {
+		return "", fmt.Errorf("%s traverses a symlink, refused under NoFollowSymlinks", name)
 	}
 	rel, err := filepath.Rel(h.base, resolved)
 	if err != nil {

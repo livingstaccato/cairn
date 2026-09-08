@@ -67,6 +67,11 @@ type cairndexParam struct {
 	// frontmatter rather than being decided in the template so one config key
 	// governs both presenters and both modes.
 	MaxRendered int `yaml:"max_rendered,omitempty"`
+	// PEP503 tells the template to render the PEP 503 simple-index page
+	// instead of the normal listing, bypassing present: entirely — pep503
+	// is requested through outputs:, an independent axis a template cannot
+	// otherwise see, the same reason BasePath and AtRoot travel as data.
+	PEP503 bool `yaml:"pep503,omitempty"`
 }
 
 // HugoPage is everything a directory's page needs to know about itself.
@@ -94,6 +99,9 @@ type HugoPage struct {
 	// BasePath is the site-absolute prefix the tree is published under, "" when
 	// it is published at the site root.
 	BasePath string
+	// PEP503 is whether this directory's outputs: include pep503. See
+	// cairndexParam.PEP503.
+	PEP503 bool
 }
 
 // HugoContent renders one directory as a Hugo branch-bundle _index.md.
@@ -120,6 +128,7 @@ func HugoContent(p HugoPage) ([]byte, error) {
 			MaxRendered: p.MaxRendered,
 			AtRoot:      p.AtRoot,
 			BasePath:    p.BasePath,
+			PEP503:      p.PEP503,
 		},
 	}
 

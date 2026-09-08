@@ -55,7 +55,18 @@ rules:
 YAML
 
 sed "s|__REPO__|$repo|g" ci/bench-site.go.mod.in > "$d/site/go.mod"
-printf 'baseURL = "/"\ntitle = "templates"\n\n[module]\n  [[module.imports]]\n    path = "github.com/livingstaccato/cairndex"\n  [[module.imports]]\n    path = "github.com/livingstaccato/cairndex/themes/reference"\n' > "$d/site/hugo.toml"
+printf 'baseURL = "/"\ntitle = "templates"\n\n[outputs]\n  home = ["html", "json"]\n\n[module]\n  [[module.imports]]\n    path = "github.com/livingstaccato/cairndex"\n  [[module.imports]]\n    path = "github.com/livingstaccato/cairndex/themes/reference"\n' > "$d/site/hugo.toml"
+
+# search-integration.md's own worked example: a host folding cairndex/entries.html
+# into its own search index at layouts/index.json.
+mkdir -p "$d/site/layouts"
+cat > "$d/site/layouts/index.json" <<'GOTMPL'
+{{- $out := slice -}}
+{{- range partial "cairndex/entries.html" . -}}
+  {{- $out = $out | append (dict "title" .title "path" .path) -}}
+{{- end -}}
+{{- $out | jsonify -}}
+GOTMPL
 
 (cd "$d/site" && "$d/cairndex" build --config cairndex.yaml >/dev/null 2>&1)
 (cd "$d/site" && hugo --quiet >/dev/null 2>&1)
@@ -107,6 +118,14 @@ fi
 for f in index.json index.csv index.txt SHA256SUMS; do
   [ -f "$pub/many/$f" ] || say "many/$f was not published"
 done
+
+# entries.html: a search-integration host folds these into its own index.
+# Listing data moved from frontmatter to an index.json resource once entries
+# started exceeding Hugo's YAML alias limit; entries.html was never updated
+# to read it from there, so it silently returned zero entries ever since.
+if ! grep -q '/one/only.txt' "$pub/index.json"; then
+  say "entries.html did not surface a known file across site.Pages"
+fi
 
 # The parent row, in the renderer hugo mode actually uses. emitHugo never calls
 # BareHTML, so the Go template's AtRoot switch proves nothing about this partial:
@@ -162,6 +181,50 @@ case "$crumbs" in
   "/mirror/"*) ;;
   *) say "the breadcrumb root anchor is not the top of the mirror (hrefs: $crumbs)" ;;
 esac
+
+# pep503 in hugo mode: a root-level directory of project directories, and a
+# project-level directory of distribution files, rendered by the Hugo
+# template rather than mode: direct's Go one — the shape has to match.
+p="$d/pep503"
+mkdir -p "$p/tree/simple/My_Package" "$p/tree/simple/requests"
+printf 'placeholder\n' > "$p/tree/simple/My_Package/placeholder.txt"
+printf 'dist\n' > "$p/tree/simple/requests/requests-2.32.3.tar.gz"
+
+cat > "$p/cairndex.yaml" <<YAML
+version: 1
+mode: hugo
+root: ./tree
+out: ./content
+defaults:
+  present: bare
+  checksum: sha256
+  outputs: [json, pep503]
+rules:
+  - match: "simple"
+    pep503_level: root
+  - match: "simple/requests"
+    pep503_level: project
+YAML
+
+sed "s|__REPO__|$repo|g" ci/bench-site.go.mod.in > "$p/go.mod"
+printf 'baseURL = "/"\ntitle = "pep503"\n\n[module]\n  [[module.imports]]\n    path = "github.com/livingstaccato/cairndex"\n  [[module.imports]]\n    path = "github.com/livingstaccato/cairndex/themes/reference"\n' > "$p/hugo.toml"
+
+(cd "$p" && "$d/cairndex" build --config cairndex.yaml >/dev/null 2>&1)
+(cd "$p" && hugo --quiet >/dev/null 2>&1)
+
+# The href keeps the real path; only the anchor text is PEP 503-normalized —
+# a client resolves a project by name, and two spellings of the same name
+# must read as the same entry regardless of the directory's actual casing.
+if ! grep -q '<a href="/simple/My_Package/">my-package</a>' "$p/public/simple/index.html"; then
+  say "the pep503 root page did not normalize a project directory name"
+fi
+if grep -qi 'cairndex-breadcrumb\|cairndex-head' "$p/public/simple/index.html"; then
+  say "the pep503 page rendered the normal listing's chrome"
+fi
+sum=$(sha256sum "$p/tree/simple/requests/requests-2.32.3.tar.gz" | cut -d' ' -f1)
+if ! grep -q "requests-2.32.3.tar.gz#sha256=$sum" "$p/public/simple/requests/index.html"; then
+  say "the pep503 project page did not carry the distribution file's sha256 fragment"
+fi
 
 [ "$fail" -eq 0 ] && echo "OK: templates render correctly"
 exit "$fail"

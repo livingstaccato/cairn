@@ -56,6 +56,10 @@ out:  ./content
   `.Params`, so a custom template reads
   `(.Resources.GetMatch "index.json" | transform.Unmarshal).entries`.
 - `layouts/partials/cairndex/entries.html` — see [search integration](search-integration.md).
+- `layouts/partials/cairndex/pep503.html` — the PEP 503 simple index, for a
+  directory with `outputs: [pep503]`. Bypasses `listing.html` and `present:`
+  entirely: PEP 503 defines a minimal page of anchors, and neither the
+  breadcrumb nor the format switcher belongs on one.
 - `assets/cairndex/cairndex.css`, `cairndex.js`, `icons.svg` — load them through Hugo
   Pipes. The reference theme in `themes/reference` shows the minimum.
 
@@ -65,8 +69,8 @@ properties with fallbacks, so it inherits whatever design you already have.
 ## Two things that collide
 
 `html` and `pep503` both target `index.html`. Asking for both in one directory
-is a conflict Cairndex refuses rather than picking a winner — they are two
-renderings of the same URL.
+is a conflict Cairndex refuses at config load, rather than picking a winner —
+they are two renderings of the same URL.
 
 `present: styled` produces nothing in `direct` mode. Styled HTML needs your
 theme, which Cairndex does not have, so only `bare` renders without Hugo.

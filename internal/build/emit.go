@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"slices"
 
 	"github.com/livingstaccato/cairndex/internal/config"
 	"github.com/livingstaccato/cairndex/internal/emit"
@@ -199,6 +200,12 @@ func (r *runner) emitHugo(c emitCtx) error {
 		}
 		return r.emitResources(c)
 	}
+	wantsPEP503 := slices.Contains(c.settings.Outputs, config.OutputPEP503)
+	if wantsPEP503 {
+		if err := r.checkPEP503(c); err != nil {
+			return err
+		}
+	}
 	b, err := emit.HugoContent(emit.HugoPage{
 		Listing:     c.listing,
 		Prose:       c.prose,
@@ -211,6 +218,7 @@ func (r *runner) emitHugo(c emitCtx) error {
 		// The same rule emitHTML applies, for the renderer that is Hugo's.
 		AtRoot:   c.relDir == ".",
 		BasePath: r.cfg.BasePath,
+		PEP503:   wantsPEP503,
 	})
 	if err != nil {
 		return err
@@ -362,13 +370,33 @@ func (r *runner) emitSearch(c emitCtx) error {
 
 // emitPEP503 renders a Python simple index.
 //
-// It writes index.html, which is the filename PEP 503 requires, so a directory
-// configured with both html and pep503 collides there and the write guard
-// refuses. That is correct: they are alternative renderings of one URL.
+// It writes index.html, which is the filename PEP 503 requires, so a
+// directory configured with both html and pep503 collides there. config's
+// own validateOutputConflicts refuses that combination outright now; mode:
+// direct's write guard happened to catch it too, as a side effect of two
+// writes landing on one path within a run, but mode: hugo has no such guard
+// to fall back on.
 func (r *runner) emitPEP503(c emitCtx) error {
 	if c.basename != r.cfg.IndexBasename {
 		return nil
 	}
+	if err := r.checkPEP503(c); err != nil {
+		return err
+	}
+	b, err := emit.PEP503(c.listing)
+	if err != nil {
+		return err
+	}
+	return r.write(c.relDir, "index.html", b)
+}
+
+// checkPEP503 validates a listing against pep503_level when the operator
+// declared one, and warns when nothing was declared and the listing mixes
+// project directories with files anyway. Shared between emitPEP503 (mode:
+// direct writes its own page) and emitHugo (mode: hugo hands the same
+// listing to a Hugo template), since the listing a directory holds does not
+// depend on which mode renders it.
+func (r *runner) checkPEP503(c emitCtx) error {
 	if c.settings.PEP503Level != "" {
 		// The operator staked a specific, checkable claim with
 		// pep503_level: a violation fails the build rather than
@@ -376,7 +404,9 @@ func (r *runner) emitPEP503(c emitCtx) error {
 		if err := emit.ValidatePEP503Level(c.settings.PEP503Level, c.listing); err != nil {
 			return fmt.Errorf("%s: %w", c.relDir, err)
 		}
-	} else if emit.PEP503Mixed(c.listing) {
+		return nil
+	}
+	if emit.PEP503Mixed(c.listing) {
 		// PEP 503 defines two separate levels — a root page of project
 		// directories, a project's own page of its download files — and
 		// this renders both with the same code, trusting a directory this
@@ -390,11 +420,7 @@ func (r *runner) emitPEP503(c emitCtx) error {
 			"files; PEP 503 defines two separate levels and this page is not "+
 			"faithful to either", "path", c.relDir)
 	}
-	b, err := emit.PEP503(c.listing)
-	if err != nil {
-		return err
-	}
-	return r.write(c.relDir, "index.html", b)
+	return nil
 }
 
 // write places one output file and records it.

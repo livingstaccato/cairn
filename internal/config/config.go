@@ -131,16 +131,7 @@ func (c *Config) validate(p string) error {
 		return fmt.Errorf("config %s: on_conflict must be %s or %s, got %q",
 			p, ConflictError, ConflictSkip, c.OnConflict)
 	}
-	if err := validateSources(p, c.Defaults, c.Rules); err != nil {
-		return err
-	}
-	if err := validateHide(p, c.Defaults, c.Rules); err != nil {
-		return err
-	}
-	if err := validateChecksums(p, c.Defaults, c.Rules); err != nil {
-		return err
-	}
-	if err := validatePEP503Levels(p, c.Defaults, c.Rules); err != nil {
+	if err := validateOverrides(p, c.Defaults, c.Rules); err != nil {
 		return err
 	}
 	if c.Mode != ModeDirect && c.Mode != ModeHugo {
@@ -157,16 +148,27 @@ func (c *Config) validate(p string) error {
 // never gives that directory's entries a digest, and SHA256SUMS is not
 // written for it, silently.
 func ValidateOverride(p string, o Override) error {
-	if err := validateSources(p, o, nil); err != nil {
+	return validateOverrides(p, o, nil)
+}
+
+// validateOverrides runs every override-level check against defaults: and
+// rules — or, from ValidateOverride, a single directory override on its
+// own. Factored out so validate itself stays a flat sequence of top-level
+// config checks rather than growing a branch per override validator.
+func validateOverrides(p string, defaults Override, rules []Rule) error {
+	if err := validateSources(p, defaults, rules); err != nil {
 		return err
 	}
-	if err := validateHide(p, o, nil); err != nil {
+	if err := validateHide(p, defaults, rules); err != nil {
 		return err
 	}
-	if err := validateChecksums(p, o, nil); err != nil {
+	if err := validateChecksums(p, defaults, rules); err != nil {
 		return err
 	}
-	return validatePEP503Levels(p, o, nil)
+	if err := validatePEP503Levels(p, defaults, rules); err != nil {
+		return err
+	}
+	return validateOutputConflicts(p, defaults, rules)
 }
 
 // eachOverride runs check against the root defaults and every rule. The three
@@ -220,6 +222,35 @@ func validatePEP503Levels(p string, defaults Override, rules []Rule) error {
 		}
 		return fmt.Errorf("config %s: pep503_level must be %s or %s, got %q",
 			p, PEP503LevelRoot, PEP503LevelProject, *o.PEP503Level)
+	})
+}
+
+// validateOutputConflicts rejects an outputs: list asking for both html and
+// pep503. Both render index.html, and mode: direct's write guard happens to
+// refuse the second write within one run — but mode: hugo skips both from
+// its own per-format write path entirely, relying on its template to decide
+// which one wins, which it does silently. Refused up front instead, so the
+// rule holds the same way in both modes rather than one enforcing it as a
+// side effect and the other not at all.
+func validateOutputConflicts(p string, defaults Override, rules []Rule) error {
+	return eachOverride(defaults, rules, func(o Override) error {
+		if o.Outputs == nil {
+			return nil
+		}
+		hasHTML, hasPEP503 := false, false
+		for _, out := range *o.Outputs {
+			switch out {
+			case OutputHTML:
+				hasHTML = true
+			case OutputPEP503:
+				hasPEP503 = true
+			}
+		}
+		if hasHTML && hasPEP503 {
+			return fmt.Errorf("config %s: outputs: cannot ask for both %s and %s, "+
+				"they render the same index.html", p, OutputHTML, OutputPEP503)
+		}
+		return nil
 	})
 }
 

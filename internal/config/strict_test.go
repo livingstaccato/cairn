@@ -67,6 +67,23 @@ func TestAnUnknownPEP503LevelIsRefused(t *testing.T) {
 	}
 }
 
+// html and pep503 both render index.html — direct mode's write guard
+// happens to refuse the second write within one run, but hugo mode's
+// per-format skip list means neither ever reaches that guard at all, so a
+// mode: hugo config asking for both would otherwise silently render
+// whichever the template checks first. Refused explicitly instead, so the
+// rule holds the same way regardless of mode.
+func TestBothHTMLAndPEP503IsRefused(t *testing.T) {
+	err := mustFail(t, "version: 1\ndefaults:\n  outputs: [html, pep503]\n")
+	if !strings.Contains(err.Error(), "html") || !strings.Contains(err.Error(), "pep503") {
+		t.Errorf("error should name both conflicting outputs: %v", err)
+	}
+	if _, err := Load(writeConfig(t,
+		"version: 1\nrules:\n  - match: \"a/**\"\n    outputs: [pep503, html]\n")); err == nil {
+		t.Error("the same conflict in a rule must be refused too")
+	}
+}
+
 // hidden: was removed and kept declared so it could be refused by name. Strict
 // decoding must not swallow that: "field hidden not found" is true and tells an
 // operator nothing about where the setting went.
@@ -92,7 +109,7 @@ protect: ["dists/**"]
 defaults:
   source: fs
   present: bare
-  outputs: [html, json, csv, txt, sums, pep503, search]
+  outputs: [html, json, csv, txt, sums, search]
   sort: name
   order: asc
   dirs_first: true

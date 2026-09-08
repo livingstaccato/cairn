@@ -22,6 +22,7 @@ type parsedFM struct {
 		Count    int    `yaml:"count"`
 		AtRoot   bool   `yaml:"at_root"`
 		BasePath string `yaml:"base_path"`
+		PEP503   bool   `yaml:"pep503"`
 	} `yaml:"cairndex"`
 }
 
@@ -253,5 +254,29 @@ func TestHugoContentOmitsAnEmptyBasePath(t *testing.T) {
 	}
 	if strings.Contains(string(b), "base_path") {
 		t.Errorf("an empty base_path was written out:\n%s", b)
+	}
+}
+
+// PEP503 tells the template to render the PEP 503 simple-index page instead
+// of the normal listing — a template cannot derive this from present:,
+// since pep503 is requested through outputs:, an independent axis.
+func TestHugoContentCarriesPEP503(t *testing.T) {
+	b, err := HugoContent(HugoPage{Listing: sample(), PEP503: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fm, _ := split(t, b)
+	if !fm.Cairndex.PEP503 {
+		t.Errorf("pep503 did not reach the frontmatter:\n%s", b)
+	}
+}
+
+func TestHugoContentOmitsPEP503WhenFalse(t *testing.T) {
+	b, err := HugoContent(HugoPage{Listing: sample()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), "pep503") {
+		t.Errorf("pep503: false was written out where omitting it says the same thing:\n%s", b)
 	}
 }

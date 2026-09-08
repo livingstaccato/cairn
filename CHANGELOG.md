@@ -16,7 +16,15 @@ versions follow [SemVer](https://semver.org/) once tagged. See the
   traverses a symlink, rather than resolving it and checking where it lands.
 - `pep503_level: root` or `pep503_level: project` turns the existing
   mixed-directory warning for `outputs: [pep503]` into a build error when a
-  directory does not actually hold only projects or only files.
+  directory does not actually hold only projects or only files. Applies in
+  both `mode: direct` and `mode: hugo`.
+- `mode: hugo` now actually renders `outputs: [pep503]`. It previously did
+  nothing there — `hugoRenders` treated pep503 the same as html, on the
+  assumption Hugo's template would produce it, but no template ever did, so
+  the directory silently got an ordinary listing instead. A new
+  `layouts/partials/cairndex/pep503.html` renders it now, and `outputs:
+  [html, pep503]` together is refused at config load in both modes, rather
+  than only as a side effect of `mode: direct`'s write guard.
 
 ### Changed
 
@@ -32,3 +40,9 @@ versions follow [SemVer](https://semver.org/) once tagged. See the
 - `cairndex serve` opened and re-resolved a request path twice, widening the
   window a concurrent writer could swap a symlink into; it now opens the
   path containment already resolved.
+- `layouts/partials/cairndex/entries.html` (search integration) has
+  returned zero entries for every page since the listing moved from
+  frontmatter into an `index.json` bundle resource — it read
+  `.Params.cairndex.entries`, a field that move deleted, and nothing caught
+  it because nothing rendered it. It now reads the resource, the same as
+  every other presenter.

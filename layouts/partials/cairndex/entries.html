@@ -16,12 +16,24 @@
          {{- end -}}
 
        Pages are found by the presence of .Params.cairndex rather than by layout:
-       cairndex writes branch bundles, which site.RegularPages does not include. */ -}}
+       cairndex writes branch bundles, which site.RegularPages does not include.
+
+       Entries themselves come from each page's own index.json resource, not
+       from .Params.cairndex.entries — that field does not exist. Hugo
+       refused any directory past roughly ten thousand entries while the
+       listing rode in frontmatter, so cairndex moved it into a bundle
+       resource instead; this partial predates that move and silently
+       returned nothing for every page from the moment it landed until
+       ci/templates.sh started rendering a real search-integration host and
+       reading back what it got. */ -}}
 {{- $out := slice -}}
 {{- range site.Pages -}}
+  {{- $page := . -}}
   {{- with .Params.cairndex -}}
     {{- $section := .path -}}
-    {{- range .entries -}}
+    {{- $entries := slice -}}
+    {{- with $page.Resources.GetMatch "index.json" }}{{ $entries = (. | transform.Unmarshal).entries }}{{ end -}}
+    {{- range $entries -}}
       {{- $out = $out | append (dict
           "title"    (.title | default .name)
           "path"     .path

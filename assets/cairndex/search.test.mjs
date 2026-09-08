@@ -9,6 +9,15 @@ test('scoreRecord matches on name case-insensitively', () => {
   assert.ok(scoreRecord({ name: 'nginx_1.24.0-1_amd64.deb' }, 'nginx') > 0);
 });
 
+// scoreRecord is exported for reuse outside the DOM wiring (a host folding
+// this into its own search index, per search-integration.md), so it cannot
+// assume a caller already lowercased the needle the way rankResults does —
+// it has to be case-insensitive on both sides, on its own.
+test('scoreRecord is case-insensitive on the needle, not just the haystack', () => {
+  assert.ok(scoreRecord({ name: 'nginx' }, 'NGINX') > 0);
+  assert.ok(scoreRecord({ name: 'NGINX' }, 'nginx') > 0);
+});
+
 test('scoreRecord weighs name and title above summary and tags', () => {
   const nameHit = scoreRecord({ name: 'nginx' }, 'nginx');
   const summaryHit = scoreRecord({ name: 'x', summary: 'nginx docs' }, 'nginx');

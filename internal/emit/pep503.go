@@ -5,6 +5,7 @@ package emit
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/url"
@@ -162,11 +163,45 @@ func ValidatePEP503Level(level string, l model.Listing) error {
 // how a caller checks that assumption before trusting this renders either
 // level correctly.
 func PEP503(l model.Listing) ([]byte, error) {
+	entries, err := pep503Entries(l)
+	if err != nil {
+		return nil, err
+	}
 	data := struct {
 		Title string
 		Files []pep503File
 	}{Title: l.Path}
+	for _, e := range entries {
+		// #nosec G203 -- e.Href was built by hrefFor inside pep503Entries, from
+		// url.URL, never interpolated from a filename; round-tripping the
+		// already-safe string back to template.URL here does not reopen that.
+		data.Files = append(data.Files, pep503File{Name: e.Name, Href: template.URL(e.Href)})
+	}
 
+	var buf bytes.Buffer
+	if err := pep503Template.Execute(&buf, data); err != nil {
+		return nil, fmt.Errorf("render pep503 for %s: %w", l.Path, err)
+	}
+	return buf.Bytes(), nil
+}
+
+// PEP503Entry is one rendered anchor — a project directory or a distribution
+// file — already name-normalized and href-encoded. It is the shape mode:
+// hugo's pep503.json bundle resource carries, so the Hugo template that reads
+// it needs no encoding or normalization logic of its own.
+type PEP503Entry struct {
+	Name string `json:"name"`
+	Href string `json:"href"`
+}
+
+// pep503Entries builds the anchors a PEP 503 page renders: hrefFor encodes
+// and validates each one, pep503Name normalizes a directory's name. Shared
+// by PEP503, which renders it as HTML directly, and PEP503JSON, which hands
+// the same data to mode: hugo's template — so a hostile filename or a
+// malformed digest is caught in exactly one place regardless of which mode
+// renders the page.
+func pep503Entries(l model.Listing) ([]PEP503Entry, error) {
+	var out []PEP503Entry
 	for _, e := range l.Entries {
 		href, err := hrefFor(e)
 		if err != nil {
@@ -176,12 +211,26 @@ func PEP503(l model.Listing) ([]byte, error) {
 		if e.IsDir {
 			name = pep503Name(e.Name)
 		}
-		data.Files = append(data.Files, pep503File{Name: name, Href: href})
+		out = append(out, PEP503Entry{Name: name, Href: string(href)})
 	}
+	return out, nil
+}
 
+// PEP503JSON renders a listing's PEP 503 anchors as the pep503.json bundle
+// resource mode: hugo's pep503.html partial reads, indented the same way
+// JSON does: these files are often committed alongside the tree they
+// describe, so a one-entry change should read as a one-line diff.
+func PEP503JSON(l model.Listing) ([]byte, error) {
+	entries, err := pep503Entries(l)
+	if err != nil {
+		return nil, err
+	}
 	var buf bytes.Buffer
-	if err := pep503Template.Execute(&buf, data); err != nil {
-		return nil, fmt.Errorf("render pep503 for %s: %w", l.Path, err)
+	enc := json.NewEncoder(&buf)
+	enc.SetIndent("", "  ")
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(entries); err != nil {
+		return nil, fmt.Errorf("encode pep503 entries %s: %w", l.Path, err)
 	}
 	return buf.Bytes(), nil
 }

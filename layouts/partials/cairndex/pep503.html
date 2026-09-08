@@ -3,26 +3,25 @@
        present: option: PEP 503 defines a minimal page of anchors, pip is
        the only real reader, and none of the usual chrome (breadcrumb,
        formats switcher, styled/bare's own markup) belongs on it — matching
-       what mode: direct already renders. Reads entries from the same
-       index.json resource every other presenter does, so this and
-       mode: direct's own Go template render from the one listing cairndex
-       computed rather than each recomputing it and risking the two
-       drifting apart. */ -}}
+       what mode: direct already renders.
+
+       Entries come from pep503.json, not index.json: name normalization and
+       href encoding both need to happen exactly once regardless of which
+       mode renders the page, so internal/emit/pep503.go's hrefFor and
+       pep503Name build them ahead of time, the same code direct mode's HTML
+       already uses and already tests against a hostile filename and a
+       malformed digest. A template reimplementing that here would drift
+       from it the same way entries.html once drifted from index.json. */ -}}
 {{- $c := .Params.cairndex -}}
 {{- $entries := slice -}}
-{{- with .Resources.GetMatch "index.json" }}{{ $entries = (. | transform.Unmarshal).entries }}{{ end -}}
+{{- with .Resources.GetMatch "pep503.json" }}{{ $entries = . | transform.Unmarshal }}{{ end -}}
 <!DOCTYPE html>
 <html>
 <head><meta name="pypi:repository-version" content="1.0"><title>Links for {{ $c.path }}</title></head>
 <body>
 <h1>Links for {{ $c.path }}</h1>
 {{- range $entries }}
-{{- /* pep503Name in internal/emit/pep503.go, restated: lowercase, with any
-       run of "-", "_" or "." collapsed to one "-". Applied only to a
-       directory entry — a project name PEP 503 requires normalized so two
-       spellings of it resolve to the same index entry. A file's own name,
-       the download pip fetches, is never touched. */ -}}
-<a href="{{ .path }}{{ with .sha256 }}#sha256={{ . }}{{ end }}">{{ if .is_dir }}{{ replaceRE `[-_.]+` "-" (lower .name) }}{{ else }}{{ .name }}{{ end }}</a><br>
+<a href="{{ .href }}">{{ .name }}</a><br>
 {{- end }}
 </body>
 </html>

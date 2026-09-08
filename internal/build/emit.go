@@ -205,6 +205,9 @@ func (r *runner) emitHugo(c emitCtx) error {
 		if err := r.checkPEP503(c); err != nil {
 			return err
 		}
+		if err := r.emitPEP503JSON(c); err != nil {
+			return err
+		}
 	}
 	b, err := emit.HugoContent(emit.HugoPage{
 		Listing:     c.listing,
@@ -388,6 +391,18 @@ func (r *runner) emitPEP503(c emitCtx) error {
 		return err
 	}
 	return r.write(c.relDir, "index.html", b)
+}
+
+// emitPEP503JSON writes the anchors mode: hugo's pep503.html partial reads:
+// hrefFor's encoding and hex-digest validation run once here, the same code
+// PEP503 already gives direct mode's HTML, so the template needs no
+// encoding or normalization logic of its own.
+func (r *runner) emitPEP503JSON(c emitCtx) error {
+	b, err := emit.PEP503JSON(c.listing)
+	if err != nil {
+		return fmt.Errorf("%s: %w", c.relDir, err)
+	}
+	return r.write(c.relDir, "pep503.json", b)
 }
 
 // checkPEP503 validates a listing against pep503_level when the operator

@@ -1,0 +1,6 @@
+{{- /* No {{ define "main" }} block here, deliberately: a template with none
+       is rendered as a complete document instead of being wrapped in the
+       theme's baseof.html. pep503.html already emits its own <!DOCTYPE>,
+       <html> and <head> — PEP 503 defines a minimal page of anchors with no
+       reader but pip, and the theme's chrome does not belong on it. */ -}}
+{{- partial "cairndex/pep503.html" . -}}

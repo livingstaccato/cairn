@@ -271,6 +271,34 @@ func TestHugoContentCarriesPEP503(t *testing.T) {
 	}
 }
 
+// A pep503 page gets its own layout, one with no {{ define "main" }} block,
+// so Hugo renders it standalone instead of wrapping it in the theme's
+// baseof.html — a page whose own doctype ends up nested inside the theme's
+// otherwise. Reusing HugoLayout for both pages is what let that happen: the
+// listing template's {{ if .Params.cairndex.pep503 }} branch decided which
+// partial to call, but baseof wraps the whole layout either way.
+func TestHugoContentUsesTheStandalonePEP503Layout(t *testing.T) {
+	b, err := HugoContent(HugoPage{Listing: sample(), PEP503: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fm, _ := split(t, b)
+	if fm.Layout != HugoPEP503Layout {
+		t.Errorf("layout = %q, want %q so Hugo skips baseof for this page", fm.Layout, HugoPEP503Layout)
+	}
+}
+
+func TestHugoContentUsesTheOrdinaryLayoutWhenNotPEP503(t *testing.T) {
+	b, err := HugoContent(HugoPage{Listing: sample()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fm, _ := split(t, b)
+	if fm.Layout != HugoLayout {
+		t.Errorf("layout = %q, want %q", fm.Layout, HugoLayout)
+	}
+}
+
 func TestHugoContentOmitsPEP503WhenFalse(t *testing.T) {
 	b, err := HugoContent(HugoPage{Listing: sample()})
 	if err != nil {

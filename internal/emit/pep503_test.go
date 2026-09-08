@@ -193,6 +193,51 @@ func TestValidatePEP503Level(t *testing.T) {
 	}
 }
 
+// PEP503JSON is what mode: hugo's pep503.html partial reads instead of
+// building hrefs itself, so a hostile filename or a malformed digest is
+// caught by the same code direct mode already tests, in exactly one place.
+func TestPEP503JSONEncodesHref(t *testing.T) {
+	l := model.Listing{Entries: []model.Entry{
+		{Name: "x.whl", Path: `/simple/x/weird#file?name.tar.gz`, Kind: "archive"},
+	}}
+	b, err := PEP503JSON(l)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(b)
+	if strings.Contains(s, `"href": "/simple/x/weird#file?name.tar.gz"`) {
+		t.Errorf("href was not percent-encoded:\n%s", s)
+	}
+	if !strings.Contains(s, "%23") || !strings.Contains(s, "%3F") {
+		t.Errorf("expected %%23 and %%3F in the encoded href:\n%s", s)
+	}
+}
+
+func TestPEP503JSONNormalizesDirectoryNames(t *testing.T) {
+	l := model.Listing{Entries: []model.Entry{
+		{Name: "My_Package.Name", IsDir: true, Path: "/simple/My_Package.Name/"},
+	}}
+	b, err := PEP503JSON(l)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `"name": "my-package-name"`) {
+		t.Errorf("directory name was not PEP 503 normalized:\n%s", b)
+	}
+	if !strings.Contains(string(b), `"href": "/simple/My_Package.Name/"`) {
+		t.Errorf("href should keep the real directory casing:\n%s", b)
+	}
+}
+
+func TestPEP503JSONRejectsNonHexDigest(t *testing.T) {
+	l := model.Listing{Entries: []model.Entry{
+		{Name: "x.whl", Path: "/simple/x/x.whl", Kind: "archive", SHA256: "not-a-real-digest"},
+	}}
+	if _, err := PEP503JSON(l); err == nil {
+		t.Fatal("a malformed digest must fail rather than reach the fragment")
+	}
+}
+
 func TestIsHex64(t *testing.T) {
 	if !isHex64(strings.Repeat("aF0", 21) + "b") {
 		t.Error("mixed-case 64-char hex should be accepted")

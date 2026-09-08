@@ -99,6 +99,31 @@ func TestRunHugoModeCarriesPEP503InFrontmatter(t *testing.T) {
 	}
 }
 
+// mode: hugo writes pep503.json — the same encoding and digest validation
+// PEP503 already gives direct mode's HTML, reused here instead of
+// reimplemented in the Hugo template that reads it.
+func TestRunHugoModeWritesPEP503JSONWithEncodedHrefs(t *testing.T) {
+	root, out := t.TempDir(), t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, `weird#file?name.tar.gz`), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	outs := []string{config.OutputPEP503}
+	level := config.PEP503LevelProject
+	c := conf(nil)
+	c.Defaults.Outputs = &outs
+	c.Defaults.PEP503Level = &level
+	c.Mode = config.ModeHugo
+	run(t, c, root, out)
+
+	b, err := os.ReadFile(filepath.Join(out, "pep503.json"))
+	if err != nil {
+		t.Fatalf("pep503.json was not written: %v", err)
+	}
+	if !strings.Contains(string(b), "%23") || !strings.Contains(string(b), "%3F") {
+		t.Errorf("href was not percent-encoded:\n%s", b)
+	}
+}
+
 // The same declared-level validation as direct mode applies in hugo mode:
 // bootstrap holds files beside its linux/ subdirectory, so declaring it
 // root must fail the build there too, not just under mode: direct.

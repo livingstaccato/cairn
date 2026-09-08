@@ -19,6 +19,13 @@ const (
 	// HugoLayout is the layout name cairndex stamps on every generated page, so a
 	// theme can bind templates to it without guessing at section names.
 	HugoLayout = "cairndex"
+	// HugoPEP503Layout is the layout name a pep503 page gets instead. Its
+	// template has no {{ define "main" }} block, so Hugo renders it as a
+	// complete document rather than wrapping it in the theme's baseof.html —
+	// PEP 503 defines a minimal page of anchors with no reader but pip, and
+	// no chrome belongs on it, the same reason present:/the format switcher
+	// do not either.
+	HugoPEP503Layout = "cairndex-pep503"
 	// HugoContentFile is the branch-bundle filename cairndex writes per directory.
 	HugoContentFile = "_index.md"
 	// rootTitle names the top of the tree, which has no directory name.
@@ -113,9 +120,13 @@ type HugoPage struct {
 // a bundle resource and published verbatim, so nothing is produced twice.
 func HugoContent(p HugoPage) ([]byte, error) {
 	l := p.Listing
+	layout := HugoLayout
+	if p.PEP503 {
+		layout = HugoPEP503Layout
+	}
 	fm := hugoFrontmatter{
 		Title:  titleFor(l.Path, p.AtRoot),
-		Layout: HugoLayout,
+		Layout: layout,
 		Cairndex: cairndexParam{
 			Present:     p.Present,
 			Path:        l.Path,

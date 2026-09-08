@@ -189,6 +189,7 @@ p="$d/pep503"
 mkdir -p "$p/tree/simple/My_Package" "$p/tree/simple/requests"
 printf 'placeholder\n' > "$p/tree/simple/My_Package/placeholder.txt"
 printf 'dist\n' > "$p/tree/simple/requests/requests-2.32.3.tar.gz"
+printf 'dist\n' > "$p/tree/simple/requests/weird#file?name.tar.gz"
 
 cat > "$p/cairndex.yaml" <<YAML
 version: 1
@@ -224,6 +225,25 @@ fi
 sum=$(sha256sum "$p/tree/simple/requests/requests-2.32.3.tar.gz" | cut -d' ' -f1)
 if ! grep -q "requests-2.32.3.tar.gz#sha256=$sum" "$p/public/simple/requests/index.html"; then
   say "the pep503 project page did not carry the distribution file's sha256 fragment"
+fi
+
+# A filename carrying URL-reserved characters must not break the href: pip
+# parses everything after an unescaped '#' or '?' as a fragment or query,
+# not part of the path, and requests the wrong thing entirely.
+if ! grep -q 'weird%23file%3Fname.tar.gz' "$p/public/simple/requests/index.html"; then
+  say "the pep503 href did not percent-encode a reserved character in the filename"
+fi
+if grep -q 'href="[^"]*weird#file' "$p/public/simple/requests/index.html"; then
+  say "the pep503 href broke on an unescaped '#' in the filename"
+fi
+
+# A pep503 page must be one complete document, not the theme's baseof.html
+# wrapped around a second one pep503.html brings its own — a nested
+# <!DOCTYPE>/<html> is invisible to the chrome-name grep above but still
+# means the page has two <title> tags and a browser parses it strangely.
+doctypes=$(grep -oi '<!doctype html>' "$p/public/simple/index.html" | wc -l | tr -d ' ')
+if [ "$doctypes" != "1" ]; then
+  say "the pep503 page is not one complete document (found $doctypes <!DOCTYPE> declarations)"
 fi
 
 [ "$fail" -eq 0 ] && echo "OK: templates render correctly"

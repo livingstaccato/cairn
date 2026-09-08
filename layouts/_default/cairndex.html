@@ -1,7 +1,3 @@
 {{ define "main" }}
-  {{ if .Params.cairndex.pep503 }}
-    {{ partial "cairndex/pep503.html" . }}
-  {{ else }}
-    {{ partial "cairndex/listing.html" . }}
-  {{ end }}
+  {{ partial "cairndex/listing.html" . }}
 {{ end }}

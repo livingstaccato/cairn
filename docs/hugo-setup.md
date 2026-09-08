@@ -59,7 +59,10 @@ out:  ./content
 - `layouts/partials/cairndex/pep503.html` — the PEP 503 simple index, for a
   directory with `outputs: [pep503]`. Bypasses `listing.html` and `present:`
   entirely: PEP 503 defines a minimal page of anchors, and neither the
-  breadcrumb nor the format switcher belongs on one.
+  breadcrumb nor the format switcher belongs on one. It renders through its
+  own layout rather than the usual `cairndex` one, so it comes out as a
+  standalone document too — no theme header, no baseof — matching what
+  `mode: direct` writes for the same directory.
 - `assets/cairndex/cairndex.css`, `cairndex.js`, `icons.svg` — load them through Hugo
   Pipes. The reference theme in `themes/reference` shows the minimum.
 

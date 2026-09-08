@@ -276,7 +276,7 @@ func machineFormats(s config.Settings, l model.Listing) []string {
 	var out []string
 	for _, f := range s.Outputs {
 		switch f {
-		case config.OutputJSON, config.OutputCSV, config.OutputText:
+		case config.OutputJSON, config.OutputCSV, config.OutputText, config.OutputSearch:
 			out = append(out, f)
 		case config.OutputSums:
 			if len(emit.Sums(l)) > 0 {

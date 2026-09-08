@@ -60,21 +60,7 @@
     "defaults": { "$ref": "#/definitions/override" },
     "rules": {
       "type": "array",
-      "items": {
-        "allOf": [
-          { "$ref": "#/definitions/override" },
-          {
-            "type": "object",
-            "required": ["match"],
-            "properties": {
-              "match": {
-                "type": "string",
-                "description": "A doublestar glob, matched against the path relative to root, that this rule's settings apply to."
-              }
-            }
-          }
-        ]
-      },
+      "items": { "$ref": "#/definitions/rule" },
       "description": "Path-glob-scoped partial overrides of defaults:, applied in file order, lowest precedence first."
     }
   },
@@ -83,7 +69,69 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "match": { "type": "string" },
+        "source": {
+          "type": "string",
+          "enum": ["fs", "pages", "manifest"],
+          "description": "fs: walk a real tree. pages: an existing Hugo section. manifest: an authored list, for contents not on disk at build time."
+        },
+        "present": {
+          "type": "string",
+          "enum": ["styled", "bare"],
+          "description": "styled: themed, sortable, filterable — needs mode: hugo. bare: a genuine autoindex, no JavaScript, renders in lynx."
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["html", "json", "csv", "txt", "sums", "pep503", "search"]
+          },
+          "description": "html and pep503 both render index.html and cannot be asked for together."
+        },
+        "sort": {
+          "type": "string",
+          "enum": ["name", "size", "modtime", "kind"]
+        },
+        "order": {
+          "type": "string",
+          "enum": ["asc", "desc"]
+        },
+        "dirs_first": { "type": "boolean" },
+        "hide": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Globs, matched against the path relative to root, for what a listing leaves out. Default is [\"**/.*\"], the filesystem's own dotfile convention."
+        },
+        "checksum": {
+          "type": "string",
+          "enum": ["none", "sha256"]
+        },
+        "recursive": {
+          "type": "boolean",
+          "description": "Also write tree.json/tree.csv, a whole-subtree listing beside the per-directory one."
+        },
+        "max_rendered": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Rows shown on the HTML page; 0 renders every one. The machine formats are never capped."
+        },
+        "follow_symlinks": { "type": "boolean" },
+        "pep503_level": {
+          "type": "string",
+          "enum": ["root", "project"],
+          "description": "Turns the mixed-directory warning for outputs: [pep503] into a build error when the directory does not actually hold only projects or only files."
+        }
+      }
+    },
+    "rule": {
+      "$comment": "A rule is override plus match — but draft-07's additionalProperties is checked per subschema, not across an allOf's union, so $ref-ing override from here and adding match beside it let match leak into defaults: too (which has no Match field in the Go Override struct and rejects it). This repeats override's properties rather than merging them; add a key to one, add it to the other.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["match"],
+      "properties": {
+        "match": {
+          "type": "string",
+          "description": "A doublestar glob, matched against the path relative to root, that this rule's settings apply to."
+        },
         "source": {
           "type": "string",
           "enum": ["fs", "pages", "manifest"],

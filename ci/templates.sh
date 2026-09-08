@@ -137,6 +137,11 @@ doctypes=$(grep -oi '<!doctype html>' "$pub/search/index.html" | wc -l | tr -d '
 if [ "$doctypes" != "1" ]; then
   say "the search page is not one complete document (found $doctypes <!DOCTYPE> declarations)"
 fi
+# The page is reachable only by knowing the URL unless the listing that owns
+# it says so, the same as every other machine format in its own switcher.
+if ! grep -q 'href="search/"' "$pub/index.html"; then
+  say "the listing's own format switcher does not link to search/"
+fi
 
 # entries.html: a search-integration host folds these into its own index.
 # Listing data moved from frontmatter to an index.json resource once entries

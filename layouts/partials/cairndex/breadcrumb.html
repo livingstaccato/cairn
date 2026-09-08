@@ -62,7 +62,7 @@
 {{- if $basePath }}{{ $prefix = $basePath }}{{ end -}}
 {{- $items := slice (dict
   "href" (printf "%s%s" $prefix (strings.TrimPrefix $rootPrefix $root.RelPermalink))
-  "text" "/" "link" true) -}}
+  "text" "/" "link" true "home" true "current" $selfAtRoot) -}}
 {{- range $crumbs -}}
   {{- $items = $items | append (dict
     "href" (printf "%s%s" $prefix (strings.TrimPrefix $rootPrefix .RelPermalink))
@@ -72,15 +72,17 @@
   {{- $items = $items | append (dict "text" $self.Title "link" false) -}}
 {{- end -}}
 <nav class="cairndex-breadcrumb" aria-label="Breadcrumb">
-  {{- /* No separator right after the root anchor: "/" reads as its own
-         separator ahead of the first named crumb, the same as it always
-         has. Only a second item onward gets one before it. */ -}}
+  {{- /* The root is a home icon now, not a "/" doing double duty as its own
+         separator, so every item after it — including the first named
+         crumb — gets a separator before it. */ -}}
   {{- range $i, $it := $items -}}
-    {{- if gt $i 1 }}<span class="sep">/</span>{{ end -}}
-    {{- if $it.link -}}
+    {{- if gt $i 0 }}<span class="sep">/</span>{{ end -}}
+    {{- if $it.home -}}
+      <a href="{{ $it.href }}" class="home{{ if $it.current }} current{{ end }}"{{ if $it.current }} aria-current="page"{{ end }}><svg class="cairndex-icon" aria-hidden="true" width="14" height="14"><use href="#cairndex-home"/></svg><span class="home-label">Home</span></a>{{ if $it.current }}<span class="trail">/</span>{{ end }}
+    {{- else if $it.link -}}
       <a href="{{ $it.href }}">{{ $it.text }}</a>
     {{- else -}}
-      <span class="current">{{ $it.text }}</span>
+      <span class="current" aria-current="page">{{ $it.text }}</span><span class="trail">/</span>
     {{- end -}}
   {{- end -}}
 </nav>

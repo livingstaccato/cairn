@@ -34,7 +34,7 @@
   </header>
 
   {{ if or .Content $c.source_text }}
-  <section class="cairndex-authored">
+  <section class="cairndex-authored{{ if not .Content }} cairndex-authored--provenance-only{{ end }}">
     {{ with .Content }}{{ . }}{{ end }}
     {{ with $c.source_text }}
     <details class="cairndex-provenance">

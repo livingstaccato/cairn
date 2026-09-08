@@ -1,6 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <!-- Three stacked stones, not a folder tab: the one glyph in this sprite
+       that names the product rather than the filesystem. Ellipses, not
+       rounded rects, because the "data" symbol below already established
+       ellipse-as-stacked-thing in this family — ellipse and stroke-width
+       differ, not the vocabulary. -->
   <symbol id="cairndex-dir" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none">
-    <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+    <ellipse cx="12" cy="18.5" rx="7" ry="2.8"/>
+    <ellipse cx="12.8" cy="13" rx="4.6" ry="2.3" transform="rotate(-6 12.8 13)"/>
+    <ellipse cx="11.6" cy="8.2" rx="2.6" ry="1.7" transform="rotate(8 11.6 8.2)"/>
   </symbol>
   <symbol id="cairndex-script" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none">
     <path d="M8 9l-3 3 3 3M16 9l3 3-3 3M13 6l-2 12"/>
@@ -25,5 +32,8 @@
   </symbol>
   <symbol id="cairndex-other" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none">
     <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>
+  </symbol>
+  <symbol id="cairndex-home" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none">
+    <path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10"/>
   </symbol>
 </svg>

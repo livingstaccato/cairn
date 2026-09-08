@@ -49,7 +49,13 @@
   </header>
 
   {{ if or .Content $c.source_text }}
-  <section class="cairndex-authored">
+  {{- /* The provenance disclosure is CSS-hidden (see cairndex.css), so a
+         directory with a _meta.yaml sidecar and no authored prose would
+         otherwise be an empty bordered box: nothing visible inside it, but
+         still taking its own margin. --provenance-only drops that box's own
+         spacing so it truly costs nothing, while the markup stays for
+         whatever still reads it (a fuller theme, a test). */ -}}
+  <section class="cairndex-authored{{ if not .Content }} cairndex-authored--provenance-only{{ end }}">
     {{ with .Content }}{{ . }}{{ end }}
     {{ with $c.source_text }}
     <details class="cairndex-provenance">

@@ -19,6 +19,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/livingstaccato/cairndex/internal/obs"
 )
 
 const (
@@ -208,6 +210,12 @@ func TestDirectoryWithoutAnIndexIsNotListed(t *testing.T) {
 		t.Errorf("the response listed the directory's contents:\n%s\n\nWhat a directory "+
 			"listing says is cairndex's to decide; the standard library must not answer for it", body)
 	}
+	if !strings.Contains(body, "404") {
+		t.Errorf("the error page does not name the status:\n%s", body)
+	}
+	if ct := resp.Header.Get("Content-Type"); !strings.HasPrefix(ct, "text/html") {
+		t.Errorf("Content-Type = %q, want a real HTML page, not the standard library's plain text", ct)
+	}
 }
 
 func TestDirectoryRedirectsToItsTrailingSlash(t *testing.T) {
@@ -313,6 +321,47 @@ func TestNoFollowSymlinksRefusesAnInTreeSymlink(t *testing.T) {
 	}
 }
 
+// A miss stays the same generic "not found" by default regardless of why —
+// missing, unreadable, outside the served root, or (here) a symlink
+// NoFollowSymlinks refuses. Distinguishing them by default would tell a
+// caller which paths exist on a machine they cannot see; see miss's own
+// comment in content.go.
+func TestAMissStaysGenericByDefault(t *testing.T) {
+	out := tree(t)
+	if err := os.Symlink(filepath.Join(out, "docs", "index.html"), filepath.Join(out, "linked.html")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	_, base := startNoFollowSymlinks(t, out)
+	resp, body := get(t, base+"/linked.html")
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("status %d, want 404", resp.StatusCode)
+	}
+	if strings.Contains(strings.ToLower(body), "symlink") {
+		t.Errorf("the default error page named the specific reason, an information leak: %q", body)
+	}
+}
+
+// VerboseErrors is the opt-in: a caller who asked for it gets the specific
+// reason a request was refused, the same one that already reached the log
+// by default.
+func TestVerboseErrorsNamesTheSpecificReason(t *testing.T) {
+	out := tree(t)
+	if err := os.Symlink(filepath.Join(out, "docs", "index.html"), filepath.Join(out, "linked.html")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	s := &Server{Dir: out, Addr: anyPort, Log: obs.Discard(), NoFollowSymlinks: true, VerboseErrors: true, Ready: make(chan struct{})}
+	_, base := runStarted(t, s)
+	resp, body := get(t, base+"/linked.html")
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("status %d, want 404", resp.StatusCode)
+	}
+	if !strings.Contains(strings.ToLower(body), "symlink") {
+		t.Errorf("VerboseErrors did not name the specific reason: %q", body)
+	}
+}
+
 // The same request succeeds by default: NoFollowSymlinks is opt-in, and an
 // in-tree symlink is exactly what containment is designed to allow.
 func TestFollowingSymlinksStillWorksByDefault(t *testing.T) {
@@ -368,8 +417,11 @@ func TestOnlyGetAndHeadAreAnswered(t *testing.T) {
 	if got := resp.Header.Get("Allow"); !strings.Contains(got, "GET") || !strings.Contains(got, "HEAD") {
 		t.Errorf("Allow is %q, want it to name GET and HEAD", got)
 	}
-	if strings.Contains(body, "<h1>") {
-		t.Errorf("a rejected method still returned content: %q", body)
+	if strings.Contains(body, `"entries"`) {
+		t.Errorf("a rejected method still returned the resource's own content: %q", body)
+	}
+	if !strings.Contains(body, "405") {
+		t.Errorf("the error page does not name the status: %q", body)
 	}
 }
 

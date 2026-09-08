@@ -99,6 +99,14 @@ type Server struct {
 	// by removing the case it applies to, at the cost of refusing a
 	// symlinked file or directory that was always going to resolve safely.
 	NoFollowSymlinks bool
+	// VerboseErrors names the specific reason a request was refused —
+	// missing, unreadable, outside the served root, a symlink
+	// NoFollowSymlinks caught — in the response body, rather than the
+	// generic "not found" every miss otherwise answers with. Off by
+	// default: distinguishing those by default would tell a caller which
+	// paths exist on a machine they cannot see, the same reason already
+	// logged and nowhere else.
+	VerboseErrors bool
 	// Addr is where to listen, host and port. Empty means DefaultAddr. A port
 	// of 0 asks the kernel to choose, which BoundAddr then reports.
 	Addr string
@@ -204,7 +212,10 @@ func (s *Server) bind() (net.Listener, error) {
 // diagnostic-by-print problem arriving through a side door.
 func (s *Server) server() *http.Server {
 	return &http.Server{
-		Handler:           &files{log: s.Log, index: s.Index, base: resolveBase(s.Dir), noFollowSymlinks: s.NoFollowSymlinks},
+		Handler: &files{
+			log: s.Log, index: s.Index, base: resolveBase(s.Dir),
+			noFollowSymlinks: s.NoFollowSymlinks, verboseErrors: s.VerboseErrors,
+		},
 		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       readTimeout,
 		IdleTimeout:       idleTimeout,

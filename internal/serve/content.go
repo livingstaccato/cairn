@@ -92,6 +92,9 @@ type files struct {
 	// all, rather than resolving it and checking containment. See
 	// Server.NoFollowSymlinks.
 	noFollowSymlinks bool
+	// verboseErrors names the specific reason a request was refused in the
+	// response body. See Server.VerboseErrors.
+	verboseErrors bool
 }
 
 // indexName is the file this directory request is answered with.
@@ -134,7 +137,7 @@ func (h *files) accept(w http.ResponseWriter, r *http.Request) bool {
 		return true
 	}
 	w.Header().Set("Allow", "GET, HEAD")
-	http.Error(w, "cairndex serve answers GET and HEAD", http.StatusMethodNotAllowed)
+	writeErrorPage(w, http.StatusMethodNotAllowed, "cairndex serve answers GET and HEAD")
 	return false
 }
 
@@ -254,7 +257,11 @@ func (h *files) contained(name string) (string, error) {
 // off for knowing. The real reason goes to the log, where the operator is.
 func (h *files) miss(w http.ResponseWriter, r *http.Request, name string, err error) {
 	h.log.Debug("not served", "path", r.URL.Path, "resolved", name, "err", err)
-	http.Error(w, "not found", http.StatusNotFound)
+	detail := ""
+	if h.verboseErrors {
+		detail = err.Error()
+	}
+	writeErrorPage(w, http.StatusNotFound, detail)
 }
 
 // close reports what it could not close rather than dropping it. A leaked

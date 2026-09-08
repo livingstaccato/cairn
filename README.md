@@ -337,6 +337,14 @@ already refuses one that resolves outside the served directory; this is for
 serving a tree where no symlink should be followed regardless of where it
 points.
 
+A miss answers with a small styled page instead of the standard library's
+plain text, naming the same generic "not found" every miss gets by
+default — a missing file, an unreadable one, one outside the served
+directory, or a symlink `--no-follow-symlinks` refused are one answer on
+purpose: distinguishing them would tell a caller which paths exist on a
+machine they cannot see. `--verbose-errors` names the specific reason
+instead, the same one already reaching the log.
+
 ## Design principles
 
 - **Zero external runtime assets.** No CDN, no web fonts, no icon font. Icons

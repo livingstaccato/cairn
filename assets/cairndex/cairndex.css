@@ -72,6 +72,39 @@
 
 .cairndex-head-count .sep { color: var(--c-rule); }
 
+/* ── Breadcrumb ───────────────────────────────────────────────────────────
+   The path, as a trail back up it — mono for the same reason the masthead's
+   path is: this names directories, not prose. Small and muted so it reads
+   as wayfinding above the header, not a second headline competing with it.
+   Unstyled, this was default-blue underlined links crammed onto one line
+   with no space around the separators — every "pain in the ass" a browser's
+   own <a> and <nav> defaults produce with nothing here to override them. */
+
+.cairndex-breadcrumb {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-family: var(--c-mono);
+  font-size: 0.8125rem;
+  color: var(--c-slate);
+}
+
+.cairndex-breadcrumb a {
+  color: var(--c-slate);
+  text-decoration: none;
+}
+
+.cairndex-breadcrumb a:hover {
+  color: var(--c-ink);
+  text-decoration: underline;
+}
+
+.cairndex-breadcrumb .sep {
+  margin: 0 0.35em;
+  color: var(--c-rule);
+}
+
+.cairndex-breadcrumb .current { color: var(--c-ink); }
+
 /* A switcher that names the format you are reading and opens onto the others.
    It explains itself, so it needs no caption. */
 .cairndex-formats { position: relative; font-family: var(--c-mono); font-size: 0.75rem; }

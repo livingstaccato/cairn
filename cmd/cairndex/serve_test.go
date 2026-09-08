@@ -34,7 +34,7 @@ func TestServeServesTheOutputDirectory(t *testing.T) {
 	done := make(chan error, 1)
 	// Port 0: the kernel picks, so a test never fights another process for a
 	// fixed one. Everywhere else a taken port is an error, never a fallback.
-	go func() { done <- runServe(ctx, configPath, "127.0.0.1:0", false, logged) }()
+	go func() { done <- runServe(ctx, configPath, "127.0.0.1:0", false, false, logged) }()
 
 	base := waitForListener(t, logged)
 	resp, err := http.Get(base + "/bootstrap/index.json") //nolint:noctx // bounded by the test's own deadline
@@ -82,7 +82,7 @@ func TestServeNoFollowSymlinksReachesTheServer(t *testing.T) {
 	logged := &syncBuffer{}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
-	go func() { done <- runServe(ctx, configPath, "127.0.0.1:0", true, logged) }()
+	go func() { done <- runServe(ctx, configPath, "127.0.0.1:0", true, false, logged) }()
 
 	base := waitForListener(t, logged)
 	resp, err := http.Get(base + "/linked.json") //nolint:noctx // bounded by the test's own deadline
@@ -92,6 +92,35 @@ func TestServeNoFollowSymlinksReachesTheServer(t *testing.T) {
 	_ = resp.Body.Close()
 	if resp.StatusCode == http.StatusOK {
 		t.Errorf("GET /linked.json = 200 under --no-follow-symlinks; the flag did not reach the server")
+	}
+
+	cancel()
+	if err := <-done; err != nil {
+		t.Errorf("runServe: %v", err)
+	}
+}
+
+func TestServeVerboseErrorsReachesTheServer(t *testing.T) {
+	configPath, _ := fixture(t)
+	var stderr strings.Builder
+	if err := runBuild(context.Background(), configPath, "", build.Options{}, &stderr); err != nil {
+		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
+	}
+
+	logged := &syncBuffer{}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- runServe(ctx, configPath, "127.0.0.1:0", false, true, logged) }()
+
+	base := waitForListener(t, logged)
+	resp, err := http.Get(base + "/does-not-exist") //nolint:noctx // bounded by the test's own deadline
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if !strings.Contains(string(body), "no such file") {
+		t.Errorf("--verbose-errors did not reach the server, body: %q", body)
 	}
 
 	cancel()
@@ -148,7 +177,7 @@ func boundAddr(logged string) string {
 
 func TestServeMissingConfigFails(t *testing.T) {
 	var stderr strings.Builder
-	err := runServe(context.Background(), filepath.Join(t.TempDir(), "nope.yaml"), "127.0.0.1:0", false, &stderr)
+	err := runServe(context.Background(), filepath.Join(t.TempDir(), "nope.yaml"), "127.0.0.1:0", false, false, &stderr)
 	if err == nil {
 		t.Fatal("missing config must be an error")
 	}

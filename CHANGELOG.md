@@ -37,6 +37,13 @@ versions follow [SemVer](https://semver.org/) once tagged. See the
 - `cairndex build` now logs "build in progress" periodically on a build
   long enough for that to matter, instead of staying silent until the final
   "build complete" line whatever the tree's size.
+- `cairndex serve` answers a miss or a rejected method with a small styled
+  HTML page instead of the standard library's plain text, and
+  `--verbose-errors` names the specific reason instead of the generic
+  "not found" every miss gets by default.
+- The breadcrumb has real CSS now — it previously had none at all, so it
+  rendered as the browser's own default blue underlined links with no
+  spacing around the separators.
 
 ### Changed
 

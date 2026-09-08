@@ -92,7 +92,7 @@ func TestAScopedRebuildForgetsOnlyInsideItsScope(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := RunScoped(context.Background(), hashing(), root, out, obs.Discard(), "docs")
+	res, err := RunScoped(context.Background(), hashing(), root, out, obs.Discard(), "docs", "")
 	if err != nil {
 		t.Fatalf("RunScoped: %v", err)
 	}

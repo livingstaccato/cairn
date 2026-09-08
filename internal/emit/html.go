@@ -77,11 +77,12 @@ var bareTmpl = template.Must(template.New("bare").
 // the whole directory. The two differ only when a cap applied, and the template
 // uses the difference to say so.
 type bareData struct {
-	Listing model.Listing
-	Prose   string
-	Shown   []model.Entry
-	Total   int
-	AtRoot  bool
+	Listing   model.Listing
+	Prose     string
+	Shown     []model.Entry
+	Total     int
+	AtRoot    bool
+	BuildInfo BuildInfo
 }
 
 // BarePage is one directory's bare rendering. A struct rather than four
@@ -97,6 +98,9 @@ type BarePage struct {
 	// mirror, and from file:// it walks out of the tree. Everywhere else it is
 	// the only way back up.
 	AtRoot bool
+	// BuildInfo is the small footer banner shown by default: when this
+	// build ran and what built it. The zero value renders nothing.
+	BuildInfo BuildInfo
 }
 
 // BareHTML renders a listing as a self-contained, script-free autoindex page.
@@ -115,7 +119,7 @@ func BareHTML(p BarePage) ([]byte, error) {
 	var buf bytes.Buffer
 	data := bareData{
 		Listing: p.Listing, Prose: p.Prose, Shown: shown,
-		Total: len(p.Listing.Entries), AtRoot: p.AtRoot,
+		Total: len(p.Listing.Entries), AtRoot: p.AtRoot, BuildInfo: p.BuildInfo,
 	}
 	if err := bareTmpl.Execute(&buf, data); err != nil {
 		return nil, fmt.Errorf("render bare html for %s: %w", p.Listing.Path, err)

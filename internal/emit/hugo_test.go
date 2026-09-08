@@ -6,6 +6,7 @@ package emit
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"gopkg.in/yaml.v3"
 
@@ -23,6 +24,9 @@ type parsedFM struct {
 		AtRoot   bool   `yaml:"at_root"`
 		BasePath string `yaml:"base_path"`
 		PEP503   bool   `yaml:"pep503"`
+
+		BuildInfoVersion   string `yaml:"build_info_version"`
+		BuildInfoGenerated string `yaml:"build_info_generated"`
 	} `yaml:"cairndex"`
 }
 
@@ -285,6 +289,35 @@ func TestHugoContentUsesTheStandalonePEP503Layout(t *testing.T) {
 	fm, _ := split(t, b)
 	if fm.Layout != HugoPEP503Layout {
 		t.Errorf("layout = %q, want %q so Hugo skips baseof for this page", fm.Layout, HugoPEP503Layout)
+	}
+}
+
+// The banner shows what built the page and when, on by default — off is a
+// blank BuildInfo, not a separate flag, the same reason emit.BareHTML
+// checks Version's truthiness rather than a second field that could
+// disagree with it.
+func TestHugoContentCarriesBuildInfoWhenSet(t *testing.T) {
+	when := time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC)
+	b, err := HugoContent(HugoPage{Listing: sample(), BuildInfo: BuildInfo{Version: "v1.2.3", Generated: when}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fm, _ := split(t, b)
+	if fm.Cairndex.BuildInfoVersion != "v1.2.3" {
+		t.Errorf("build_info_version = %q, want %q", fm.Cairndex.BuildInfoVersion, "v1.2.3")
+	}
+	if fm.Cairndex.BuildInfoGenerated == "" {
+		t.Error("build_info_generated is empty")
+	}
+}
+
+func TestHugoContentOmitsBuildInfoWhenUnset(t *testing.T) {
+	b, err := HugoContent(HugoPage{Listing: sample()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), "build_info") {
+		t.Errorf("build_info fields were written out with nothing to put in them:\n%s", b)
 	}
 }
 

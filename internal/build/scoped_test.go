@@ -52,7 +52,7 @@ func TestPanicMidScopedBuildStillClaimsPartialOutput(t *testing.T) {
 		}
 		panic("simulated panic mid-scoped-build")
 	}
-	if _, err := RunScoped(context.Background(), conf(nil), root, out, obs.Discard(), "."); err == nil {
+	if _, err := RunScoped(context.Background(), conf(nil), root, out, obs.Discard(), ".", ""); err == nil {
 		t.Fatal("expected the recovered panic to surface as an error")
 	}
 	buildScopedStep = orig
@@ -78,7 +78,7 @@ func TestScopedRebuildKeepsTheRestOfTheTree(t *testing.T) {
 		t.Fatalf("setup: %v", err)
 	}
 
-	if _, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "bootstrap"); err != nil {
+	if _, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "bootstrap", ""); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(elsewhere); err != nil {
@@ -106,7 +106,7 @@ func TestScopedRebuildRefreshesAncestors(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "bootstrap", "extra.sh"), []byte("#!/bin/sh\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "bootstrap"); err != nil {
+	if _, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "bootstrap", ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -132,7 +132,7 @@ func TestScopedRebuildDoesNotDescendIntoSiblings(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "bootstrap"); err != nil {
+	if _, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "bootstrap", ""); err != nil {
 		t.Fatal(err)
 	}
 	fi, err := os.Stat(sibling)
@@ -185,7 +185,7 @@ func TestScopedRebuildKeepsOwnershipOfTheRestOfTheTree(t *testing.T) {
 	if _, err := Run(context.Background(), c, root, out, obs.Discard()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "bootstrap"); err != nil {
+	if _, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "bootstrap", ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -236,7 +236,7 @@ func TestScopedRebuildDoesNotClaimSiblingsBySharedPrefix(t *testing.T) {
 	if err := os.Remove(filepath.Join(root, "docs-old", "note.md")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "docs"); err != nil {
+	if _, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "docs", ""); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(sibling); err != nil {
@@ -248,7 +248,7 @@ func TestScopedRebuildDoesNotClaimSiblingsBySharedPrefix(t *testing.T) {
 // nothing above it to refresh.
 func TestScopedRebuildOfTheRootCoversEverything(t *testing.T) {
 	root, out := tree(t), t.TempDir()
-	if _, err := RunScoped(context.Background(), conf(nil), root, out, obs.Discard(), "."); err != nil {
+	if _, err := RunScoped(context.Background(), conf(nil), root, out, obs.Discard(), ".", ""); err != nil {
 		t.Fatal(err)
 	}
 	for _, p := range []string{
@@ -270,7 +270,7 @@ func TestScopedRebuildOfTheRootCoversEverything(t *testing.T) {
 // not silently rebuild only the root directory's own listing.
 func TestScopedRebuildTreatsEmptyScopeAsTheRoot(t *testing.T) {
 	root, out := tree(t), t.TempDir()
-	if _, err := RunScoped(context.Background(), conf(nil), root, out, obs.Discard(), ""); err != nil {
+	if _, err := RunScoped(context.Background(), conf(nil), root, out, obs.Discard(), "", ""); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(out, "bootstrap", "linux", "index.json")); err != nil {
@@ -284,7 +284,7 @@ func TestScopedRebuildRecordsPartialOutputOnFailure(t *testing.T) {
 	root, out := tree(t), t.TempDir()
 	c := conf(nil)
 	c.Defaults = config.Override{Outputs: &[]string{"pdf"}}
-	if _, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "bootstrap"); err == nil {
+	if _, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "bootstrap", ""); err == nil {
 		t.Fatal("an unknown output format must fail the rebuild")
 	}
 	if _, err := os.Stat(filepath.Join(out, ".cairndex-manifest.json")); err != nil {
@@ -335,7 +335,7 @@ func TestScopedRebuildPrunesInsideItsScope(t *testing.T) {
 	if err := os.RemoveAll(filepath.Join(root, "bootstrap", "linux")); err != nil {
 		t.Fatal(err)
 	}
-	res, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "bootstrap")
+	res, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "bootstrap", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -367,7 +367,7 @@ func TestScopedRebuildRegeneratesARecursiveAncestor(t *testing.T) {
 	}
 	// Deliberately narrower than Scope() would choose, which is the case this
 	// guards: the recursive listing above must still be brought up to date.
-	if _, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "bootstrap/linux"); err != nil {
+	if _, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "bootstrap/linux", ""); err != nil {
 		t.Fatal(err)
 	}
 

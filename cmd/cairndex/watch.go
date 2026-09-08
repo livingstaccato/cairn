@@ -109,7 +109,7 @@ func runWatch(ctx context.Context, o watchOpts, stderr io.Writer) error {
 		return err
 	}
 
-	if _, err := build.Run(ctx, cfg, rootDir, outDir, log); err != nil {
+	if _, err := build.RunWith(ctx, cfg, rootDir, outDir, log, build.Options{Version: version}); err != nil {
 		log.Error("the initial build failed", "err", err)
 		// Same shutdown as the watcher's own exit path: cancel to start the
 		// server's graceful drain, then wait for it, so a client mid-request
@@ -124,7 +124,7 @@ func runWatch(ctx context.Context, o watchOpts, stderr io.Writer) error {
 	w := &watch.Watcher{
 		Config: cfg, Root: rootDir, Out: outDir, Log: log, Settle: o.settle,
 		Rebuild: func(scope string) error {
-			_, err := build.RunScoped(ctx, cfg, rootDir, outDir, log, scope)
+			_, err := build.RunScoped(ctx, cfg, rootDir, outDir, log, scope, version)
 			return err
 		},
 	}

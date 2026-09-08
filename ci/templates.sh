@@ -265,5 +265,15 @@ if [ "$doctypes" != "1" ]; then
   say "the pep503 page is not one complete document (found $doctypes <!DOCTYPE> declarations)"
 fi
 
+# The build-info banner is on by default and carries whatever --version this
+# binary reports; pep503 is a minimal machine-facing page and must not carry
+# it, the same reason it has no breadcrumb or format switcher.
+if ! grep -q 'cairndex-buildinfo' "$pub/index.html"; then
+  say "the styled listing does not carry the build-info banner"
+fi
+if grep -q 'cairndex-buildinfo' "$p/public/simple/index.html"; then
+  say "the pep503 page carries the build-info banner; it should have none of the usual chrome"
+fi
+
 [ "$fail" -eq 0 ] && echo "OK: templates render correctly"
 exit "$fail"

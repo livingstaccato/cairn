@@ -56,8 +56,23 @@ type Config struct {
 	TreeMaxEntries int      `yaml:"tree_max_entries"`
 	Protect        []string `yaml:"protect"`
 	OnConflict     string   `yaml:"on_conflict"`
-	Defaults       Override `yaml:"defaults"`
-	Rules          []Rule   `yaml:"rules"`
+	// BuildInfo shows a small footer banner — the build's own timestamp and
+	// cairndex version — on every listing page. On by default: nil and
+	// true both mean show it, so ShowBuildInfo is what every reader checks
+	// rather than this field directly, and build_info: false is the only
+	// way to turn it off. Root-level rather than in Override: what built a
+	// run is one fact about the whole run, not a per-directory setting.
+	BuildInfo *bool    `yaml:"build_info"`
+	Defaults  Override `yaml:"defaults"`
+	Rules     []Rule   `yaml:"rules"`
+}
+
+// ShowBuildInfo reports whether a listing page should carry the build-info
+// footer. A pointer only so build_info: false is distinguishable from
+// build_info: absent — checking it directly at every call site would be a
+// nil check repeated everywhere this matters instead of once here.
+func (c *Config) ShowBuildInfo() bool {
+	return c.BuildInfo == nil || *c.BuildInfo
 }
 
 // Load reads and validates a root cairndex.yaml.

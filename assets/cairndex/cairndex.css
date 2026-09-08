@@ -105,6 +105,19 @@
 
 .cairndex-breadcrumb .current { color: var(--c-ink); }
 
+/* ── Build info ───────────────────────────────────────────────────────────
+   On by default: provenance an operator did not have to ask for. Below the
+   truncation notice, above nothing — the last word on the page, quiet
+   enough not to compete with the listing it is footnoting. */
+
+.cairndex-buildinfo {
+  margin-top: 1.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--c-rule);
+  font-size: 0.6875rem;
+  color: var(--c-slate);
+}
+
 /* A switcher that names the format you are reading and opens onto the others.
    It explains itself, so it needs no caption. */
 .cairndex-formats { position: relative; font-family: var(--c-mono); font-size: 0.75rem; }

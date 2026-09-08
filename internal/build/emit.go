@@ -220,9 +220,10 @@ func (r *runner) emitHugo(c emitCtx) error {
 		Recursive:   c.settings.Recursive,
 		MaxRendered: c.settings.MaxRendered,
 		// The same rule emitHTML applies, for the renderer that is Hugo's.
-		AtRoot:   c.relDir == ".",
-		BasePath: r.cfg.BasePath,
-		PEP503:   wantsPEP503,
+		AtRoot:    c.relDir == ".",
+		BasePath:  r.cfg.BasePath,
+		PEP503:    wantsPEP503,
+		BuildInfo: r.buildInfo(),
 	})
 	if err != nil {
 		return err
@@ -342,7 +343,8 @@ func (r *runner) emitHTML(c emitCtx) error {
 		MaxRendered: c.settings.MaxRendered,
 		// The top of the indexed tree, where a parent link would point at
 		// something cairndex never wrote.
-		AtRoot: c.relDir == ".",
+		AtRoot:    c.relDir == ".",
+		BuildInfo: r.buildInfo(),
 	})
 	if err != nil {
 		return err

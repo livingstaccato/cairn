@@ -12,6 +12,7 @@ th,td{text-align:left;padding:.25rem .75rem .25rem 0;white-space:nowrap}
 th{border-bottom:1px solid currentColor}
 td.size{text-align:right}
 .prose{margin:1rem 0;padding-left:1rem;border-left:3px solid currentColor;white-space:pre-wrap;overflow-wrap:break-word}
+footer.cairndex-buildinfo{margin-top:2rem;padding-top:.5rem;border-top:1px solid currentColor;font-size:.75rem;opacity:.6}
 </style>
 </head>
 <body>
@@ -37,6 +38,9 @@ td.size{text-align:right}
   The complete listing is <a href="index.txt">index.txt</a>, one name per line,
   and <a href="index.json">index.json</a>.
 </p>
+{{ end }}
+{{ with .BuildInfo.Version }}
+<footer class="cairndex-buildinfo">Built {{ $.BuildInfo.Generated.Format "2006-01-02 15:04 MST" }} &middot; cairndex {{ . }}</footer>
 {{ end }}
 </body>
 </html>

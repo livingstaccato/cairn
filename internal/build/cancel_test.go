@@ -77,7 +77,7 @@ func TestCancelledCtxStopsTheScopedAncestorRefresh(t *testing.T) {
 	}
 	t.Cleanup(func() { visited = orig })
 
-	_, err := RunScoped(ctx, conf(nil), root, out, obs.Discard(), "bootstrap/linux")
+	_, err := RunScoped(ctx, conf(nil), root, out, obs.Discard(), "bootstrap/linux", "")
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("RunScoped = %v, want context.Canceled", err)
 	}

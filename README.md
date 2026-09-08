@@ -157,6 +157,11 @@ Files that cannot carry frontmatter get metadata from beside them — a
 `_meta.yaml` keyed by filename, or a `<file>.meta.yaml` sidecar — so an ISO can
 have a title and a summary.
 
+Every listing page carries a small footer banner by default — when the build
+ran, and the `--version` cairndex reports — a fact about the whole run rather
+than a per-directory setting, so it lives at the config's root: `build_info:
+false` turns it off.
+
 ## Where the indexes go
 
 `root` and `out` can name the same directory, and then the indexes land beside

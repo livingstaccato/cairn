@@ -85,6 +85,14 @@ type cairndexParam struct {
 	// is requested through outputs:, an independent axis a template cannot
 	// otherwise see, the same reason BasePath and AtRoot travel as data.
 	PEP503 bool `yaml:"pep503,omitempty"`
+	// BuildInfoVersion and BuildInfoGenerated are the small footer banner a
+	// listing shows by default: what built this and when. Absent rather
+	// than a separate Show flag alongside them — a template checks
+	// build_info_version's truthiness, the same pattern BasePath's own
+	// omitempty already uses, so there is one field to check instead of
+	// two that could disagree.
+	BuildInfoVersion   string `yaml:"build_info_version,omitempty"`
+	BuildInfoGenerated string `yaml:"build_info_generated,omitempty"`
 }
 
 // HugoPage is everything a directory's page needs to know about itself.
@@ -115,6 +123,10 @@ type HugoPage struct {
 	// PEP503 is whether this directory's outputs: include pep503. See
 	// cairndexParam.PEP503.
 	PEP503 bool
+	// BuildInfo is the small footer banner every listing shows by default:
+	// what built it and when. The zero value carries nothing to the
+	// template.
+	BuildInfo BuildInfo
 }
 
 // HugoContent renders one directory as a Hugo branch-bundle _index.md.
@@ -130,22 +142,28 @@ func HugoContent(p HugoPage) ([]byte, error) {
 	if p.PEP503 {
 		layout = HugoPEP503Layout
 	}
+	var buildInfoGenerated string
+	if p.BuildInfo.Version != "" {
+		buildInfoGenerated = p.BuildInfo.Generated.Format(time.RFC3339)
+	}
 	fm := hugoFrontmatter{
 		Title:  titleFor(l.Path, p.AtRoot),
 		Layout: layout,
 		Cairndex: cairndexParam{
-			Present:     p.Present,
-			Path:        l.Path,
-			Source:      p.Source,
-			Formats:     p.Formats,
-			SourceText:  p.SourceText,
-			Generated:   l.Generated.Format(time.RFC3339),
-			Count:       l.Count,
-			Recursive:   p.Recursive,
-			MaxRendered: p.MaxRendered,
-			AtRoot:      p.AtRoot,
-			BasePath:    p.BasePath,
-			PEP503:      p.PEP503,
+			Present:            p.Present,
+			Path:               l.Path,
+			Source:             p.Source,
+			Formats:            p.Formats,
+			SourceText:         p.SourceText,
+			Generated:          l.Generated.Format(time.RFC3339),
+			Count:              l.Count,
+			Recursive:          p.Recursive,
+			MaxRendered:        p.MaxRendered,
+			AtRoot:             p.AtRoot,
+			BasePath:           p.BasePath,
+			PEP503:             p.PEP503,
+			BuildInfoVersion:   p.BuildInfo.Version,
+			BuildInfoGenerated: buildInfoGenerated,
 		},
 	}
 

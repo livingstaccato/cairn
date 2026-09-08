@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/livingstaccato/cairndex/internal/model"
 )
@@ -40,6 +41,34 @@ func TestBareHTMLHasNoScriptOrExternalAssets(t *testing.T) {
 		if strings.Contains(s, forbidden) {
 			t.Errorf("bare output contains %q; it must be self-contained and JS-free", forbidden)
 		}
+	}
+}
+
+// The banner shows what built the page and when, on by default — off is a
+// zero-value BuildInfo, not a separate flag: Version's truthiness is the
+// check, the same pattern base_path's own omitempty already uses.
+func TestBareHTMLShowsBuildInfoWhenSet(t *testing.T) {
+	when := time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC)
+	b, err := BareHTML(BarePage{Listing: sample(), BuildInfo: BuildInfo{Version: "v1.2.3", Generated: when}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(b)
+	if !strings.Contains(s, "v1.2.3") {
+		t.Errorf("bare page does not show the version:\n%s", s)
+	}
+	if !strings.Contains(s, "2026-09-08") {
+		t.Errorf("bare page does not show the build timestamp:\n%s", s)
+	}
+}
+
+func TestBareHTMLOmitsBuildInfoWhenUnset(t *testing.T) {
+	b, err := BareHTML(BarePage{Listing: sample()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), "<footer") {
+		t.Errorf("bare page rendered a footer with nothing to put in it:\n%s", b)
 	}
 }
 

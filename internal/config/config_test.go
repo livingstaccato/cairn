@@ -78,6 +78,22 @@ func TestLoadDefaultsFilledIn(t *testing.T) {
 	if c.OnConflict != "error" {
 		t.Errorf("OnConflict = %q, want error", c.OnConflict)
 	}
+	if !c.ShowBuildInfo() {
+		t.Error("ShowBuildInfo() = false, want on by default")
+	}
+}
+
+// build_info: false is the one way to turn it off — a listing's own footer
+// banner, not a per-directory setting, so it belongs at the root rather
+// than in defaults:/rules:.
+func TestBuildInfoCanBeTurnedOff(t *testing.T) {
+	c, err := Load(writeConfig(t, "version: 1\nbuild_info: false\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.ShowBuildInfo() {
+		t.Error("ShowBuildInfo() = true, want false after build_info: false")
+	}
 }
 
 func TestLoadErrors(t *testing.T) {

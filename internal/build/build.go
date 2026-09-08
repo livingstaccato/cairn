@@ -80,6 +80,25 @@ type runner struct {
 	// beat. Runner state rather than a package var: two concurrent Run
 	// calls (real in cmd/cairndex's tests) must not throttle each other.
 	lastProgress time.Time
+	// version is Options.Version, cairndex's own version for the
+	// build-info footer banner. Empty turns the banner off regardless of
+	// build_info:.
+	version string
+	// started is when this build began, for the same banner. Distinct from
+	// a listing's own Generated, which is the newest entry's mtime — a
+	// content-freshness fact, not when the build itself ran.
+	started time.Time
+}
+
+// buildInfo is what a listing's footer banner shows, or the zero value
+// when the operator turned it off with build_info: false, or when the
+// caller never set Options.Version — nothing to show is nothing shown,
+// not a misleading blank banner.
+func (r *runner) buildInfo() emit.BuildInfo {
+	if r.version == "" || !r.cfg.ShowBuildInfo() {
+		return emit.BuildInfo{}
+	}
+	return emit.BuildInfo{Version: r.version, Generated: r.started}
 }
 
 // reportProgress logs how far the build has gotten, throttled by
@@ -140,25 +159,34 @@ type Options struct {
 	// so it cannot take one this build does not itself write, and protect: and
 	// path containment are checked ahead of it and are not affected.
 	Adopt bool
+	// Version is cairndex's own version, for the build-info footer banner
+	// every listing shows by default — see config.Config.ShowBuildInfo.
+	// Empty turns the banner off regardless of build_info:, the same way a
+	// library caller who never set it gets no banner rather than a
+	// misleading blank one.
+	Version string
 }
 
 // RunWith is Run with the one-run departures a command line asked for.
 func RunWith(ctx context.Context, cfg *config.Config, rootDir, outDir string, log *slog.Logger, opts Options) (*Result, error) {
+	startedAt := time.Now()
 	r := &runner{
-		cfg:    cfg,
-		root:   rootDir,
-		out:    outDir,
-		log:    log,
-		cache:  hash.NewCache(filepath.Join(outDir, hash.CacheFile)),
-		writer: emit.NewWriterWith(cfg, outDir, emit.Options{Dry: opts.Dry, Adopt: opts.Adopt}),
-		result: &Result{},
-		outRel: OutRel(rootDir, outDir),
-		dry:    opts.Dry,
-		ctx:    ctx,
+		cfg:     cfg,
+		root:    rootDir,
+		out:     outDir,
+		log:     log,
+		cache:   hash.NewCache(filepath.Join(outDir, hash.CacheFile)),
+		writer:  emit.NewWriterWith(cfg, outDir, emit.Options{Dry: opts.Dry, Adopt: opts.Adopt}),
+		result:  &Result{},
+		outRel:  OutRel(rootDir, outDir),
+		dry:     opts.Dry,
+		ctx:     ctx,
+		version: opts.Version,
+		started: startedAt,
 		// The throttle's baseline: the interval is measured from when the
 		// build started, not from an unset zero value a first call would
 		// otherwise always beat.
-		lastProgress: time.Now(),
+		lastProgress: startedAt,
 	}
 	r.warnAboutTheManifest()
 

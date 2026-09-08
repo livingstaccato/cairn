@@ -77,4 +77,7 @@
     </tbody>
   </table>
   {{ partial "cairndex/truncated.html" (dict "shown" (len $shown) "total" $total) }}
+  {{ with $c.build_info_version }}
+  <footer class="cairndex-buildinfo">Built {{ dateFormat "2006-01-02 15:04 MST" $c.build_info_generated }} &middot; cairndex {{ . }}</footer>
+  {{ end }}
 </div>

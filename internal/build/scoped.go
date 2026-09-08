@@ -47,10 +47,11 @@ func Scope(cfg *config.Config, rootDir, relDir string, log *slog.Logger) string 
 // three levels down changes what every listing above it should say. Each
 // ancestor is re-emitted without recursing, since its other children have not
 // moved.
-func RunScoped(ctx context.Context, cfg *config.Config, rootDir, outDir string, log *slog.Logger, scope string) (*Result, error) {
+func RunScoped(ctx context.Context, cfg *config.Config, rootDir, outDir string, log *slog.Logger, scope, version string) (*Result, error) {
 	if scope == "" {
 		scope = "."
 	}
+	startedAt := time.Now()
 	r := &runner{
 		cfg:          cfg,
 		root:         rootDir,
@@ -61,7 +62,9 @@ func RunScoped(ctx context.Context, cfg *config.Config, rootDir, outDir string, 
 		result:       &Result{},
 		outRel:       OutRel(rootDir, outDir),
 		ctx:          ctx,
-		lastProgress: time.Now(),
+		version:      version,
+		started:      startedAt,
+		lastProgress: startedAt,
 	}
 	r.warnAboutTheManifest()
 

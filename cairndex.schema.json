@@ -52,6 +52,11 @@
       "default": "error",
       "description": "What to do when a write would land on a path cairndex does not already own."
     },
+    "build_info": {
+      "type": "boolean",
+      "default": true,
+      "description": "Shows a small footer banner on every listing page with the build's own timestamp and cairndex's version. On by default; set to false to turn it off."
+    },
     "defaults": { "$ref": "#/definitions/override" },
     "rules": {
       "type": "array",

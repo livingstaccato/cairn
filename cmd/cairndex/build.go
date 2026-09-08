@@ -52,6 +52,7 @@ func newBuildCmd() *cobra.Command {
 			defer stop()
 			stopOnCancel(ctx, stop)
 			afterSignalRegistered()
+			opts.Version = version
 			return runBuild(ctx, configPath, changedTo, opts, cmd.ErrOrStderr())
 		},
 	}

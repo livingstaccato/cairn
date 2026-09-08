@@ -1,12 +1,14 @@
 {{- /* The browsable listing.
 
-       There is no footer. Everything that was in one has moved to where its
+       No navigation footer. Everything that was in one has moved to where its
        meaning puts it: the alternate formats are a property of this page, so
        they sit beside the path; SHA256SUMS is the file holding the digest
        column, so the column header links to it; and _meta.yaml explains the
        authored titles, so it hangs off the authored prose. A row of filenames
        under the listing read as more files in the directory, which is the
-       opposite of what they were.
+       opposite of what they were. The build-info banner at the very bottom is
+       provenance, not navigation — a different kind of footer, on by default,
+       off with build_info: false.
 
        Everything here is present before any script runs. The filter ships
        hidden and cairndex.js reveals it, so a visitor without JavaScript sees a
@@ -114,6 +116,10 @@
   </div>
 
   {{ partial "cairndex/truncated.html" (dict "shown" (len $shown) "total" $total) }}
+
+  {{ with $c.build_info_version }}
+  <footer class="cairndex-buildinfo">Built {{ dateFormat "2006-01-02 15:04 MST" $c.build_info_generated }} &middot; cairndex {{ . }}</footer>
+  {{ end }}
 
   {{ with resources.Get "cairndex/cairndex.js" }}
     {{ $js := . | resources.Minify | resources.Fingerprint "sha256" }}

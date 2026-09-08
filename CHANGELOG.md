@@ -44,6 +44,9 @@ versions follow [SemVer](https://semver.org/) once tagged. See the
 - The breadcrumb has real CSS now — it previously had none at all, so it
   rendered as the browser's own default blue underlined links with no
   spacing around the separators.
+- Every listing page carries a small footer banner by default: when the
+  build ran, and the `--version` cairndex reports. `build_info: false`
+  turns it off.
 
 ### Changed
 

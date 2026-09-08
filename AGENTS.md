@@ -166,14 +166,15 @@ implement. A test that has never failed has never been verified.
 
 ## CI
 
-Five jobs in `.github/workflows/ci.yml`: `test` (3 OSes), `lint`, `security`,
-`fuzz`, `hygiene`. Every step has a comment saying what it does. **No `run:` block
-exceeds three lines** — anything longer is a script in `ci/`.
+Seven jobs in `.github/workflows/ci.yml`: `test` (3 OSes), `example`, `lint`,
+`security`, `fuzz`, `private`, `hygiene`. Every step has a comment saying what
+it does. **No `run:` block exceeds three lines** — anything longer is a script
+in `ci/`.
 
 Run it locally before pushing:
 
 ```sh
-make act          # lint, security, hygiene + the ubuntu test leg
+make act          # the whole workflow, ubuntu leg only
 make act-job JOB=security
 ```
 

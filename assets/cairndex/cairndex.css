@@ -114,6 +114,10 @@
 .cairndex-breadcrumb .sep {
   margin: 0 0.35em;
   color: var(--c-rule);
+  /* A thin diagonal glyph's anti-aliased edge reads darker than its flat
+     color suggests — --c-rule alone still looked too present here, opacity
+     pushes it the rest of the way toward "barely there". */
+  opacity: 0.55;
 }
 
 .cairndex-breadcrumb .current { color: var(--c-ink); }

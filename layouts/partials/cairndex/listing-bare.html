@@ -14,9 +14,7 @@
        the JSON a reader fetches is the exact bytes cairndex produced. Nothing is
        generated twice, which is where the earlier drift between the two came
        from. */ -}}
-{{- $r := .Resources.GetMatch "index.json" -}}
-{{- $entries := slice -}}
-{{- with $r }}{{ $entries = (. | transform.Unmarshal).entries }}{{ end -}}
+{{- $entries := partial "cairndex/entries-data.html" . -}}
 {{- /* The page renders at most max_rendered rows. A flat pool of fifty thousand
        packages is a 34 MB page and nobody reads it; the machine formats carry
        every entry and are never capped. */ -}}

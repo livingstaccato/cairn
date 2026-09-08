@@ -1,0 +1,19 @@
+{{- /* Returns the entries from this page's index.json bundle resource — the
+       resource cairndex writes and Hugo publishes verbatim, not
+       .Params.cairndex.entries, which does not exist: Hugo refused any
+       directory past roughly ten thousand entries while the listing rode
+       in frontmatter, so it moved into a bundle resource instead, and a
+       50,000-entry directory now renders from it in a third of a second.
+
+       Every presenter reading a listing's entries goes through this partial
+       rather than repeating the GetMatch/Unmarshal pair itself: entries.html
+       once read .Params.cairndex.entries straight through that move and
+       returned nothing for every page until something finally rendered it
+       and the gap showed. One place to read the resource from is one place
+       to fix if the resource's shape ever changes.
+
+       Usage: {{ $entries := partial "cairndex/entries-data.html" . }}
+       . must be the page whose bundle holds index.json. */ -}}
+{{- $entries := slice -}}
+{{- with .Resources.GetMatch "index.json" }}{{ $entries = (. | transform.Unmarshal).entries }}{{ end -}}
+{{- return $entries -}}

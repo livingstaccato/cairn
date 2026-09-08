@@ -9,6 +9,8 @@ import (
 	"runtime/debug"
 	"strings"
 	"testing"
+
+	telemetry "github.com/provide-io/provide-telemetry/go"
 )
 
 func TestSetupReturnsUsableLoggerAndShutdown(t *testing.T) {
@@ -83,6 +85,43 @@ func TestConfigDefaults(t *testing.T) {
 	if cfg.Version != version() {
 		t.Errorf("Version = %q, want %q", cfg.Version, version())
 	}
+	// cairndex runs at a terminal, not behind a collector: the library's own
+	// "console" default is a raw key=value slog line with logger_name,
+	// filename and lineno on every record, meant for a service's own log
+	// aggregator rather than someone reading `cairndex build`'s output.
+	if cfg.Logging.Format != telemetry.LogFormatPretty {
+		t.Errorf("Logging.Format = %q, want %q", cfg.Logging.Format, telemetry.LogFormatPretty)
+	}
+	if cfg.Logging.IncludeCaller {
+		t.Error("Logging.IncludeCaller = true; filename/lineno are noise for a CLI's normal output")
+	}
+}
+
+// PROVIDE_LOG_FORMAT and PROVIDE_LOG_INCLUDE_CALLER are the telemetry
+// library's own variables. cairndex's pretty-by-default choice must not cut
+// off anyone driving that stack directly with them set — scripting or CI
+// wanting json, or someone debugging wanting caller info back.
+func TestConfigLoggingPrecedence(t *testing.T) {
+	t.Run("format", func(t *testing.T) {
+		t.Setenv("PROVIDE_LOG_FORMAT", "json")
+		cfg, err := config()
+		if err != nil {
+			t.Fatalf("config: %v", err)
+		}
+		if cfg.Logging.Format != telemetry.LogFormatJSON {
+			t.Errorf("Logging.Format = %q, want %q", cfg.Logging.Format, telemetry.LogFormatJSON)
+		}
+	})
+	t.Run("include caller", func(t *testing.T) {
+		t.Setenv("PROVIDE_LOG_INCLUDE_CALLER", "true")
+		cfg, err := config()
+		if err != nil {
+			t.Fatalf("config: %v", err)
+		}
+		if !cfg.Logging.IncludeCaller {
+			t.Error("Logging.IncludeCaller = false, want true: the env var must win")
+		}
+	})
 }
 
 // CAIRNDEX_ENVIRONMENT is cairndex's own name for this and wins over the telemetry

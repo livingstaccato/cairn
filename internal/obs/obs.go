@@ -42,6 +42,8 @@ const (
 	envServiceName      = "PROVIDE_TELEMETRY_SERVICE_NAME"
 	envTelemetryEnv     = "PROVIDE_TELEMETRY_ENV"
 	envTelemetryVersion = "PROVIDE_TELEMETRY_VERSION"
+	envLogFormat        = "PROVIDE_LOG_FORMAT"
+	envLogIncludeCaller = "PROVIDE_LOG_INCLUDE_CALLER"
 )
 
 // version reports the module version the binary was built from, so nothing
@@ -80,6 +82,21 @@ func config() (*telemetry.TelemetryConfig, error) {
 	}
 	if os.Getenv(envTelemetryVersion) == "" {
 		cfg.Version = version()
+	}
+	// cairndex runs at a terminal, not behind a collector. The library's
+	// "console" default (ConfigFromEnv's zero value) is a raw slog key=value
+	// line carrying logger_name, filename and lineno on every record — built
+	// for a service's own log aggregator, not someone reading `cairndex
+	// build`'s output. "pretty" is the library's own human-formatted,
+	// colorized renderer, and it already drops color when the writer is not
+	// a terminal, so scripted output stays plain without cairndex deciding
+	// that itself. Both env vars are the library's own, so anyone driving
+	// that stack directly with them set is not cut off.
+	if os.Getenv(envLogFormat) == "" {
+		cfg.Logging.Format = telemetry.LogFormatPretty
+	}
+	if os.Getenv(envLogIncludeCaller) == "" {
+		cfg.Logging.IncludeCaller = false
 	}
 	return cfg, nil
 }

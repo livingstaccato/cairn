@@ -31,6 +31,12 @@ versions follow [SemVer](https://semver.org/) once tagged. See the
 - `cairndex build` and `cairndex check` now stop promptly when interrupted
   mid-run, instead of only surviving a Ctrl-C to keep going. A build cut
   short still saves a manifest for what it wrote.
+- Log output is colorized and human-formatted by default instead of a raw
+  `time=... level=... filename=... lineno=...` slog line — meant for a
+  service's own aggregator, not someone reading `cairndex build`'s output
+  at a terminal. Plain (no ANSI) automatically when the output is not a
+  terminal. `PROVIDE_LOG_FORMAT` and `PROVIDE_LOG_INCLUDE_CALLER` still
+  override it, for scripting or debugging.
 
 ### Fixed
 

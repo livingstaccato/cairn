@@ -7,6 +7,7 @@
 package build
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -82,7 +83,7 @@ func TestAMirrorReachesAFixedPoint(t *testing.T) {
 
 	const hardLimit = 5
 	for i := 1; i <= hardLimit; i++ {
-		res, err := Run(c, root, root, obs.Discard())
+		res, err := Run(context.Background(), c, root, root, obs.Discard())
 		if err != nil {
 			t.Fatal(err)
 		}

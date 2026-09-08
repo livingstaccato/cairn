@@ -13,6 +13,7 @@ package build
 
 import (
 	"bytes"
+	"context"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -71,7 +72,7 @@ func assertOutputOrReason(t *testing.T, mode, present, format, sum string) {
 	}
 
 	var log bytes.Buffer
-	if _, err := Run(c, root, out, slog.New(slog.NewTextHandler(&log, nil))); err != nil {
+	if _, err := Run(context.Background(), c, root, out, slog.New(slog.NewTextHandler(&log, nil))); err != nil {
 		t.Fatalf("build failed: %v", err)
 	}
 
@@ -117,7 +118,7 @@ func TestMatrixSourceAcrossModes(t *testing.T) {
 				c.Mode = mode
 				src := source
 				c.Defaults = config.Override{Source: &src}
-				if _, err := Run(c, root, out, obs.Discard()); err != nil {
+				if _, err := Run(context.Background(), c, root, out, obs.Discard()); err != nil {
 					t.Fatalf("build failed: %v", err)
 				}
 				// Whatever the producer, the root directory gets a listing.
@@ -143,7 +144,7 @@ func TestMatrixRecursiveAcrossModes(t *testing.T) {
 				yes := true
 				p := present
 				c.Defaults = config.Override{Recursive: &yes, Present: &p}
-				if _, err := Run(c, root, out, obs.Discard()); err != nil {
+				if _, err := Run(context.Background(), c, root, out, obs.Discard()); err != nil {
 					t.Fatalf("build failed: %v", err)
 				}
 				if _, err := os.Stat(filepath.Join(out, "tree.json")); err != nil {

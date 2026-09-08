@@ -8,6 +8,7 @@ package build
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"log/slog"
 	"os"
@@ -210,7 +211,7 @@ func TestRunFailureLeavesRecoverableState(t *testing.T) {
 	}
 
 	c := conf(nil)
-	if _, err := Run(c, root, root, obs.Discard()); err == nil {
+	if _, err := Run(context.Background(), c, root, root, obs.Discard()); err == nil {
 		t.Fatal("expected the conflict in docs/ to fail the build")
 	}
 	if _, err := os.Stat(filepath.Join(root, "index.json")); err != nil {
@@ -222,7 +223,7 @@ func TestRunFailureLeavesRecoverableState(t *testing.T) {
 	if err := os.Remove(filepath.Join(root, "docs", "index.json")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Run(c, root, root, obs.Discard()); err != nil {
+	if _, err := Run(context.Background(), c, root, root, obs.Discard()); err != nil {
 		t.Fatalf("a retry after a failed run must succeed, got: %v", err)
 	}
 }
@@ -234,7 +235,7 @@ func TestStyledHTMLInDirectModeWarns(t *testing.T) {
 	root, out := tree(t), t.TempDir()
 	var buf bytes.Buffer
 	c := conf(nil)
-	if _, err := Run(c, root, out, slog.New(slog.NewTextHandler(&buf, nil))); err != nil {
+	if _, err := Run(context.Background(), c, root, out, slog.New(slog.NewTextHandler(&buf, nil))); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(out, "index.html")); err == nil {

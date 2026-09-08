@@ -4,6 +4,7 @@
 package verify
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"slices"
@@ -32,7 +33,7 @@ func TestRemoveOrphanedDeletesWhatWasReported(t *testing.T) {
 	f.manifest("pool/index.json")
 
 	rep := f.run()
-	res, err := RemoveOrphaned(f.out, rep)
+	res, err := RemoveOrphaned(context.Background(), f.out, rep)
 	if err != nil {
 		t.Fatalf("RemoveOrphaned: %v", err)
 	}
@@ -64,7 +65,7 @@ func TestRemoveOrphanedRefusesWhenTheManifestClaimsNothing(t *testing.T) {
 	if len(rep.Orphaned) != 2 {
 		t.Fatalf("Orphaned = %v, want both files: the premise of this test", rep.Orphaned)
 	}
-	res, err := RemoveOrphaned(f.out, rep)
+	res, err := RemoveOrphaned(context.Background(), f.out, rep)
 	if err == nil {
 		t.Fatal("removing every output because the manifest was lost must be refused")
 	}
@@ -93,7 +94,7 @@ func TestRemoveOrphanedStaysUnderTheOutputRoot(t *testing.T) {
 	rep := f.run()
 	rep.Orphaned = []string{"../outside.json"}
 
-	if _, err := RemoveOrphaned(f.out, rep); err == nil {
+	if _, err := RemoveOrphaned(context.Background(), f.out, rep); err == nil {
 		t.Error("a path resolving outside the output root must be refused")
 	}
 	if _, err := os.Lstat(outside); err != nil {
@@ -108,7 +109,7 @@ func TestRemoveOrphanedOnACleanTreeDoesNothing(t *testing.T) {
 	f.outFile("pool/index.json", "{}")
 	f.manifest("pool/index.json")
 
-	res, err := RemoveOrphaned(f.out, f.run())
+	res, err := RemoveOrphaned(context.Background(), f.out, f.run())
 	if err != nil {
 		t.Fatalf("a clean tree must not error: %v", err)
 	}
@@ -124,7 +125,7 @@ func TestRemoveOrphanedWithNothingToDoDoesNotTripTheGuard(t *testing.T) {
 	f := mirror(t)
 	f.file("pool/nginx.deb", "deb\n")
 
-	res, err := RemoveOrphaned(f.out, f.run())
+	res, err := RemoveOrphaned(context.Background(), f.out, f.run())
 	if err != nil {
 		t.Fatalf("an unbuilt tree has nothing to remove and must not error: %v", err)
 	}
@@ -163,7 +164,7 @@ func TestRemoveOrphanedKeepsForeignFilesWearingGeneratedNames(t *testing.T) {
 		}
 	}
 
-	res, err := RemoveOrphaned(f.out, rep)
+	res, err := RemoveOrphaned(context.Background(), f.out, rep)
 	if err != nil {
 		t.Fatalf("RemoveOrphaned: %v", err)
 	}
@@ -189,7 +190,7 @@ func TestKeptOrphansAreStillReported(t *testing.T) {
 	f.outFile("simple/requests/index.json", "{}")
 	f.manifest("simple/requests/index.json")
 
-	res, err := RemoveOrphaned(f.out, f.run())
+	res, err := RemoveOrphaned(context.Background(), f.out, f.run())
 	if err != nil {
 		t.Fatalf("RemoveOrphaned: %v", err)
 	}
@@ -208,7 +209,7 @@ func TestRemoveOrphanedStillRemovesCairndexsOwnStaleOutput(t *testing.T) {
 	f.outFile("pool/index.html", string(mustBytes(emit.BareHTML(emit.BarePage{Listing: l}))))
 	f.manifest("pool/index.json")
 
-	res, err := RemoveOrphaned(f.out, f.run())
+	res, err := RemoveOrphaned(context.Background(), f.out, f.run())
 	if err != nil {
 		t.Fatalf("RemoveOrphaned: %v", err)
 	}
@@ -234,7 +235,7 @@ func TestRemoveOrphanedReportsAndFullySweepsEmptiedDirectories(t *testing.T) {
 	f.outFile("a/b/c/index.csv", string(mustBytes(emit.CSV(l))))
 	f.manifest("keep/index.json")
 
-	res, err := RemoveOrphaned(f.out, f.run())
+	res, err := RemoveOrphaned(context.Background(), f.out, f.run())
 	if err != nil {
 		t.Fatalf("RemoveOrphaned: %v", err)
 	}
@@ -263,7 +264,7 @@ func TestRemoveOrphanedNeverSweepsTheOutputRoot(t *testing.T) {
 	f.outFile("index.json", "{}")
 	f.manifest("index.json")
 
-	res, err := RemoveOrphaned(f.out, f.run())
+	res, err := RemoveOrphaned(context.Background(), f.out, f.run())
 	if err != nil {
 		t.Fatalf("RemoveOrphaned: %v", err)
 	}
@@ -317,7 +318,7 @@ func TestRemoveOrphanedRefusesWhenAnAncestorBecameASymlink(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := RemoveOrphaned(f.out, rep)
+	res, err := RemoveOrphaned(context.Background(), f.out, rep)
 	if err == nil && slices.Contains(res.Removed, "a/b/index.csv") {
 		t.Error("reported a/b/index.csv removed while acting through a swapped ancestor")
 	}

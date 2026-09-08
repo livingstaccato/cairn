@@ -4,6 +4,7 @@
 package verify
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -61,7 +62,14 @@ type Removal struct {
 // cairndex generates are the most ordinary names in the tree. Every deletion here
 // is gated on provenOurs, so a file is removed only when its own bytes say cairndex
 // wrote it. The rest come back in Kept.
-func RemoveOrphaned(outDir string, rep *Report) (*Removal, error) {
+//
+// A cancelled ctx stops the loop before the next deletion rather than mid-
+// syscall — check.go's RunE claims SIGINT specifically so a Ctrl-C here does
+// not reach the OS default action and kill the process with no record of
+// what it had already removed; this is ctx's half of the same concern,
+// returning what was actually deleted so far instead of leaving that only
+// discoverable by running check again.
+func RemoveOrphaned(ctx context.Context, outDir string, rep *Report) (*Removal, error) {
 	res := &Removal{}
 	if len(rep.Orphaned) == 0 {
 		return res, nil
@@ -77,9 +85,17 @@ func RemoveOrphaned(outDir string, rep *Report) (*Removal, error) {
 		return res, err
 	}
 
+	var stopped error
 	for _, rel := range rep.Orphaned {
+		if err := ctx.Err(); err != nil {
+			stopped = err
+			break
+		}
 		deleted, err := removeOneOrphan(outAbs, rel)
 		if err != nil {
+			sort.Strings(res.Removed)
+			sort.Strings(res.Kept)
+			res.RemovedDirs = removeEmptyDirs(outAbs, res.Removed)
 			return res, err
 		}
 		if deleted {
@@ -91,7 +107,7 @@ func RemoveOrphaned(outDir string, rep *Report) (*Removal, error) {
 	sort.Strings(res.Removed)
 	sort.Strings(res.Kept)
 	res.RemovedDirs = removeEmptyDirs(outAbs, res.Removed)
-	return res, nil
+	return res, stopped
 }
 
 // removeOneOrphan decides one path's fate and, if its content proves it,

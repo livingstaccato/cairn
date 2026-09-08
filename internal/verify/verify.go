@@ -17,6 +17,7 @@
 package verify
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -64,6 +65,7 @@ func (r *Report) OK() bool {
 // three sets dedupe rather than append: a file can be reached both through the
 // manifest and through a digest line, and an operator should see it once.
 type verifier struct {
+	ctx     context.Context
 	cfg     *config.Config
 	root    string
 	out     string
@@ -88,15 +90,20 @@ type verifier struct {
 // general.
 //
 // An error means the verification could not be performed — an unreadable tree,
-// a manifest that is not a manifest. A tree with findings in it is a successful
-// run reporting them, which is why the caller checks Report.OK rather than err.
-func Run(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Report, error) {
+// a manifest that is not a manifest, or ctx cancelled mid-walk. A tree with
+// findings in it is a successful run reporting them, which is why the caller
+// checks Report.OK rather than err.
+//
+// Nothing here writes, so a cancelled ctx has no partial state to reconcile
+// the way a build does — it only needs to stop promptly rather than finish
+// reading a mirror nobody is waiting on anymore.
+func Run(ctx context.Context, cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Report, error) {
 	claimed, err := loadManifest(outDir)
 	if err != nil {
 		return nil, err
 	}
 	v := &verifier{
-		cfg: cfg, root: rootDir, out: outDir, log: log,
+		ctx: ctx, cfg: cfg, root: rootDir, out: outDir, log: log,
 		claimed: claimed,
 		names:   generatedNames(cfg),
 		// An empty cache with nowhere to save to. The on-disk cache answers from
@@ -111,8 +118,12 @@ func Run(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Report,
 		altered:  map[string]bool{},
 	}
 
-	v.checkMissing()
-	v.checkAltered()
+	if err := v.checkMissing(); err != nil {
+		return nil, err
+	}
+	if err := v.checkAltered(); err != nil {
+		return nil, err
+	}
 	if err := v.walkOut(); err != nil {
 		return nil, err
 	}
@@ -125,6 +136,9 @@ func Run(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Report,
 // exactly the same information about each entry.
 func (v *verifier) walkOut() error {
 	return filepath.WalkDir(v.out, func(p string, d fs.DirEntry, err error) error {
+		if ctxErr := v.ctx.Err(); ctxErr != nil {
+			return ctxErr
+		}
 		if err != nil {
 			// Not skipped. A directory verify cannot read is one whose orphans it
 			// cannot see, and reporting a clean tree on the strength of a walk that

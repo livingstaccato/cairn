@@ -25,6 +25,15 @@ import (
 	"github.com/livingstaccato/cairndex/internal/watch"
 )
 
+// afterInitialBuild runs once the first build succeeds, before the watch
+// loop starts. A test hook, a no-op in production: build.Run now observes
+// ctx, so a test proving watch builds before it watches can no longer
+// pre-cancel ctx to make the watch loop exit immediately afterward — that
+// would cancel the build too. This is the synchronization point instead,
+// the same reason build.go's afterSignalRegistered is a var rather than a
+// sleep.
+var afterInitialBuild = func() {}
+
 // watchOpts is what the command line said. Grouped rather than passed one by
 // one: the list grew past the point where a reader could tell which string was
 // which at the call site.
@@ -100,7 +109,7 @@ func runWatch(ctx context.Context, o watchOpts, stderr io.Writer) error {
 		return err
 	}
 
-	if _, err := build.Run(cfg, rootDir, outDir, log); err != nil {
+	if _, err := build.Run(ctx, cfg, rootDir, outDir, log); err != nil {
 		log.Error("the initial build failed", "err", err)
 		// Same shutdown as the watcher's own exit path: cancel to start the
 		// server's graceful drain, then wait for it, so a client mid-request
@@ -110,11 +119,12 @@ func runWatch(ctx context.Context, o watchOpts, stderr io.Writer) error {
 		drainServer(cancel, served)
 		return err
 	}
+	afterInitialBuild()
 
 	w := &watch.Watcher{
 		Config: cfg, Root: rootDir, Out: outDir, Log: log, Settle: o.settle,
 		Rebuild: func(scope string) error {
-			_, err := build.RunScoped(cfg, rootDir, outDir, log, scope)
+			_, err := build.RunScoped(ctx, cfg, rootDir, outDir, log, scope)
 			return err
 		},
 	}

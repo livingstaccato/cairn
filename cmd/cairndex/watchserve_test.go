@@ -79,12 +79,28 @@ func TestWatchServeReportsATakenPortBeforeBuilding(t *testing.T) {
 func TestWatchWithoutServeOpensNoSocket(t *testing.T) {
 	configPath, out := fixture(t)
 
+	// build.Run observes ctx now, so cancelling before runWatch is called
+	// would stop the build too; afterInitialBuild cancels only once it has
+	// already succeeded, isolating the watch loop the same way a
+	// pre-cancelled ctx used to.
 	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
+	built := make(chan struct{})
+	orig := afterInitialBuild
+	afterInitialBuild = func() { close(built); cancel() }
+	t.Cleanup(func() { afterInitialBuild = orig })
 
 	var stderr strings.Builder
 	o := watchOpts{configPath: configPath, settle: 10 * time.Millisecond}
-	if err := runWatch(ctx, o, &stderr); err != nil {
+	done := make(chan error, 1)
+	go func() { done <- runWatch(ctx, o, &stderr) }()
+
+	select {
+	case <-built:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the initial build never finished")
+	}
+
+	if err := <-done; err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 	if _, err := os.Stat(filepath.Join(out, "bootstrap", "index.json")); err != nil {

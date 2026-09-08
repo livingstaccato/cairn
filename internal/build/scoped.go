@@ -4,6 +4,7 @@
 package build
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"path"
@@ -45,7 +46,7 @@ func Scope(cfg *config.Config, rootDir, relDir string, log *slog.Logger) string 
 // three levels down changes what every listing above it should say. Each
 // ancestor is re-emitted without recursing, since its other children have not
 // moved.
-func RunScoped(cfg *config.Config, rootDir, outDir string, log *slog.Logger, scope string) (*Result, error) {
+func RunScoped(ctx context.Context, cfg *config.Config, rootDir, outDir string, log *slog.Logger, scope string) (*Result, error) {
 	if scope == "" {
 		scope = "."
 	}
@@ -58,6 +59,7 @@ func RunScoped(cfg *config.Config, rootDir, outDir string, log *slog.Logger, sco
 		writer: emit.NewWriter(cfg, outDir),
 		result: &Result{},
 		outRel: OutRel(rootDir, outDir),
+		ctx:    ctx,
 	}
 	r.warnAboutTheManifest()
 
@@ -102,6 +104,9 @@ func (r *runner) buildScoped(scope string) error {
 	// Every directory between the scope and the root, refreshed but not
 	// recursed: their listings name the scope, their subtrees are untouched.
 	for _, dir := range ancestors(scope) {
+		if err := r.ctx.Err(); err != nil {
+			return err
+		}
 		if err := r.refresh(dir); err != nil {
 			return err
 		}

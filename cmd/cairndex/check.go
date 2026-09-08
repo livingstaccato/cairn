@@ -79,7 +79,7 @@ func runCheck(ctx context.Context, configPath string, removeOrphaned bool, stder
 		return err
 	}
 
-	rep, err := verify.Run(cfg, rootDir, outDir, log)
+	rep, err := verify.Run(ctx, cfg, rootDir, outDir, log)
 	if err != nil {
 		log.Error("check failed", "err", err)
 		return err
@@ -100,7 +100,7 @@ func runCheck(ctx context.Context, configPath string, removeOrphaned bool, stder
 	report(log, "generated output no longer holds what cairndex wrote", rep.Altered)
 
 	if removeOrphaned {
-		if err := removeAndReport(log, outDir, rep); err != nil {
+		if err := removeAndReport(ctx, log, outDir, rep); err != nil {
 			return err
 		}
 	}
@@ -124,8 +124,8 @@ func runCheck(ctx context.Context, configPath string, removeOrphaned bool, stder
 // What it kept is reported as an error, because a kept path still fails the
 // check. The name says cairndex could have written it and the bytes say nothing
 // did, which is a collision only a person can settle.
-func removeAndReport(log *slog.Logger, outDir string, rep *verify.Report) error {
-	res, err := verify.RemoveOrphaned(outDir, rep)
+func removeAndReport(ctx context.Context, log *slog.Logger, outDir string, rep *verify.Report) error {
+	res, err := verify.RemoveOrphaned(ctx, outDir, rep)
 	// Logged before the error is handled: a removal that failed part way through
 	// has already deleted files, and an operator needs that list more than they
 	// need the error on its own.

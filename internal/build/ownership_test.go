@@ -8,6 +8,7 @@ package build
 
 import (
 	"bytes"
+	"context"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -130,7 +131,7 @@ func TestAnUnreadableManifestIsReportedBeforeTheConflicts(t *testing.T) {
 
 	var logged bytes.Buffer
 	log := slog.New(slog.NewTextHandler(&logged, nil))
-	_, err := Run(conf(nil), root, out, log)
+	_, err := Run(context.Background(), conf(nil), root, out, log)
 	if err == nil {
 		t.Fatal("a build that owns nothing must still refuse to overwrite what is there")
 	}

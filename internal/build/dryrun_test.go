@@ -6,6 +6,7 @@
 package build
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -18,7 +19,7 @@ import (
 
 func dry(t *testing.T, c *config.Config, root, out string) *Result {
 	t.Helper()
-	res, err := RunDry(c, root, out, obs.Discard())
+	res, err := RunDry(context.Background(), c, root, out, obs.Discard())
 	if err != nil {
 		t.Fatalf("RunDry: %v", err)
 	}

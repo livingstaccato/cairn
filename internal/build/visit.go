@@ -20,8 +20,25 @@ import (
 	"github.com/livingstaccato/cairndex/internal/walk"
 )
 
+// visited runs once per directory, right after visit's own cancellation
+// check and before any of its work. A test hook, a no-op in production: it
+// lets a test cancel ctx deterministically after a specific directory
+// instead of racing wall-clock time against however long a walk takes —
+// the same reason cmd/cairndex's afterSignalRegistered exists.
+var visited = func(relDir string) {}
+
 // visit processes one directory and recurses into its children.
+//
+// ctx is checked here and nowhere finer-grained: a directory is the
+// smallest unit build.Run's own error path — SavePartial, the manifest
+// recording exactly what was written — already treats as atomic, so
+// stopping between directories rather than mid-directory needs nothing new
+// from that path to stay correct.
 func (r *runner) visit(relDir string) error {
+	if err := r.ctx.Err(); err != nil {
+		return err
+	}
+	visited(relDir)
 	absDir := filepath.Join(r.root, filepath.FromSlash(relDir))
 	s := r.cfg.Resolve(relDir, r.dirOverride(absDir))
 

@@ -5,6 +5,7 @@
 package build
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"path/filepath"
@@ -58,14 +59,26 @@ type runner struct {
 	// warnedStyled keeps the styled-in-direct-mode diagnostic to one line per
 	// run rather than one per directory.
 	warnedStyled bool
+	// ctx is checked once per directory, in visit. A build has no other loop
+	// short enough to make checking more often worth the cost, and long
+	// enough — a mirror of any size — that never checking at all left a
+	// cancelled context observed only by the process dying under it, taking
+	// the manifest save in build's own error path down with it.
+	ctx context.Context
 }
 
 // Run walks rootDir and writes every configured output under outDir. Warnings
 // are logged as they happen rather than accumulated: on a large mirror the
 // interesting ones are the early ones, and a caller should not have to wait for
 // the walk to finish to see them.
-func Run(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Result, error) {
-	return RunWith(cfg, rootDir, outDir, log, Options{})
+//
+// A cancelled ctx stops the walk at the next directory boundary and returns
+// ctx.Err(), which RunWith's own error path already treats like any other
+// failure: SavePartial claims what was written before the walk stopped, so
+// a build cut short by Ctrl-C leaves output a later run can still own rather
+// than a mirror on_conflict: error refuses to touch again.
+func Run(ctx context.Context, cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Result, error) {
+	return RunWith(ctx, cfg, rootDir, outDir, log, Options{})
 }
 
 // RunDry reports what Run would do and changes nothing.
@@ -76,8 +89,8 @@ func Run(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Result,
 // the one thing cairndex does that cannot be undone by running it again, and a
 // misconfigured out: or a manifest from a different config makes it delete a
 // lot of them. Until now the only way to find out was to let it happen.
-func RunDry(cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Result, error) {
-	return RunWith(cfg, rootDir, outDir, log, Options{Dry: true})
+func RunDry(ctx context.Context, cfg *config.Config, rootDir, outDir string, log *slog.Logger) (*Result, error) {
+	return RunWith(ctx, cfg, rootDir, outDir, log, Options{Dry: true})
 }
 
 // Options are the departures from a default build that a command line may ask
@@ -103,7 +116,7 @@ type Options struct {
 }
 
 // RunWith is Run with the one-run departures a command line asked for.
-func RunWith(cfg *config.Config, rootDir, outDir string, log *slog.Logger, opts Options) (*Result, error) {
+func RunWith(ctx context.Context, cfg *config.Config, rootDir, outDir string, log *slog.Logger, opts Options) (*Result, error) {
 	r := &runner{
 		cfg:    cfg,
 		root:   rootDir,
@@ -114,6 +127,7 @@ func RunWith(cfg *config.Config, rootDir, outDir string, log *slog.Logger, opts 
 		result: &Result{},
 		outRel: OutRel(rootDir, outDir),
 		dry:    opts.Dry,
+		ctx:    ctx,
 	}
 	r.warnAboutTheManifest()
 

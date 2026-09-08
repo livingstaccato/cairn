@@ -7,6 +7,7 @@
 package build
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -35,7 +36,7 @@ func TestWithoutAdoptALostManifestStillStopsTheBuild(t *testing.T) {
 	run(t, conf(nil), root, out)
 	loseTheManifest(t, out)
 
-	if _, err := Run(conf(nil), root, out, obs.Discard()); err == nil {
+	if _, err := Run(context.Background(), conf(nil), root, out, obs.Discard()); err == nil {
 		t.Fatal("expected the build to refuse output it no longer claims")
 	}
 }
@@ -49,7 +50,7 @@ func TestAdoptRecoversATreeWhoseManifestWasLost(t *testing.T) {
 	first := run(t, conf(nil), root, out)
 	loseTheManifest(t, out)
 
-	res, err := RunWith(conf(nil), root, out, obs.Discard(), Options{Adopt: true})
+	res, err := RunWith(context.Background(), conf(nil), root, out, obs.Discard(), Options{Adopt: true})
 	if err != nil {
 		t.Fatalf("--adopt must reclaim cairndex's own output: %v", err)
 	}
@@ -59,7 +60,7 @@ func TestAdoptRecoversATreeWhoseManifestWasLost(t *testing.T) {
 	}
 
 	// The claim has to stick, or the next ordinary run refuses the same files.
-	if _, err := Run(conf(nil), root, out, obs.Discard()); err != nil {
+	if _, err := Run(context.Background(), conf(nil), root, out, obs.Discard()); err != nil {
 		t.Errorf("a later ordinary build must own the adopted output: %v", err)
 	}
 }
@@ -71,7 +72,7 @@ func TestAdoptClaimsNothingWhenThereIsNothingToClaim(t *testing.T) {
 	root, out := tree(t), t.TempDir()
 	run(t, conf(nil), root, out)
 
-	res, err := RunWith(conf(nil), root, out, obs.Discard(), Options{Adopt: true})
+	res, err := RunWith(context.Background(), conf(nil), root, out, obs.Discard(), Options{Adopt: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +88,7 @@ func TestADryAdoptReportsWhatItWouldClaim(t *testing.T) {
 	first := run(t, conf(nil), root, out)
 	loseTheManifest(t, out)
 
-	res, err := RunWith(conf(nil), root, out, obs.Discard(), Options{Adopt: true, Dry: true})
+	res, err := RunWith(context.Background(), conf(nil), root, out, obs.Discard(), Options{Adopt: true, Dry: true})
 	if err != nil {
 		t.Fatalf("RunWith: %v", err)
 	}
@@ -97,7 +98,7 @@ func TestADryAdoptReportsWhatItWouldClaim(t *testing.T) {
 
 	// Nothing was claimed, so the tree is still wedged and a plain build still
 	// refuses it. A preview that quietly fixed things would be no preview.
-	if _, err := Run(conf(nil), root, out, obs.Discard()); err == nil {
+	if _, err := Run(context.Background(), conf(nil), root, out, obs.Discard()); err == nil {
 		t.Error("a dry run claimed the output it was only asked to describe")
 	}
 }

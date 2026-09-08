@@ -4,6 +4,7 @@
 package build
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,7 +43,7 @@ func conf(rules []config.Rule) *config.Config {
 
 func run(t *testing.T, c *config.Config, root, out string) *Result {
 	t.Helper()
-	res, err := Run(c, root, out, obs.Discard())
+	res, err := Run(context.Background(), c, root, out, obs.Discard())
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -243,7 +244,7 @@ func TestRunWithoutManifestConflicts(t *testing.T) {
 	if err := os.Remove(filepath.Join(out, emit.ManifestFile)); err != nil {
 		t.Fatal(err)
 	}
-	_, err := Run(c, root, out, obs.Discard())
+	_, err := Run(context.Background(), c, root, out, obs.Discard())
 	if err == nil {
 		t.Fatal("expected a conflict once cairndex cannot prove it wrote its output")
 	}
@@ -272,7 +273,7 @@ func TestRunUnwritableOutputFails(t *testing.T) {
 			sha := config.ChecksumSHA256
 			outs := []string{config.OutputJSON, config.OutputCSV, config.OutputText, config.OutputSums}
 			c.Defaults = config.Override{Checksum: &sha, Outputs: &outs}
-			if _, err := Run(c, root, out, obs.Discard()); err == nil {
+			if _, err := Run(context.Background(), c, root, out, obs.Discard()); err == nil {
 				t.Fatal("expected an error writing into a read-only output root")
 			}
 		})
@@ -295,7 +296,7 @@ func TestPanicMidBuildStillClaimsPartialOutput(t *testing.T) {
 		}
 		panic("simulated panic mid-build")
 	}
-	if _, err := Run(conf(nil), root, out, obs.Discard()); err == nil {
+	if _, err := Run(context.Background(), conf(nil), root, out, obs.Discard()); err == nil {
 		t.Fatal("expected the recovered panic to surface as an error")
 	}
 	buildStep = orig
@@ -303,7 +304,7 @@ func TestPanicMidBuildStillClaimsPartialOutput(t *testing.T) {
 	// A second, ordinary build must find index.json already claimed by the
 	// panicked run — proof SavePartial ran on the panic path too, not only the
 	// returned-error one.
-	if _, err := Run(conf(nil), root, out, obs.Discard()); err != nil {
+	if _, err := Run(context.Background(), conf(nil), root, out, obs.Discard()); err != nil {
 		t.Fatalf("a later build must own what the panicked run wrote, got: %v", err)
 	}
 }

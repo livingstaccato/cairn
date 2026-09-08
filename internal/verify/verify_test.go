@@ -5,6 +5,7 @@ package verify
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -168,7 +169,7 @@ func join(dir, name string) string {
 
 func (f *fixture) run() *Report {
 	f.t.Helper()
-	r, err := Run(f.cfg, f.root, f.out, f.log)
+	r, err := Run(context.Background(), f.cfg, f.root, f.out, f.log)
 	if err != nil {
 		f.t.Fatalf("Run: %v", err)
 	}
@@ -177,7 +178,7 @@ func (f *fixture) run() *Report {
 
 func (f *fixture) runErr() error {
 	f.t.Helper()
-	_, err := Run(f.cfg, f.root, f.out, f.log)
+	_, err := Run(context.Background(), f.cfg, f.root, f.out, f.log)
 	return err
 }
 
@@ -361,7 +362,7 @@ func freshBuild(t *testing.T) *fixture {
 	f.file("pool/curl.deb", "curl payload\n")
 	f.file("docs/readme.txt", "prose\n")
 
-	if _, err := build.Run(f.cfg, f.root, f.out, obs.Discard()); err != nil {
+	if _, err := build.Run(context.Background(), f.cfg, f.root, f.out, obs.Discard()); err != nil {
 		t.Fatalf("build: %v", err)
 	}
 	return f

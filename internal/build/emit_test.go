@@ -5,6 +5,7 @@ package build
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"log/slog"
 	"os"
@@ -58,7 +59,7 @@ func TestEmitPEP503WarnsOnAMixedDirectory(t *testing.T) {
 
 	var buf bytes.Buffer
 	log := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
-	if _, err := Run(c, root, out, log); err != nil {
+	if _, err := Run(context.Background(), c, root, out, log); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 	if !strings.Contains(buf.String(), "bootstrap") {
@@ -76,7 +77,7 @@ func TestEmitPEP503FailsOnADeclaredLevelMismatch(t *testing.T) {
 	level := config.PEP503LevelRoot
 	c := conf([]config.Rule{{Match: "bootstrap", Override: config.Override{Outputs: &outs, PEP503Level: &level}}})
 
-	if _, err := Run(c, root, out, obs.Discard()); err == nil {
+	if _, err := Run(context.Background(), c, root, out, obs.Discard()); err == nil {
 		t.Fatal("a directory violating its declared pep503_level must fail the build")
 	} else if !strings.Contains(err.Error(), "bootstrap") {
 		t.Errorf("error should name the offending directory: %v", err)
@@ -91,7 +92,7 @@ func TestEmitPEP503AcceptsAMatchingDeclaredLevel(t *testing.T) {
 	level := config.PEP503LevelProject
 	c := conf([]config.Rule{{Match: "docs", Override: config.Override{Outputs: &outs, PEP503Level: &level}}})
 
-	if _, err := Run(c, root, out, obs.Discard()); err != nil {
+	if _, err := Run(context.Background(), c, root, out, obs.Discard()); err != nil {
 		t.Fatalf("docs holds only a file, no subdirectory: %v", err)
 	}
 }
@@ -212,7 +213,7 @@ func TestTreeListingStopsAtAnAncestorLoop(t *testing.T) {
 	c.Defaults.FollowSymlinks = &follow
 
 	done := make(chan error, 1)
-	go func() { _, err := Run(c, root, out, obs.Discard()); done <- err }()
+	go func() { _, err := Run(context.Background(), c, root, out, obs.Discard()); done <- err }()
 	select {
 	case err := <-done:
 		if err != nil {
@@ -370,7 +371,7 @@ func TestRunUnknownOutputIsAnError(t *testing.T) {
 	c := conf(nil)
 	bogus := []string{"pdf"}
 	c.Defaults = config.Override{Outputs: &bogus}
-	if _, err := Run(c, root, out, obs.Discard()); err == nil {
+	if _, err := Run(context.Background(), c, root, out, obs.Discard()); err == nil {
 		t.Fatal("expected an error for an unknown output format")
 	}
 }
@@ -539,7 +540,7 @@ func TestRunPEP503AndHTMLCollide(t *testing.T) {
 	bare := config.PresentBare
 	outs := []string{config.OutputHTML, config.OutputPEP503}
 	c.Defaults = config.Override{Outputs: &outs, Present: &bare}
-	if _, err := Run(c, root, out, obs.Discard()); err == nil {
+	if _, err := Run(context.Background(), c, root, out, obs.Discard()); err == nil {
 		t.Fatal("expected a conflict when both html and pep503 target index.html")
 	}
 }

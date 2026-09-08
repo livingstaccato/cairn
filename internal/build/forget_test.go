@@ -7,6 +7,7 @@
 package build
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -91,7 +92,7 @@ func TestAScopedRebuildForgetsOnlyInsideItsScope(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := RunScoped(hashing(), root, out, obs.Discard(), "docs")
+	res, err := RunScoped(context.Background(), hashing(), root, out, obs.Discard(), "docs")
 	if err != nil {
 		t.Fatalf("RunScoped: %v", err)
 	}
@@ -127,7 +128,7 @@ func TestADryRunReportsWhatItWouldForgetAndForgetsNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := RunDry(hashing(), root, out, obs.Discard())
+	res, err := RunDry(context.Background(), hashing(), root, out, obs.Discard())
 	if err != nil {
 		t.Fatalf("RunDry: %v", err)
 	}
@@ -169,7 +170,7 @@ func TestAFailedBuildForgetsNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := Run(hashing(), root, out, obs.Discard())
+	res, err := Run(context.Background(), hashing(), root, out, obs.Discard())
 	if err == nil {
 		t.Fatal("expected the conflicting file to fail the build")
 	}

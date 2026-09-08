@@ -22,13 +22,29 @@ import (
 func TestWatchBuildsBeforeItWatches(t *testing.T) {
 	configPath, out := fixture(t)
 
-	// Cancelled before the watch loop reads its first event, so the test
-	// asserts on the build the command runs on its way in.
+	// build.Run observes ctx now, so a pre-cancelled one would stop the
+	// build too instead of isolating just the watch loop after it.
+	// afterInitialBuild cancels only once the build this test cares about
+	// has already succeeded.
 	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
+	built := make(chan struct{})
+	orig := afterInitialBuild
+	afterInitialBuild = func() { close(built); cancel() }
+	t.Cleanup(func() { afterInitialBuild = orig })
 
 	var stderr strings.Builder
-	if err := runWatch(ctx, watchOpts{configPath: configPath, settle: 10 * time.Millisecond}, &stderr); err != nil {
+	done := make(chan error, 1)
+	go func() {
+		done <- runWatch(ctx, watchOpts{configPath: configPath, settle: 10 * time.Millisecond}, &stderr)
+	}()
+
+	select {
+	case <-built:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the initial build never finished")
+	}
+
+	if err := <-done; err != nil {
 		t.Fatalf("%v, stderr:\n%s", err, stderr.String())
 	}
 	if _, err := os.Stat(filepath.Join(out, "bootstrap", "index.json")); err != nil {

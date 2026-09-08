@@ -91,7 +91,7 @@ func runBuild(ctx context.Context, configPath, changedTo string, opts build.Opti
 		return err
 	}
 
-	res, err := build.RunWith(cfg, rootDir, outDir, log, opts)
+	res, err := build.RunWith(ctx, cfg, rootDir, outDir, log, opts)
 	if err != nil {
 		log.Error("build failed", "err", err)
 		return err

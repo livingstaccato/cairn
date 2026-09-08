@@ -5,6 +5,7 @@ package build
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"log/slog"
 	"os"
@@ -84,7 +85,7 @@ func TestDirOverrideRejectsAnInvalidSetting(t *testing.T) {
 
 	var buf bytes.Buffer
 	log := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
-	if _, err := Run(c, root, out, log); err != nil {
+	if _, err := Run(context.Background(), c, root, out, log); err != nil {
 		t.Fatalf("an invalid per-directory override must not fail the whole build: %v", err)
 	}
 	if !strings.Contains(buf.String(), ".cairndex.yaml") {
@@ -181,7 +182,7 @@ func TestRunUnreadableFileWarnsAndContinues(t *testing.T) {
 
 	var buf bytes.Buffer
 	log := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
-	if _, err := Run(c, root, out, log); err != nil {
+	if _, err := Run(context.Background(), c, root, out, log); err != nil {
 		t.Fatalf("one unreadable file must not fail the build: %v", err)
 	}
 	if !strings.Contains(buf.String(), "locked.bin") {
@@ -206,7 +207,7 @@ func TestRunTreeCapFailsTheBuild(t *testing.T) {
 	yes := true
 	c.Rules = []config.Rule{{Match: "bootstrap/**", Override: config.Override{Recursive: &yes}}}
 
-	if _, err := Run(c, root, out, obs.Discard()); err == nil {
+	if _, err := Run(context.Background(), c, root, out, obs.Discard()); err == nil {
 		t.Fatal("expected the build to fail when a recursive listing exceeds the cap")
 	}
 }
@@ -222,7 +223,7 @@ func TestRunLogsWarningsWithoutFailing(t *testing.T) {
 
 	var buf bytes.Buffer
 	log := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
-	if _, err := Run(conf(nil), root, out, log); err != nil {
+	if _, err := Run(context.Background(), conf(nil), root, out, log); err != nil {
 		t.Fatalf("a warning must not fail the build: %v", err)
 	}
 	if !strings.Contains(buf.String(), "ghost.iso") {

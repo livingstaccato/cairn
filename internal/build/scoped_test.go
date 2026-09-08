@@ -7,6 +7,7 @@
 package build
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -51,14 +52,14 @@ func TestPanicMidScopedBuildStillClaimsPartialOutput(t *testing.T) {
 		}
 		panic("simulated panic mid-scoped-build")
 	}
-	if _, err := RunScoped(conf(nil), root, out, obs.Discard(), "."); err == nil {
+	if _, err := RunScoped(context.Background(), conf(nil), root, out, obs.Discard(), "."); err == nil {
 		t.Fatal("expected the recovered panic to surface as an error")
 	}
 	buildScopedStep = orig
 
 	// A second, ordinary build must find index.json already claimed by the
 	// panicked run — proof SavePartial ran on the panic path too.
-	if _, err := Run(conf(nil), root, out, obs.Discard()); err != nil {
+	if _, err := Run(context.Background(), conf(nil), root, out, obs.Discard()); err != nil {
 		t.Fatalf("a later build must own what the panicked run wrote, got: %v", err)
 	}
 }
@@ -69,7 +70,7 @@ func TestPanicMidScopedBuildStillClaimsPartialOutput(t *testing.T) {
 func TestScopedRebuildKeepsTheRestOfTheTree(t *testing.T) {
 	root, out := tree(t), t.TempDir()
 	c := conf(nil)
-	if _, err := Run(c, root, out, obs.Discard()); err != nil {
+	if _, err := Run(context.Background(), c, root, out, obs.Discard()); err != nil {
 		t.Fatal(err)
 	}
 	elsewhere := filepath.Join(out, "docs", "index.json")
@@ -77,7 +78,7 @@ func TestScopedRebuildKeepsTheRestOfTheTree(t *testing.T) {
 		t.Fatalf("setup: %v", err)
 	}
 
-	if _, err := RunScoped(c, root, out, obs.Discard(), "bootstrap"); err != nil {
+	if _, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "bootstrap"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(elsewhere); err != nil {
@@ -90,7 +91,7 @@ func TestScopedRebuildKeepsTheRestOfTheTree(t *testing.T) {
 func TestScopedRebuildRefreshesAncestors(t *testing.T) {
 	root, out := tree(t), t.TempDir()
 	c := conf(nil)
-	if _, err := Run(c, root, out, obs.Discard()); err != nil {
+	if _, err := Run(context.Background(), c, root, out, obs.Discard()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -105,7 +106,7 @@ func TestScopedRebuildRefreshesAncestors(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "bootstrap", "extra.sh"), []byte("#!/bin/sh\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := RunScoped(c, root, out, obs.Discard(), "bootstrap"); err != nil {
+	if _, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "bootstrap"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -122,7 +123,7 @@ func TestScopedRebuildRefreshesAncestors(t *testing.T) {
 func TestScopedRebuildDoesNotDescendIntoSiblings(t *testing.T) {
 	root, out := tree(t), t.TempDir()
 	c := conf(nil)
-	if _, err := Run(c, root, out, obs.Discard()); err != nil {
+	if _, err := Run(context.Background(), c, root, out, obs.Discard()); err != nil {
 		t.Fatal(err)
 	}
 	sibling := filepath.Join(out, "docs", "index.json")
@@ -131,7 +132,7 @@ func TestScopedRebuildDoesNotDescendIntoSiblings(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := RunScoped(c, root, out, obs.Discard(), "bootstrap"); err != nil {
+	if _, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "bootstrap"); err != nil {
 		t.Fatal(err)
 	}
 	fi, err := os.Stat(sibling)
@@ -181,10 +182,10 @@ func TestRelDirOfRejectsPathsOutsideTheRoot(t *testing.T) {
 func TestScopedRebuildKeepsOwnershipOfTheRestOfTheTree(t *testing.T) {
 	root, out := tree(t), t.TempDir()
 	c := conf(nil)
-	if _, err := Run(c, root, out, obs.Discard()); err != nil {
+	if _, err := Run(context.Background(), c, root, out, obs.Discard()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := RunScoped(c, root, out, obs.Discard(), "bootstrap"); err != nil {
+	if _, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "bootstrap"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -207,7 +208,7 @@ func TestScopedRebuildKeepsOwnershipOfTheRestOfTheTree(t *testing.T) {
 	}
 
 	// The proof it matters: a following full run must not refuse those files.
-	if _, err := Run(c, root, out, obs.Discard()); err != nil {
+	if _, err := Run(context.Background(), c, root, out, obs.Discard()); err != nil {
 		t.Errorf("a run after a scoped rebuild refused its own earlier output: %v", err)
 	}
 }
@@ -223,7 +224,7 @@ func TestScopedRebuildDoesNotClaimSiblingsBySharedPrefix(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := conf(nil)
-	if _, err := Run(c, root, out, obs.Discard()); err != nil {
+	if _, err := Run(context.Background(), c, root, out, obs.Discard()); err != nil {
 		t.Fatal(err)
 	}
 	sibling := filepath.Join(out, "docs-old", "index.json")
@@ -235,7 +236,7 @@ func TestScopedRebuildDoesNotClaimSiblingsBySharedPrefix(t *testing.T) {
 	if err := os.Remove(filepath.Join(root, "docs-old", "note.md")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := RunScoped(c, root, out, obs.Discard(), "docs"); err != nil {
+	if _, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "docs"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(sibling); err != nil {
@@ -247,7 +248,7 @@ func TestScopedRebuildDoesNotClaimSiblingsBySharedPrefix(t *testing.T) {
 // nothing above it to refresh.
 func TestScopedRebuildOfTheRootCoversEverything(t *testing.T) {
 	root, out := tree(t), t.TempDir()
-	if _, err := RunScoped(conf(nil), root, out, obs.Discard(), "."); err != nil {
+	if _, err := RunScoped(context.Background(), conf(nil), root, out, obs.Discard(), "."); err != nil {
 		t.Fatal(err)
 	}
 	for _, p := range []string{
@@ -269,7 +270,7 @@ func TestScopedRebuildOfTheRootCoversEverything(t *testing.T) {
 // not silently rebuild only the root directory's own listing.
 func TestScopedRebuildTreatsEmptyScopeAsTheRoot(t *testing.T) {
 	root, out := tree(t), t.TempDir()
-	if _, err := RunScoped(conf(nil), root, out, obs.Discard(), ""); err != nil {
+	if _, err := RunScoped(context.Background(), conf(nil), root, out, obs.Discard(), ""); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(out, "bootstrap", "linux", "index.json")); err != nil {
@@ -283,7 +284,7 @@ func TestScopedRebuildRecordsPartialOutputOnFailure(t *testing.T) {
 	root, out := tree(t), t.TempDir()
 	c := conf(nil)
 	c.Defaults = config.Override{Outputs: &[]string{"pdf"}}
-	if _, err := RunScoped(c, root, out, obs.Discard(), "bootstrap"); err == nil {
+	if _, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "bootstrap"); err == nil {
 		t.Fatal("an unknown output format must fail the rebuild")
 	}
 	if _, err := os.Stat(filepath.Join(out, ".cairndex-manifest.json")); err != nil {
@@ -323,7 +324,7 @@ func TestRelDirOfNamesTheContainingDirectory(t *testing.T) {
 func TestScopedRebuildPrunesInsideItsScope(t *testing.T) {
 	root, out := tree(t), t.TempDir()
 	c := conf(nil)
-	if _, err := Run(c, root, out, obs.Discard()); err != nil {
+	if _, err := Run(context.Background(), c, root, out, obs.Discard()); err != nil {
 		t.Fatal(err)
 	}
 	stale := filepath.Join(out, "bootstrap", "linux", "index.json")
@@ -334,7 +335,7 @@ func TestScopedRebuildPrunesInsideItsScope(t *testing.T) {
 	if err := os.RemoveAll(filepath.Join(root, "bootstrap", "linux")); err != nil {
 		t.Fatal(err)
 	}
-	res, err := RunScoped(c, root, out, obs.Discard(), "bootstrap")
+	res, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "bootstrap")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -356,7 +357,7 @@ func TestScopedRebuildRegeneratesARecursiveAncestor(t *testing.T) {
 		Match:    "bootstrap",
 		Override: config.Override{Recursive: &yes},
 	}})
-	if _, err := Run(c, root, out, obs.Discard()); err != nil {
+	if _, err := Run(context.Background(), c, root, out, obs.Discard()); err != nil {
 		t.Fatal(err)
 	}
 	before := readListing(t, filepath.Join(out, "bootstrap", "tree.json"))
@@ -366,7 +367,7 @@ func TestScopedRebuildRegeneratesARecursiveAncestor(t *testing.T) {
 	}
 	// Deliberately narrower than Scope() would choose, which is the case this
 	// guards: the recursive listing above must still be brought up to date.
-	if _, err := RunScoped(c, root, out, obs.Discard(), "bootstrap/linux"); err != nil {
+	if _, err := RunScoped(context.Background(), c, root, out, obs.Discard(), "bootstrap/linux"); err != nil {
 		t.Fatal(err)
 	}
 

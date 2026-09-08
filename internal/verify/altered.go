@@ -18,8 +18,11 @@ const unkeyed = -1
 // contain. A watcher cannot catch it either: it discards events on its own
 // output by name, which is what stops a rebuild loop, and a name cannot tell
 // cairndex's write from anyone else's.
-func (v *verifier) checkAltered() {
+func (v *verifier) checkAltered() error {
 	for claim, want := range v.claimed {
+		if err := v.ctx.Err(); err != nil {
+			return err
+		}
 		// checkMissing has already spoken for a path that is gone; re-reporting
 		// it here would name one absence twice under two different headings.
 		if v.missing[claim] {
@@ -43,4 +46,5 @@ func (v *verifier) checkAltered() {
 			v.altered[claim] = true
 		}
 	}
+	return nil
 }

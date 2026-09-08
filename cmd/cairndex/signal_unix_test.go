@@ -3,18 +3,28 @@
 
 //go:build unix
 
-// A one-shot build or check has no server or watch loop for a cancelled
-// context to unwind — the only thing worth proving here is the one real
-// effect registering for a signal has on an otherwise ctx-unaware build:
-// os/signal claims the process's default disposition for it, so a single
-// Ctrl-C no longer kills the process outright before it can finish writing
-// its manifest. That claim can only be observed by actually raising the
-// signal and seeing whether the process is still alive afterwards.
+// A one-shot build or check no longer has an otherwise ctx-unaware walk to
+// worry about — build.Run and verify.Run both check ctx between directories
+// now — but this still has to prove the one thing that check alone cannot:
+// registering for SIGINT claims the process's default disposition for it,
+// so a Ctrl-C reaches ctx cancellation instead of killing the process
+// outright before it can finish writing its manifest. That claim can only
+// be observed by actually raising the signal and seeing whether the process
+// is still alive afterward.
+//
+// Whether the command finishes before its own per-directory ctx check ever
+// runs, or is cancelled by it, both prove the process survived — this
+// fixture is one directory, fast enough that a real SIGINT's delivery time
+// is not reliably slower than the whole build. internal/build's own
+// TestCancelledCtxStopsTheWalkAndSavesAPartialManifest proves the
+// cancel-mid-walk behavior deterministically, with a hook instead of a
+// signal in the wall-clock; this proves survival either way.
 
 package main
 
 import (
 	"context"
+	"errors"
 	"os"
 	"strings"
 	"syscall"
@@ -95,8 +105,12 @@ func survivesAnInterrupt(t *testing.T, cmd *cobra.Command) {
 
 	select {
 	case err := <-done:
-		if err != nil {
-			t.Fatalf("command returned %v, stderr:\n%s", err, stderr.String())
+		// nil: the command finished before its next ctx check ran. Canceled:
+		// the check caught it first. Either is the process surviving; the OS
+		// default action surviving neither would be this test hanging above,
+		// killed along with the rest of the binary before this ever runs.
+		if err != nil && !errors.Is(err, context.Canceled) {
+			t.Fatalf("command returned %v, want nil or context.Canceled, stderr:\n%s", err, stderr.String())
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("command never returned")

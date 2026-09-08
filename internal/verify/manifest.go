@@ -53,7 +53,7 @@ func loadManifest(outDir string) (map[string]string, error) {
 // whatever now answers for it. Following the link would report the target's
 // existence as the artifact's, which is the substitution the whole ownership
 // record exists to make visible.
-func (v *verifier) checkMissing() {
+func (v *verifier) checkMissing() error {
 	outAbs, err := resolveRoot(v.out)
 	if err != nil {
 		// The output root itself cannot be resolved, so no claim can be checked
@@ -61,9 +61,12 @@ func (v *verifier) checkMissing() {
 		for claim := range v.claimed {
 			v.missing[claim] = true
 		}
-		return
+		return nil
 	}
 	for claim := range v.claimed {
+		if err := v.ctx.Err(); err != nil {
+			return err
+		}
 		abs, err := containedIn(outAbs, claim)
 		if err != nil {
 			// A claim resolving outside the output root is one emit.Write could
@@ -78,6 +81,7 @@ func (v *verifier) checkMissing() {
 			v.missing[claim] = true
 		}
 	}
+	return nil
 }
 
 // resolveRoot makes a root absolute and follows any symlink standing in it.

@@ -1,0 +1,17 @@
+.git
+node_modules
+coverage.out
+coverage.html
+/cairndex
+/exampleSite/content/
+/exampleSite/public/
+/exampleSite/resources/
+/exampleSite-corpus/content/
+/exampleSite-corpus/public/
+/exampleSite-corpus/resources/
+/testdata/example/out/
+.cairndex-cache.json
+.cairndex-manifest.json
+.hugo_build.lock
+/.act-actions/
+.provide/

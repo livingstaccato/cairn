@@ -3,7 +3,7 @@
 
 GO_COVER_MIN ?= 90.0
 
-.PHONY: templates pageweight gate private lint security test cover example example-corpus bench fuzz tools act act-job diagrams clean build
+.PHONY: templates pageweight gate private lint security test cover example example-corpus bench fuzz tools act act-job diagrams clean build docker-gate docker-airgap
 
 gate: private lint security test ## Everything a commit must pass
 
@@ -32,6 +32,12 @@ act: ## Run the CI workflow locally (ubuntu leg only; needs Docker)
 
 act-job: ## Run one CI job locally, e.g. make act-job JOB=security
 	ci/act.sh -j $(JOB)
+
+docker-gate: ## Run the CI gate in a container pinned to ci.yml's toolchain versions
+	ci/docker-gate.sh
+
+docker-airgap: ## Prove the built site serves with no network, not just no CDN in the grep
+	ci/docker-airgap.sh
 
 example: ## End-to-end: cairndex build -> hugo -> assert both halves agree
 	ci/example.sh

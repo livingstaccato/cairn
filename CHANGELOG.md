@@ -91,6 +91,13 @@ versions follow [SemVer](https://semver.org/) once tagged. See the
   loop already treated `ctx.Done()` as a clean stop) or `1` (its own first
   build, or a plain `build`/`check`, returned the raw cancellation as an
   error). See `docs/deployment.md`'s "Exit codes".
+- `provenance: true` writes `provenance.json` at the root of `out:` on every
+  full build: cairndex's version, a SHA-256 hash of the `cairndex.yaml`
+  that drove the run, and a name+digest pair for every file the run wrote,
+  closer to an SLSA provenance predicate's `subject` list than to one
+  aggregate hash. Off by default, and written only by a full build — see
+  `docs/deployment.md`'s "Build provenance" for why `watch`'s incremental
+  rebuilds leave an existing manifest as they found it.
 
 ### Changed
 

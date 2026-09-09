@@ -97,6 +97,11 @@ type runner struct {
 	// build-info footer banner. Empty turns the banner off regardless of
 	// build_info:.
 	version string
+	// configSHA256 is Options.ConfigSHA256, cairndex's caller-computed hash
+	// of the cairndex.yaml that drove this run, carried into
+	// provenance.json when provenance: true. Empty omits the field rather
+	// than asserting a hash of nothing.
+	configSHA256 string
 	// started is when this build began, for the same banner. Distinct from
 	// a listing's own Generated, which is the newest entry's mtime — a
 	// content-freshness fact, not when the build itself ran.
@@ -178,6 +183,13 @@ type Options struct {
 	// library caller who never set it gets no banner rather than a
 	// misleading blank one.
 	Version string
+	// ConfigSHA256 is a hash of the cairndex.yaml that drove this run, for
+	// provenance.json when provenance: true. internal/build has no config
+	// path of its own to hash — it is handed an already-parsed *Config — so
+	// the caller who read the file computes this, the same reason Version
+	// is a string here rather than something this package derives itself.
+	// Empty omits the field rather than asserting a hash of nothing.
+	ConfigSHA256 string
 }
 
 // newRunner builds the fields every entry point needs, so a field added to
@@ -212,6 +224,7 @@ func RunWith(ctx context.Context, cfg *config.Config, rootDir, outDir string, lo
 	r := newRunner(ctx, cfg, rootDir, outDir, log, opts.Version, startedAt)
 	r.writer = emit.NewWriterWith(cfg, outDir, emit.Options{Dry: opts.Dry, Adopt: opts.Adopt})
 	r.dry = opts.Dry
+	r.configSHA256 = opts.ConfigSHA256
 	r.warnAboutTheManifest()
 
 	err := r.safeBuild()
@@ -276,6 +289,13 @@ func (r *runner) build() error {
 		return err
 	}
 	r.reportPruned(pruned)
+
+	// Before Save, not after: provenance.json has to be claimed by this
+	// run's own manifest save like every other output, or the next run
+	// finds a file nothing owns and on_conflict: error refuses to touch it.
+	if err := r.writeProvenance(); err != nil {
+		return err
+	}
 
 	// The manifest records what this run owns. Without it the next run cannot
 	// tell its own output from content that was already there, and refuses to

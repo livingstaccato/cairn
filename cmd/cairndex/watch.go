@@ -104,6 +104,12 @@ func runWatch(ctx context.Context, o watchOpts, stderr io.Writer) error {
 		return err
 	}
 
+	opts := build.Options{Version: version}
+	if opts.ConfigSHA256, err = provenanceHash(cfg, o.configPath); err != nil {
+		log.Error("could not hash the config for provenance", "err", err)
+		return err
+	}
+
 	// One cancellation covers both halves: whichever stops first takes the
 	// other down with it, so a server that loses its socket does not leave a
 	// watcher rebuilding a tree nobody can see, and Ctrl-C ends both.
@@ -121,7 +127,7 @@ func runWatch(ctx context.Context, o watchOpts, stderr io.Writer) error {
 	}
 
 	buildStart := time.Now()
-	result, err := build.RunWith(ctx, cfg, rootDir, outDir, log, build.Options{Version: version})
+	result, err := build.RunWith(ctx, cfg, rootDir, outDir, log, opts)
 	files, dirs := resultCounts(result)
 	status.Record(err, time.Since(buildStart), files, dirs)
 	if err != nil {

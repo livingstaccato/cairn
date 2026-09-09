@@ -4,6 +4,7 @@ root: ./tree
 out: ./content
 index_basename: index
 on_conflict: error
+provenance: true
 
 protect:
   - "dists/**"

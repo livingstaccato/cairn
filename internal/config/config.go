@@ -62,9 +62,18 @@ type Config struct {
 	// rather than this field directly, and build_info: false is the only
 	// way to turn it off. Root-level rather than in Override: what built a
 	// run is one fact about the whole run, not a per-directory setting.
-	BuildInfo *bool    `yaml:"build_info"`
-	Defaults  Override `yaml:"defaults"`
-	Rules     []Rule   `yaml:"rules"`
+	BuildInfo *bool `yaml:"build_info"`
+	// Provenance writes provenance.json at the root of out: on every full
+	// build: cairndex's own version, a hash of this config, and a SHA-256
+	// digest of every file the run wrote, so a verifier need not trust the
+	// tree's bytes on faith. Off by default — unlike build_info:, this
+	// names the exact config that produced a tree, which is not something
+	// to publish by default from a mirror whose config might describe a
+	// private source layout. Root-level for the same reason as BuildInfo:
+	// what built a run is one fact about the whole run.
+	Provenance bool     `yaml:"provenance"`
+	Defaults   Override `yaml:"defaults"`
+	Rules      []Rule   `yaml:"rules"`
 }
 
 // ShowBuildInfo reports whether a listing page should carry the build-info

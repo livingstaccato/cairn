@@ -169,6 +169,12 @@ ran, and the `--version` cairndex reports — a fact about the whole run rather
 than a per-directory setting, so it lives at the config's root: `build_info:
 false` turns it off.
 
+`provenance: true`, the same kind of root-level setting, writes
+`provenance.json` — cairndex's version, a hash of the config, and a
+name+digest pair for every file the run wrote — for supply-chain
+verification of the tree it just built. Off by default. See
+`docs/deployment.md`'s "Build provenance".
+
 ## Where the indexes go
 
 `root` and `out` can name the same directory, and then the indexes land beside

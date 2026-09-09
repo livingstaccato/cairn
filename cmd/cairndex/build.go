@@ -5,6 +5,8 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"log/slog"
@@ -15,11 +17,40 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/livingstaccato/cairndex/internal/build"
+	"github.com/livingstaccato/cairndex/internal/config"
 	"github.com/livingstaccato/cairndex/internal/obs"
 )
 
 // DefaultConfigFile is the config cairndex reads when --config is not given.
 const DefaultConfigFile = "cairndex.yaml"
+
+// configSHA256 hashes the config file's own bytes, for provenance.json's
+// config_sha256 field — a fact about exactly which cairndex.yaml drove a
+// run, not about config.Config's merged, defaulted form in memory, so it
+// stays independently checkable by hand with nothing but sha256sum.
+// internal/build never sees a path, only an already-parsed *Config, so this
+// lives on the side that read the file in the first place.
+func configSHA256(path string) (string, error) {
+	// #nosec G304 -- path is the config the operator passed on the command
+	// line, already read once by config.Load before this runs.
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("hash %s: %w", path, err)
+	}
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:]), nil
+}
+
+// provenanceHash is configSHA256, skipped when the config never asked for
+// provenance.json in the first place — build and watch both need this one
+// branch, and duplicating it at each call site is exactly the kind of drift
+// newRunner's own doc comment warns about.
+func provenanceHash(cfg *config.Config, configPath string) (string, error) {
+	if !cfg.Provenance {
+		return "", nil
+	}
+	return configSHA256(configPath)
+}
 
 // afterSignalRegistered runs immediately after a command's RunE claims a
 // signal's disposition via signal.NotifyContext. A test hook, a no-op in
@@ -89,6 +120,11 @@ func runBuild(ctx context.Context, configPath, changedTo string, opts build.Opti
 	cfg, rootDir, outDir, err := loadPathsForBuild(configPath)
 	if err != nil {
 		log.Error("could not load config", "err", err)
+		return err
+	}
+
+	if opts.ConfigSHA256, err = provenanceHash(cfg, configPath); err != nil {
+		log.Error("could not hash the config for provenance", "err", err)
 		return err
 	}
 

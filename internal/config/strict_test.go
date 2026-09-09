@@ -107,6 +107,7 @@ tree_max_entries: 50000
 on_conflict: skip
 protect: ["dists/**"]
 build_info: true
+provenance: true
 defaults:
   source: fs
   present: bare

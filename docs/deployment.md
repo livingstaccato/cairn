@@ -732,3 +732,40 @@ the expected end of "watches until interrupted", not as a build cut short —
 `docker stop` on a long-running `watch --serve` container exits `0`. Only an
 interruption *before* a build finishes — a plain `build`, `check`, or
 `watch`'s own first build — is `130`.
+
+### Build provenance
+
+`provenance: true` writes `provenance.json` at the root of `out:` on every
+full build — cairndex's own version, a SHA-256 hash of the `cairndex.yaml`
+that drove the run, and a digest of every file the run wrote:
+
+```json
+{
+  "cairndex_version": "v0.14.0",
+  "config_sha256": "e3b0c4...",
+  "started_at": "2026-09-10T02:15:00Z",
+  "finished_at": "2026-09-10T02:15:04Z",
+  "dirs": 42,
+  "files": 137,
+  "outputs": [
+    {"path": "bootstrap/index.html", "sha256": "aa11..."},
+    {"path": "bootstrap/index.json", "sha256": "bb22..."}
+  ]
+}
+```
+
+`outputs` lists name+digest pairs rather than one aggregate hash — closer to
+an SLSA provenance predicate's own `subject` list than to a single
+checksum-of-checksums — so a mismatch names the exact file that changed, and
+`config_sha256` stays checkable by hand with nothing but `sha256sum
+cairndex.yaml`. Off by default: unlike `build_info:`, this names the exact
+config that produced a tree, which is not something to publish from a
+mirror whose config might describe a private source layout.
+
+Written only by a full build (`cairndex build`, or `watch`'s own first
+build) — `watch`'s later, incremental rebuilds leave an existing
+`provenance.json` untouched rather than regenerating it for a subtree, the
+same boundary the hash cache already draws at "the region the run
+rebuilt". A long-running `watch --serve --metrics --config ...` process's
+manifest therefore ages as files change underneath it; re-run `cairndex
+build` (or restart `watch`) to refresh it.

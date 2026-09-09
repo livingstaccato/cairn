@@ -74,6 +74,23 @@ if ! python3 -c "import xml.etree.ElementTree as ET; ET.parse('$pub/bootstrap/at
   fail=1
 fi
 
+# provenance: true is set at exampleSite/cairndex.yaml's root, so
+# provenance.json lands at content's own root, not under a directory this
+# loop already checks. It is real JSON, and the same Go/Hugo drift check
+# every other bundle resource gets: Hugo publishes it as a bundle resource
+# of the root page, the same generic mechanism as every per-directory
+# format, with no template code written for it specifically.
+check "provenance.json"
+if [ -f "exampleSite/content/provenance.json" ] && \
+   ! cmp -s "exampleSite/content/provenance.json" "$pub/provenance.json"; then
+  echo "FAIL: provenance.json published differs from what cairndex wrote"
+  fail=1
+fi
+if ! python3 -c "import json; json.load(open('$pub/provenance.json'))" 2>/dev/null; then
+  echo "FAIL: provenance.json does not parse as JSON"
+  fail=1
+fi
+
 # The CSV column order is a contract shell consumers index into.
 go_header="$(go run ./ci/csvheader)"
 csv_header="$(head -1 "$pub/bootstrap/index.csv")"

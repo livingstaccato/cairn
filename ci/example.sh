@@ -17,7 +17,16 @@ cd "$(dirname "$0")/.."
 # have something hostile to work on.
 hostile='exampleSite/tree/bootstrap/report<&>"quoted".txt'
 printf 'quarterly numbers\n' > "$hostile"
-trap 'rm -f "$hostile"' EXIT
+
+# A real, minimal wheel for the PEP 503 fixture below, generated rather than
+# committed for the same reason the hostile filename above is: this is a
+# synthetic artifact for the test, not tree content, and a binary blob in git
+# history has no provenance a diff can show.
+pypi_dir='exampleSite/tree/pypi/samplepkg'
+mkdir -p "$pypi_dir"
+python3 ci/gen_pep503_wheel.py "$pypi_dir/samplepkg-1.0.0-py3-none-any.whl"
+
+trap 'rm -f "$hostile"; rm -rf exampleSite/tree/pypi' EXIT
 repo="$PWD"
 
 rm -rf exampleSite/content exampleSite/public
@@ -170,6 +179,35 @@ if [ -f "$sums" ]; then
     (cd exampleSite/tree/bootstrap && shasum -a 256 -c "$sums" >/dev/null) \
       || { echo "FAIL: shasum -c"; fail=1; }
   fi
+fi
+
+# PEP 503 verifies against the real client, the same way checksums verify
+# against the real sha256sum -c above. A file:// index-url cannot exercise
+# this: an absolute href like "/samplepkg-1.0.0-py3-none-any.whl" resolves
+# against the OS filesystem root under file://, not against the served
+# tree's own root the way it does over real HTTP -- so this serves the built
+# site and points pip at it for real, over a loopback socket.
+if command -v pip3 >/dev/null || python3 -m pip --version >/dev/null 2>&1; then
+  pip_port=19187
+  python3 -m http.server "$pip_port" --directory "$pub" >/dev/null 2>&1 &
+  pip_server=$!
+  trap 'kill "$pip_server" 2>/dev/null; rm -f "$hostile"; rm -rf exampleSite/tree/pypi' EXIT
+  for _ in $(seq 1 20); do
+    curl -sf "http://127.0.0.1:$pip_port/pypi/" >/dev/null 2>&1 && break
+    sleep 0.25
+  done
+  pip_out=$(mktemp -d)
+  if ! python3 -m pip download --no-deps -d "$pip_out" \
+      --index-url "http://127.0.0.1:$pip_port/pypi/" samplepkg >/tmp/pip-download.log 2>&1; then
+    echo "FAIL: pip download could not fetch the PEP 503 fixture package"
+    cat /tmp/pip-download.log
+    fail=1
+  elif [ ! -e "$pip_out/samplepkg-1.0.0-py3-none-any.whl" ]; then
+    echo "FAIL: pip download reported success but the wheel is not where it should be"
+    fail=1
+  fi
+  rm -rf "$pip_out"
+  kill "$pip_server" 2>/dev/null || true
 fi
 
 [ "$fail" -eq 0 ] && echo "OK: end-to-end passed"

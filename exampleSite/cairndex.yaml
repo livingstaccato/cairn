@@ -47,3 +47,20 @@ rules:
   - match: "external/**"
     source: manifest
     present: styled
+
+  # A PyPI simple index: pypi/ lists project directories, each project
+  # directory lists its own distribution files. outputs: [pep503] replaces
+  # the normal listing for a directory entirely -- a page is either a PEP
+  # 503 index or a browsable listing, never both.
+  - match: "pypi"
+    outputs: [pep503]
+    pep503_level: root
+
+  # One extra wildcard segment than "each project directory" reads as: this
+  # has to match a *file inside* a project directory, not the directory
+  # itself, or matchDir's own "the directory holding matching files is
+  # covered too" rule (config.go) would also apply this to pypi/ itself and
+  # collide with the root-level rule above.
+  - match: "pypi/*/*"
+    outputs: [pep503]
+    pep503_level: project

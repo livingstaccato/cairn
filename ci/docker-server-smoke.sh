@@ -41,7 +41,15 @@ defaults:
 EOF
 printf 'first\n' > "$data/tree/hello.txt"
 
-cid="$(docker run -d --rm -p "${port}:8080" -v "$data:/data" "$image")"
+# --user matches the host's own uid:gid, not the image's default root: on a
+# real Linux bind mount (unlike this session's own macOS/colima Docker,
+# which did not reproduce this) a root process writes host files root owns,
+# and this script's own cleanup trap -- run as the unprivileged CI user --
+# cannot remove them afterward. bash's EXIT trap reports the *trap's* exit
+# status, not the script's, so that Permission denied silently overwrote
+# fail=0 with a failure -- confirmed directly on a real GitHub Actions
+# runner, where the functional assertions below all still passed.
+cid="$(docker run -d --rm --user "$(id -u):$(id -g)" -p "${port}:8080" -v "$data:/data" "$image")"
 
 fetch() { curl -sf -D - -o /tmp/docker-server-smoke-body "http://127.0.0.1:${port}$1"; }
 

@@ -83,6 +83,14 @@ versions follow [SemVer](https://semver.org/) once tagged. See the
   vocabulary, the same precedence `CAIRNDEX_ENVIRONMENT` already had over
   the telemetry library's own `PROVIDE_LOG_FORMAT` (still honoured, so
   driving that stack directly is not cut off).
+- `build`, `watch` and `check` now exit `130` (`128 + SIGINT`) when
+  interrupted before finishing, instead of the same `1` every other
+  failure gets. Previously an operator's own Ctrl-C and a real failure were
+  indistinguishable from the exit code alone — and, depending on exactly
+  when it landed, the same keypress could exit `0` (`watch`'s steady-state
+  loop already treated `ctx.Done()` as a clean stop) or `1` (its own first
+  build, or a plain `build`/`check`, returned the raw cancellation as an
+  error). See `docs/deployment.md`'s "Exit codes".
 
 ### Changed
 

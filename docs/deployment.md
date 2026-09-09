@@ -712,3 +712,23 @@ scrape_configs:
     static_configs:
       - targets: ["cairndex-server:8080"]
 ```
+
+### Exit codes
+
+`build`, `watch` and `check` all exit `130` (`128 + SIGINT`, the shell's own
+convention) when a Ctrl-C or `docker stop`'s `SIGINT` lands before they are
+done — an operator's own interruption, not a failure to investigate. Every
+other error is `1`. `0` is success.
+
+This is deliberately not finer-grained than that: a bad config, a permission
+error and a build that failed partway through are all `1`, distinguished
+from each other by the log line on stderr rather than by the code, since a
+script branching on "did this need a human" only ever needed the one real
+split — interrupted versus broken.
+
+One case reads as `0` on purpose, not `130`: `watch`'s own steady-state loop
+(after the first build has already succeeded) treats being told to stop as
+the expected end of "watches until interrupted", not as a build cut short —
+`docker stop` on a long-running `watch --serve` container exits `0`. Only an
+interruption *before* a build finishes — a plain `build`, `check`, or
+`watch`'s own first build — is `130`.

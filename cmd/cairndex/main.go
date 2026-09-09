@@ -5,10 +5,19 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"os"
 
 	"github.com/spf13/cobra"
 )
+
+// sigintExitCode is the shell's own convention (128+signal number, 128+2 for
+// SIGINT), not one invented here -- an orchestrator, a wrapper script, or a
+// person at a terminal already reads 130 as "this was interrupted," and
+// reusing that means cairndex needs no documentation of its own for the
+// distinction to be understood.
+const sigintExitCode = 130
 
 // Subcommand names, named once so the command tree and the tests that inspect
 // it cannot drift apart.
@@ -29,8 +38,23 @@ var version = "dev"
 func main() {
 	if err := newRootCmd().Execute(); err != nil {
 		// cobra has already printed the message; this only sets the code.
-		os.Exit(1)
+		os.Exit(exitCode(err))
 	}
+}
+
+// exitCode maps an error Execute returned to the process exit code a script
+// or orchestrator branches on. build, watch's initial build, and check all
+// return ctx.Err() raw and unwrapped on a SIGINT that lands before they are
+// done -- unlike watch's own steady-state loop, which already treats
+// ctx.Done() as the clean, expected end of "watches until interrupted" and
+// returns nil -- so this is the one place left to tell an operator's own
+// Ctrl-C apart from a real failure once that distinction reaches here as
+// just an error value.
+func exitCode(err error) int {
+	if errors.Is(err, context.Canceled) {
+		return sigintExitCode
+	}
+	return 1
 }
 
 // newRootCmd builds the fully-wired command tree. Tests execute this rather

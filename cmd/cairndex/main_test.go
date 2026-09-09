@@ -5,6 +5,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,6 +32,49 @@ func fixture(t *testing.T) (configPath, out string) {
 		t.Fatal(err)
 	}
 	return configPath, out
+}
+
+// exitCode is what a script or orchestrator branches on once cobra's own
+// message has already gone to stderr. An interrupted run and a broken one
+// need different downstream handling -- retry a real failure, don't retry
+// an operator's own Ctrl-C -- and the exit code is the only place left to
+// say which happened. main only ever calls this with a non-nil err, inside
+// its own `if err != nil`, so nil is not a case here.
+func TestExitCode(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		err  error
+		want int
+	}{
+		{"context.Canceled is a SIGINT, the shell's own 128+signal", context.Canceled, 130},
+		{"wrapped context.Canceled still resolves", fmt.Errorf("build: %w", context.Canceled), 130},
+		{"anything else is a plain failure", errors.New("boom"), 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := exitCode(tc.err); got != tc.want {
+				t.Errorf("exitCode(%v) = %d, want %d", tc.err, got, tc.want)
+			}
+		})
+	}
+}
+
+// A build actually interrupted mid-walk -- not the watch loop's own steady
+// state, which already treats ctx.Done() as a clean stop -- must carry that
+// distinction all the way out to the process exit code, not just to the
+// error value main() sees.
+func TestInterruptedBuildExitsWithTheSIGINTCode(t *testing.T) {
+	configPath, _ := fixture(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	var stderr strings.Builder
+	err := runBuild(ctx, configPath, "", build.Options{}, &stderr)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("runBuild with an already-cancelled ctx = %v, want context.Canceled", err)
+	}
+	if got := exitCode(err); got != 130 {
+		t.Errorf("exitCode(%v) = %d, want 130", err, got)
+	}
 }
 
 func TestRunBuildEndToEnd(t *testing.T) {

@@ -41,12 +41,32 @@ versions follow [SemVer](https://semver.org/) once tagged. See the
   HTML page instead of the standard library's plain text, and
   `--verbose-errors` names the specific reason instead of the generic
   "not found" every miss gets by default.
-- The breadcrumb has real CSS now — it previously had none at all, so it
-  rendered as the browser's own default blue underlined links with no
-  spacing around the separators.
+- The breadcrumb has a real identity now — it previously had none at all,
+  rendering as the browser's own default blue underlined links with no
+  spacing around the separators. The root crumb is a home icon, widened to
+  meet WCAG 2.2's 24px minimum target size, underlined — a border under
+  the icon, since `text-decoration` never draws under a replaced element —
+  when it is also the current location; the directory icon across the
+  whole sprite is a small stack of stones now, the mark the product is
+  named after, not a generic folder outline. Only the current location is
+  ever underlined, never the separators between crumbs, which are
+  lightened further than a flat color computation alone suggested.
 - Every listing page carries a small footer banner by default: when the
   build ran, and the `--version` cairndex reports. `build_info: false`
   turns it off.
+- `outputs: [search]`'s search page has real styling now — it shipped with
+  none at all: a default serif heading, plain black-on-white, no relation
+  to the rest of the theme, and no way back to the directory it searches.
+- `show_owner: true` adds owner, group and permission columns to every
+  format that carries them (CSV, and both HTML presenters). Off by
+  default: a real uid or username on a public mirror is the same class of
+  leak this project already treats seriously for filenames. Windows has no
+  uid/gid equivalent and only ever gets the permission column.
+- A `server` Docker build target (`docker build --target server`): an
+  image with nothing in it but the `cairndex` binary, running `watch
+  --serve` against a mounted volume — a documented, verified
+  single-container deployment (see `docs/deployment.md`'s "Run as a
+  container"), not just an implicit possibility nobody had actually run.
 
 ### Changed
 
@@ -74,3 +94,38 @@ versions follow [SemVer](https://semver.org/) once tagged. See the
   `.Params.cairndex.entries`, a field that move deleted, and nothing caught
   it because nothing rendered it. It now reads the resource, the same as
   every other presenter.
+- `cairndex.schema.json`'s `override` definition declared `match` as one
+  of its own properties, which `defaults:` inherited by `$ref`-ing the
+  same definition — an editor's schema check passed `defaults: {match:
+  ...}` that `Load` then refused, since `Override` has no `Match` field.
+  Fixed with a separate `rule` definition that repeats `override`'s
+  properties instead of merging them: draft-07's `additionalProperties` is
+  checked per subschema, not across an `allOf`'s union.
+- The format switcher had no case for `search`: a directory built with
+  `outputs: [html, json, search]` got a genuinely working `search/` page
+  with nothing on the listing pointing at it, reachable only by knowing
+  the URL in advance.
+- `internal/serve/errorpage.go`'s redesign dropped the page's `<h1>` in
+  favor of two plain paragraphs — a screen reader had nothing to jump to.
+- `outputs: [search]`'s own generated files (`search.js`,
+  `search-index.json`, the `search/` page) were not excluded the way
+  every other generated name is, so a mirror deployment (`root:` and
+  `out:` the same directory) walked its own search output on the next
+  build and indexed it, writing a `search/` of its own one level deeper —
+  and repeating, one level deeper again, on every rebuild after.
+- `search.js` lowercased the haystack but trusted the caller to have
+  already lowercased the needle, so a caller passing a raw, mixed-case
+  query got a silent miss instead of a match. Separately, a keystroke
+  landing just after a failed index fetch could overwrite the "index
+  failed to load" message with a plain "0 results", which reads as
+  "nothing matched" rather than "nothing loaded".
+- The truncated-notice's `index.txt`/`index.json` links on a capped page
+  carried no color rule, rendering in the browser's default blue instead
+  of the theme.
+- `cairndex init`'s cleanup after a failed write compared a file's device
+  and inode to decide whether it was still safe to remove — safe only if
+  a filesystem never hands a freed inode back to a different file moments
+  later. On overlay2 (Docker's default storage driver), it does, which
+  could delete a file the cleanup was meant to protect. Writing to a
+  private temp file and `Link`-ing it into place instead closes the race
+  rather than narrowing it.

@@ -17,15 +17,17 @@
 #   ci/act.sh -j security           # one job
 #   ci/act.sh --list                # what would run
 #
-# docker-gate and docker-airgap will not run under act with a colima Docker
-# backend: colima's socket lives outside the standard /var/run/docker.sock
-# path, and neither --container-daemon-socket nor a manual bind mount via
-# --container-options actually lands a working socket inside act's own job
-# container (tried both; the mount point exists but nothing is behind it).
-# The jobs fail immediately and cleanly with "Cannot connect to the Docker
-# daemon", not with a script bug. They need nothing special on a real
-# GitHub-hosted runner, which has Docker natively at that path with no act
-# or colima involved — this is a local-repro limitation, not a CI one.
+# docker-gate, docker-airgap and docker-server-smoke will not run under act
+# with a colima Docker backend: colima's socket lives outside the standard
+# /var/run/docker.sock path, and neither --container-daemon-socket nor a
+# manual bind mount via --container-options actually lands a working socket
+# inside act's own job container (tried both; the mount point exists but
+# nothing is behind it). The jobs fail immediately and cleanly with "Cannot
+# connect to the Docker daemon", not with a script bug. They need nothing
+# special on a real GitHub-hosted runner, which has Docker natively at that
+# path with no act or colima involved — this is a local-repro limitation,
+# not a CI one. Run docker-server-smoke directly with `make
+# docker-server-smoke` instead.
 set -euo pipefail
 
 act_bin="${ACT_BIN:-act}"

@@ -195,3 +195,16 @@ jobs:
       # rather than by grepping for what should not be there.
       - name: Airgap proof
         run: make docker-airgap
+
+  docker-server-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Builds the `server` Dockerfile target and runs it against a
+      # bind-mounted tree: proves the mounted content is served, a
+      # host-side edit reaches a visitor with no restart, and path
+      # traversal is still rejected inside the container's own network
+      # namespace -- a native Linux bind mount, unlike this repo's own
+      # dev environment, has no virtiofs translation layer to flake on.
+      - name: Container server smoke test
+        run: make docker-server-smoke

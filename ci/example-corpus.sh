@@ -63,10 +63,15 @@ fi
 # mounted the tree at: downloads is one level under the indexed root and
 # should render as a real crumb, not swallowed into the root anchor or
 # duplicated by it.
-if ! grep -oE '<a href=.?/.?>/</a><span class=.?current.?>downloads</span>' "$pub/downloads/index.html" >/dev/null; then
+#
+# The home crumb itself is an icon (see breadcrumb.html), not literal "/"
+# text, so these anchor on the closing </a> of that link rather than
+# matching its contents.
+if ! grep -oE '</a><span class=.?sep.?>/</span><span class=.?current.?[^>]*>downloads</span><span class=.?trail.?>/</span>' \
+    "$pub/downloads/index.html" >/dev/null; then
   echo "FAIL: downloads breadcrumb does not match root + current"; fail=1
 fi
-if ! grep -oE '<a href=.?/.?>/</a><a href=.?/downloads/.?>downloads</a><span class=.?sep.?>/</span><span class=.?current.?>linux</span>' \
+if ! grep -oE 'href=.?/downloads/.?>downloads</a><span class=.?sep.?>/</span><span class=.?current.?[^>]*>linux</span><span class=.?trail.?>/</span>' \
     "$pub/downloads/linux/index.html" >/dev/null; then
   echo "FAIL: nested breadcrumb does not chain root, downloads, current linux"; fail=1
 fi

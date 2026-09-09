@@ -91,6 +91,16 @@ if ! python3 -c "import json; json.load(open('$pub/provenance.json'))" 2>/dev/nu
   fail=1
 fi
 
+# Real digests, not just parseable JSON -- against exampleSite/content
+# (out:), not $pub: provenance.json attests to what cairndex itself wrote,
+# and in mode: hugo that is the _index.md files Hugo consumes, never
+# published under that name. Verifying it against $pub would fail on every
+# one of them for a reason that has nothing to do with provenance.json
+# being wrong.
+if ! python3 ci/verify_provenance.py exampleSite/content; then
+  fail=1
+fi
+
 # The CSV column order is a contract shell consumers index into.
 go_header="$(go run ./ci/csvheader)"
 csv_header="$(head -1 "$pub/bootstrap/index.csv")"

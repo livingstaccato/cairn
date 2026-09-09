@@ -12,8 +12,11 @@ import (
 // which config produced this tree, when, and a digest of every file this
 // run wrote, so a verifier need not trust the tree's own bytes on faith.
 // Shaped like SLSA's provenance subject list (name+digest pairs) rather
-// than one aggregate hash: a mismatch names the exact file that changed,
-// and it stays independently checkable with nothing but `sha256sum`.
+// than one aggregate hash, so a mismatch names the exact file that
+// changed. ConfigSHA256 alone is checkable with nothing but `sha256sum
+// cairndex.yaml`; Outputs is JSON, not coreutils' sha256sum format, so
+// verifying it takes one small reshape first — see docs/deployment.md's
+// "Build provenance" for the actual recipe.
 type Provenance struct {
 	CairndexVersion string           `json:"cairndex_version"`
 	ConfigSHA256    string           `json:"config_sha256,omitempty"`

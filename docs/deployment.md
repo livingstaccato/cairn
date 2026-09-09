@@ -762,6 +762,18 @@ cairndex.yaml`. Off by default: unlike `build_info:`, this names the exact
 config that produced a tree, which is not something to publish from a
 mirror whose config might describe a private source layout.
 
+`outputs` is JSON, not coreutils' `sha256sum -c` format, so verifying it
+takes one reshape first — from the directory `provenance.json` sits in:
+
+```sh
+jq -r '.outputs[] | "\(.sha256)  \(.path)"' provenance.json | sha256sum -c -
+```
+
+This is a different check than `cairndex check` already does against its
+own `.cairndex-manifest.json` (same digests, same purpose) — the point of
+`provenance.json` is that this one-liner needs no cairndex install at all,
+for a verifier who only has the published tree.
+
 Written only by a full build (`cairndex build`, or `watch`'s own first
 build) — `watch`'s later, incremental rebuilds leave an existing
 `provenance.json` untouched rather than regenerating it for a subtree, the

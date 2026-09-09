@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/livingstaccato/cairndex/internal/config"
 	"github.com/spf13/cobra"
@@ -117,60 +118,59 @@ func newInitCmd() *cobra.Command {
 // is the one file in a cairndex tree that is entirely the operator's, and losing a
 // tuned one to a mistyped command would be the worst version of this.
 //
-// The refusal is the create. Looking first and writing second is a gap wide
-// enough to lose a config through: two inits in the same directory, or an init
-// racing an editor saving cairndex.yaml, both look and both see nothing, and
-// O_CREATE|O_TRUNC then lets the later one clobber the earlier. O_EXCL makes the
-// question and the answer one operation, so exactly one caller can win it.
+// The content is written to a private temp file in the same directory first,
+// then os.Link'd into configPath: link(2) is exclusive the same way
+// O_CREATE|O_EXCL is — it fails with EEXIST rather than replacing an existing
+// dirent — but the exclusive step happens after the content is already known
+// good, so there is no window where a partially-written file sits at
+// configPath waiting to be cleaned up. An earlier version created configPath
+// directly with O_EXCL and, on a write failure, deleted it again by comparing
+// os.Lstat's device and inode against what it had just created — safe only if
+// a filesystem never hands the same inode back to an unrelated file created
+// moments later. It does: on overlay2 (Docker's default storage driver) a
+// remove followed immediately by a create in the same directory can reuse the
+// freed inode outright, which made that comparison delete a file it did not
+// create. Never creating anything at configPath except via the single
+// exclusive Link removes the question entirely — there is no longer a "was
+// this still my file" check to get wrong.
 //
-// Not internal/atomicfile, which replaces a file's contents by rename and would
-// do precisely what this must not.
+// Not internal/atomicfile, which replaces a file's contents by rename and
+// would do precisely what this must not.
 func runInit(configPath, mode string, stderr io.Writer) error {
 	content, err := starterFor(mode)
 	if err != nil {
 		return err
 	}
-	// #nosec G304,G302 -- the path is the operator's own --config value, and a
-	// config file is readable by whatever runs the build.
-	f, err := os.OpenFile(configPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
-	if errors.Is(err, os.ErrExist) {
-		return fmt.Errorf("refusing to replace %s: it already exists", configPath)
-	}
+
+	// #nosec G304 -- dir is derived from the operator's own --config value.
+	tmp, err := os.CreateTemp(filepath.Dir(configPath), ".cairndex-init-*.tmp")
 	if err != nil {
 		return fmt.Errorf("create %s: %w", configPath, err)
 	}
+	tmpPath := tmp.Name()
+	defer func() { _ = os.Remove(tmpPath) }()
 
-	// Captured before the write, while f is still the descriptor O_EXCL handed
-	// back: an identity to clean up against rather than a path to trust.
-	fi, statErr := f.Stat()
-
-	if err := writeStarter(f, content); err != nil {
-		// Take the file this run made back out of the way — but only if
-		// configPath still names it. O_EXCL made the create exclusive; it says
-		// nothing about the moment writeStarter fails, when an editor racing to
-		// save the same path could already have replaced it. Removing by path
-		// alone there would delete somebody else's config, which is the loss
-		// this whole change exists to prevent.
-		if statErr == nil {
-			removeIfSameFile(configPath, fi)
-		}
+	// os.CreateTemp always uses 0600; configPath is a config file the build
+	// itself has to read back, same mode the old O_EXCL create used.
+	// #nosec G302 -- a cairndex.yaml is read by whatever runs the build, same
+	// as the O_EXCL create this replaced.
+	if err := os.Chmod(tmpPath, 0o644); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("create %s: %w", configPath, err)
+	}
+	if err := writeStarter(tmp, content); err != nil {
 		return fmt.Errorf("write %s: %w", configPath, err)
+	}
+
+	if err := os.Link(tmpPath, configPath); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return fmt.Errorf("refusing to replace %s: it already exists", configPath)
+		}
+		return fmt.Errorf("create %s: %w", configPath, err)
 	}
 	_, _ = fmt.Fprintf(stderr, "wrote %s\n", configPath)
 	_, _ = fmt.Fprintf(stderr, "put files under ./tree, then: cairndex build && cairndex serve\n")
 	return nil
-}
-
-// removeIfSameFile deletes path only when it still names the file fi describes.
-//
-// Lstat rather than Stat: a symlink placed at path in the meantime is not the
-// file this run created either, whatever it points at.
-func removeIfSameFile(path string, fi os.FileInfo) {
-	current, err := os.Lstat(path)
-	if err != nil || !os.SameFile(fi, current) {
-		return
-	}
-	_ = os.Remove(path)
 }
 
 // writeStarter fills the created file and closes it, reporting whichever of the

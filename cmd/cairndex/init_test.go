@@ -220,76 +220,33 @@ func TestInitLeavesNothingBehindWhenTheWriteFails(t *testing.T) {
 	}
 }
 
-// removeIfSameFile is the safety check standing between a failed write and the
-// config-loss O_EXCL was written to prevent: O_EXCL only makes the create
-// exclusive, and says nothing about the moment writeStarter fails, when an
-// editor racing to save the same path could already have replaced it.
-func TestRemoveIfSameFileRemovesItsOwnFile(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "cairndex.yaml")
-	if err := os.WriteFile(path, []byte("mine\n"), 0o644); err != nil {
+// The race removeIfSameFile used to exist for: something else creates
+// configPath between this run starting and it trying to place its own file
+// there. Now that placement is a single os.Link into configPath, that race
+// collapses into the same exclusivity TestInitCreatesExclusively and
+// TestInitRefusesToOverwriteAnExistingConfig already prove — whichever of two
+// racing writers created configPath first wins, and Link, not a
+// post-hoc inode comparison, is what makes that atomic.
+//
+// A temp file this run creates for its own content must not survive a
+// successful init: only configPath itself should be left in the directory.
+func TestInitLeavesNoTempFileBehindOnSuccess(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, DefaultConfigFile)
+	var stderr strings.Builder
+	if err := runInit(configPath, "", &stderr); err != nil {
 		t.Fatal(err)
 	}
-	fi, err := os.Lstat(path)
+
+	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	removeIfSameFile(path, fi)
-
-	if _, err := os.Lstat(path); !os.IsNotExist(err) {
-		t.Errorf("the file it created was not removed: %v", err)
+	if len(entries) != 1 || entries[0].Name() != DefaultConfigFile {
+		names := make([]string, len(entries))
+		for i, e := range entries {
+			names[i] = e.Name()
+		}
+		t.Errorf("directory holds more than the config init wrote: %v", names)
 	}
-}
-
-// The race this exists for: something else has already put a different file at
-// the same path by the time cleanup runs. Removing by path alone would delete
-// that file instead of the one this run made.
-func TestRemoveIfSameFileSkipsAPathSomethingElseReplaced(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "cairndex.yaml")
-	if err := os.WriteFile(path, []byte("ours, about to fail\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	fi, err := os.Lstat(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// The race: an editor's save replaces the path with a different inode
-	// before this run's cleanup gets to it.
-	if err := os.Remove(path); err != nil {
-		t.Fatal(err)
-	}
-	theirs := []byte("root: ./mine\nout: ./mine-out\n")
-	if err := os.WriteFile(path, theirs, 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	removeIfSameFile(path, fi)
-
-	got, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("the replacement was removed: %v", err)
-	}
-	if string(got) != string(theirs) {
-		t.Errorf("the replacement was altered: %q", got)
-	}
-}
-
-// Nothing to clean up if the path is simply gone already: removeIfSameFile must
-// not error, since a caller on the failure path has nothing better to report
-// than the write error it already has.
-func TestRemoveIfSameFileToleratesAnAlreadyGonePath(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "cairndex.yaml")
-	if err := os.WriteFile(path, []byte("x\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	fi, err := os.Lstat(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Remove(path); err != nil {
-		t.Fatal(err)
-	}
-
-	removeIfSameFile(path, fi) // must not panic
 }

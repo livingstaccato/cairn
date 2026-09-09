@@ -12,6 +12,7 @@ path = [
   "package-lock.json",
   "cairndex.schema.json",
   ".gitignore",
+  ".dockerignore",
   ".codespellrc",
   ".golangci.yml",
   ".pre-commit-config.yaml",

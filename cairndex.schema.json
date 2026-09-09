@@ -83,7 +83,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["html", "json", "csv", "txt", "sums", "pep503", "search"]
+            "enum": ["html", "json", "csv", "txt", "sums", "pep503", "search", "atom"]
           },
           "description": "html and pep503 both render index.html and cannot be asked for together."
         },
@@ -150,7 +150,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["html", "json", "csv", "txt", "sums", "pep503", "search"]
+            "enum": ["html", "json", "csv", "txt", "sums", "pep503", "search", "atom"]
           },
           "description": "html and pep503 both render index.html and cannot be asked for together."
         },

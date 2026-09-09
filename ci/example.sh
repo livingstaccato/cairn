@@ -58,7 +58,7 @@ done
 # Hugo publishes a bundle resource verbatim, so what a reader fetches must be
 # the exact bytes cairndex wrote. This is the check that keeps it that way: while
 # Hugo re-rendered these there were two producers of one file and they drifted.
-for f in index.json index.csv index.txt SHA256SUMS; do
+for f in index.json index.csv index.txt SHA256SUMS atom.xml; do
   a="exampleSite/content/bootstrap/$f"
   b="$pub/bootstrap/$f"
   if [ -f "$a" ] && ! cmp -s "$a" "$b"; then
@@ -66,6 +66,13 @@ for f in index.json index.csv index.txt SHA256SUMS; do
     fail=1
   fi
 done
+
+# atom.xml is real XML, verified against a real parser rather than grepped —
+# the same "verify against the real tool" standard SHA256SUMS gets below.
+if ! python3 -c "import xml.etree.ElementTree as ET; ET.parse('$pub/bootstrap/atom.xml')" 2>/dev/null; then
+  echo "FAIL: bootstrap/atom.xml does not parse as XML"
+  fail=1
+fi
 
 # The CSV column order is a contract shell consumers index into.
 go_header="$(go run ./ci/csvheader)"

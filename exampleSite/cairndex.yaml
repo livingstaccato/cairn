@@ -19,7 +19,7 @@ rules:
   - match: "bootstrap/**"
     present: styled
     checksum: sha256
-    outputs: [html, json, csv, txt, sums]
+    outputs: [html, json, csv, txt, sums, atom]
 
   # The pool's top level also publishes the whole subtree as one tree.json, so a
   # provisioning script finds every package in one request instead of walking

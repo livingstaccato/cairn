@@ -32,6 +32,7 @@ var outputFile = map[string]string{
 	config.OutputText:   "index.txt",
 	config.OutputSums:   "SHA256SUMS",
 	config.OutputPEP503: "index.html",
+	config.OutputAtom:   "atom.xml",
 }
 
 // TestMatrixEveryRequestedOutputAppearsOrIsExplained is the contract: cairndex
@@ -42,7 +43,7 @@ func TestMatrixEveryRequestedOutputAppearsOrIsExplained(t *testing.T) {
 	presents := []string{config.PresentBare, config.PresentStyled}
 	formats := []string{
 		config.OutputHTML, config.OutputJSON, config.OutputCSV,
-		config.OutputText, config.OutputSums,
+		config.OutputText, config.OutputSums, config.OutputAtom,
 	}
 	checksums := []string{config.ChecksumNone, config.ChecksumSHA256}
 

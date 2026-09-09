@@ -110,7 +110,7 @@ build_info: true
 defaults:
   source: fs
   present: bare
-  outputs: [html, json, csv, txt, sums, search]
+  outputs: [html, json, csv, txt, sums, search, atom]
   sort: name
   order: asc
   dirs_first: true

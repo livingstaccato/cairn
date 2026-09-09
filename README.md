@@ -123,7 +123,7 @@ per-directory override file. Three axes:
   `manifest` (an authored list, for contents not on disk at build time).
 - **`present`** — `styled` (themed, sortable, filterable) or `bare` (a genuine
   autoindex: no JavaScript, no icon font, renders in `lynx`).
-- **`outputs`** — `html`, `json`, `csv`, `txt`, `sums`, `pep503`, `search`.
+- **`outputs`** — `html`, `json`, `csv`, `txt`, `sums`, `pep503`, `search`, `atom`.
 
 `pep503` renders both levels PEP 503 defines with the same code — a
 directory entry as a normalized project link, a file entry as a download —
@@ -131,6 +131,13 @@ trusting that a directory this matches holds only one kind. A mixed one
 only warns by default; `pep503_level: root` or `pep503_level: project`
 turns that into a build error if the directory does not actually hold only
 projects or only files, catching a misconfigured rule before it publishes.
+
+`atom` writes `atom.xml` beside the normal listing: the directory's most
+recently modified entries, newest first, capped at 100 — a feed says what
+changed recently, not everything that exists, which `index.json`/`csv`/`txt`
+already carry in full. No `base_url:` setting exists to build an absolute
+feed from, so every link in it is site-root-relative like everywhere else
+cairndex writes one.
 
 ```yaml
 version: 1

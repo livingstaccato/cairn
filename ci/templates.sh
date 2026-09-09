@@ -48,7 +48,7 @@ out: ./content
 defaults:
   present: styled
   checksum: sha256
-  outputs: [html, json, csv, txt, sums, search]
+  outputs: [html, json, csv, txt, sums, search, atom]
 rules:
   - match: "many"
     present: bare
@@ -115,9 +115,18 @@ if ! grep -qi '<script' "$pub/one/index.html"; then
 fi
 
 # Every listing links its own machine formats, and they exist.
-for f in index.json index.csv index.txt SHA256SUMS; do
+for f in index.json index.csv index.txt SHA256SUMS atom.xml; do
   [ -f "$pub/many/$f" ] || say "many/$f was not published"
 done
+
+# atom.xml is real XML, not just a file that happens to exist, and the
+# listing's own format switcher links to it the same as every other format.
+if ! python3 -c "import xml.etree.ElementTree as ET; ET.parse('$pub/many/atom.xml')" 2>/dev/null; then
+  say "many/atom.xml does not parse as XML"
+fi
+if ! grep -q 'href="atom.xml"' "$pub/index.html"; then
+  say "the listing's own format switcher does not link to atom.xml"
+fi
 
 # outputs: [search] gives a visitor a working search box, not just the JSON.
 # search-index.json and search.js are bundle resources, published verbatim

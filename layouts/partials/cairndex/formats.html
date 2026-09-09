@@ -7,12 +7,13 @@
 
        <details>, not <select>: a select needs JavaScript to navigate, and this
        has to work with scripting off. */ -}}
-{{- $names := dict "json" "index.json" "csv" "index.csv" "txt" "index.txt" "search" "search/" -}}
+{{- $names := dict "json" "index.json" "csv" "index.csv" "txt" "index.txt" "search" "search/" "atom" "atom.xml" -}}
 {{- $blurbs := dict
     "json"   "one record per entry"
     "csv"    "rows as columns"
     "txt"    "one name per line"
     "search" "a search box over this directory"
+    "atom"   "a feed of recent changes"
 -}}
 {{- $recursive := .recursive -}}
 {{- $shown := slice -}}

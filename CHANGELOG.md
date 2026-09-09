@@ -67,6 +67,11 @@ versions follow [SemVer](https://semver.org/) once tagged. See the
   --serve` against a mounted volume — a documented, verified
   single-container deployment (see `docs/deployment.md`'s "Run as a
   container"), not just an implicit possibility nobody had actually run.
+- `outputs: [atom]` writes `atom.xml` beside the normal listing: the
+  directory's most recently modified entries, newest first, capped at 100.
+  index.json/csv/txt already carry a listing in full; a feed's job is
+  different — what changed recently — so it is capped and sorted rather
+  than a fourth complete copy of the same data.
 
 ### Changed
 

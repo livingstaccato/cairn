@@ -145,6 +145,7 @@ var emitters = map[string]func(*runner, emitCtx) error{
 	config.OutputHTML:   (*runner).emitHTML,
 	config.OutputPEP503: (*runner).emitPEP503,
 	config.OutputSearch: (*runner).emitSearch,
+	config.OutputAtom:   (*runner).emitAtom,
 }
 
 // emitFor writes the formats named by s.Outputs under basename.
@@ -277,7 +278,7 @@ func machineFormats(s config.Settings, l model.Listing) []string {
 	var out []string
 	for _, f := range s.Outputs {
 		switch f {
-		case config.OutputJSON, config.OutputCSV, config.OutputText, config.OutputSearch:
+		case config.OutputJSON, config.OutputCSV, config.OutputText, config.OutputSearch, config.OutputAtom:
 			out = append(out, f)
 		case config.OutputSums:
 			if len(emit.Sums(l)) > 0 {
@@ -309,6 +310,28 @@ func (r *runner) emitCSV(c emitCtx) error {
 // can disagree.
 func (r *runner) emitText(c emitCtx) error {
 	return r.write(c.relDir, c.basename+".txt", emit.Text(c.listing))
+}
+
+// emitAtom writes an Atom feed of the directory's own entries, newest
+// modified first and capped — a feed says what changed recently, not
+// everything that exists, which index.json/csv/txt already carry in full.
+//
+// Written only for the directory's own index, the same reasoning emitSums
+// applies: under recursive: true a descendant's change already appears in
+// its own directory's feed, so a whole-subtree copy is a second thing that
+// can disagree about what "recent" means — and unlike index.json/csv/txt,
+// atom.xml's name does not carry the basename, so without this gate the
+// tree listing's own emitFor call would overwrite the directory's feed with
+// the whole subtree's instead of coexisting beside it.
+func (r *runner) emitAtom(c emitCtx) error {
+	if c.basename != r.cfg.IndexBasename {
+		return nil
+	}
+	b, err := emit.Atom(c.listing)
+	if err != nil {
+		return fmt.Errorf("%s: %w", c.relDir, err)
+	}
+	return r.write(c.relDir, "atom.xml", b)
 }
 
 func (r *runner) emitSums(c emitCtx) error {

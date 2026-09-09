@@ -49,6 +49,7 @@ const (
 	OutputSums   = "sums"
 	OutputPEP503 = "pep503"
 	OutputSearch = "search"
+	OutputAtom   = "atom"
 
 	// PEP503Level values declare which of PEP 503's two index levels a
 	// directory's entries actually are: root holds project directories,

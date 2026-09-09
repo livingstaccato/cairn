@@ -10,6 +10,7 @@ package emit
 
 import (
 	"encoding/csv"
+	"encoding/xml"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -132,6 +133,29 @@ func FuzzCSVStaysParseable(f *testing.F) {
 		}
 		if len(rows) != 2 { // header plus the one entry
 			t.Fatalf("name %q produced %d rows, want 2:\n%s", name, len(rows), body)
+		}
+	})
+}
+
+// atom.xml has to parse as XML for every name, or a feed reader drops the
+// entire feed on one bad entry rather than just skipping it. xmlSafe is the
+// one guard this depends on: encoding/xml's own escaping handles every other
+// character, but a raw control byte is invalid XML even escaped.
+func FuzzAtomStaysWellFormed(f *testing.F) {
+	for _, n := range hostileNames {
+		f.Add(n)
+	}
+
+	f.Fuzz(func(t *testing.T, name string) {
+		body, err := Atom(model.Listing{Path: "/x", Entries: []model.Entry{
+			{Name: name, Path: "/x/" + name, Title: name, Summary: name},
+		}})
+		if err != nil {
+			return
+		}
+		var feed atomFeed
+		if err := xml.Unmarshal(body, &feed); err != nil {
+			t.Fatalf("name %q produced XML that does not parse: %v\n%s", name, err, body)
 		}
 	})
 }

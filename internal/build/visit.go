@@ -111,6 +111,11 @@ func (r *runner) produce(relDir, absDir string, s config.Settings) ([]model.Entr
 }
 
 // recurse descends into each subdirectory of a completed listing.
+//
+// A followed symlink can lead back to an ancestor, and unlike emitTree's own
+// recursive walk this one has no seen set of its own to catch it — enterSymlink
+// (emit.go) against r.ancestors is that guard, shared with treeEntries' own
+// use of the same method against its own, differently-scoped map.
 func (r *runner) recurse(relDir string, entries []model.Entry) error {
 	for _, e := range entries {
 		if !e.IsDir {
@@ -121,7 +126,13 @@ func (r *runner) recurse(relDir string, entries []model.Entry) error {
 		if relDir != "." {
 			child = path.Join(relDir, e.Name)
 		}
-		if err := r.visit(child); err != nil {
+		leave, loop := r.enterSymlink(r.ancestors, child)
+		if loop {
+			continue
+		}
+		err := r.visit(child)
+		leave()
+		if err != nil {
 			return err
 		}
 	}

@@ -68,6 +68,19 @@ type runner struct {
 	// warnedStyled keeps the styled-in-direct-mode diagnostic to one line per
 	// run rather than one per directory.
 	warnedStyled bool
+	// ancestors holds the resolved identity of every directory on the
+	// current descent's own path from the build root, so recurse can refuse
+	// to walk into a followed symlink that leads back to one of them.
+	// Without this the only thing that ever stopped such a loop was the
+	// OS's own symlink-resolution depth limit failing a stat deep inside
+	// it — fast by luck on Linux and macOS, slow enough on Windows to blow
+	// past a caller's own timeout, and neither is a designed guarantee.
+	// Keyed and unwound exactly like treeEntries' own seen set (emit.go),
+	// through the same enterSymlink: two sibling symlinks to the same real
+	// directory are not a cycle, only an ancestor reached again through one
+	// is, and the distinction is the descent's current path, not the whole
+	// walk's history.
+	ancestors map[string]bool
 	// ctx is checked once per directory, in visit. A build has no other loop
 	// short enough to make checking more often worth the cost, and long
 	// enough — a mirror of any size — that never checking at all left a
@@ -175,16 +188,17 @@ type Options struct {
 // explicit at each call site, set on the value this returns.
 func newRunner(ctx context.Context, cfg *config.Config, rootDir, outDir string, log *slog.Logger, version string, startedAt time.Time) *runner {
 	return &runner{
-		cfg:     cfg,
-		root:    rootDir,
-		out:     outDir,
-		log:     log,
-		cache:   hash.NewCache(filepath.Join(outDir, hash.CacheFile)),
-		result:  &Result{},
-		outRel:  OutRel(rootDir, outDir),
-		ctx:     ctx,
-		version: version,
-		started: startedAt,
+		cfg:       cfg,
+		root:      rootDir,
+		out:       outDir,
+		log:       log,
+		cache:     hash.NewCache(filepath.Join(outDir, hash.CacheFile)),
+		result:    &Result{},
+		outRel:    OutRel(rootDir, outDir),
+		ancestors: map[string]bool{},
+		ctx:       ctx,
+		version:   version,
+		started:   startedAt,
 		// The throttle's baseline: the interval is measured from when the
 		// build started, not from an unset zero value a first call would
 		// otherwise always beat.
@@ -243,6 +257,13 @@ var buildStep = (*runner).build
 
 // build runs the walk, the prune and the manifest save for a successful run.
 func (r *runner) build() error {
+	// Seeded with the root's own identity before the first descent, the same
+	// reason treeEntries seeds relDir: without it, a symlink back to the root
+	// itself is not caught until root's own subtree has already been walked
+	// a second time through it.
+	if abs, err := filepath.EvalSymlinks(r.root); err == nil {
+		r.ancestors[abs] = true
+	}
 	if err := r.visit("."); err != nil {
 		return err
 	}

@@ -104,7 +104,14 @@ func TestRunHugoModeCarriesPEP503InFrontmatter(t *testing.T) {
 // reimplemented in the Hugo template that reads it.
 func TestRunHugoModeWritesPEP503JSONWithEncodedHrefs(t *testing.T) {
 	root, out := t.TempDir(), t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, `weird#file?name.tar.gz`), []byte("x"), 0o644); err != nil {
+	// Two different characters that need percent-encoding in a URL, not one:
+	// # unconditionally (a URL fragment delimiter) and a space (reserved,
+	// widely disallowed unencoded). ? would exercise a third, but unlike
+	// these two it is one of the characters NTFS refuses in a filename
+	// outright, so a real fixture carrying it never gets this far on
+	// Windows — emit.PEP503JSON's own unit test already covers ? directly,
+	// against an in-memory model.Entry rather than a real file.
+	if err := os.WriteFile(filepath.Join(root, `weird#file name.tar.gz`), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	outs := []string{config.OutputPEP503}
@@ -119,7 +126,7 @@ func TestRunHugoModeWritesPEP503JSONWithEncodedHrefs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("pep503.json was not written: %v", err)
 	}
-	if !strings.Contains(string(b), "%23") || !strings.Contains(string(b), "%3F") {
+	if !strings.Contains(string(b), "%23") || !strings.Contains(string(b), "%20") {
 		t.Errorf("href was not percent-encoded:\n%s", b)
 	}
 }

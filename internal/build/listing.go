@@ -26,8 +26,22 @@ func (r *runner) listing(relDir string, entries []model.Entry) model.Listing {
 	}
 	return model.Listing{
 		Path: p, Generated: r.newest(relDir, entries), Count: len(entries),
-		Entries: r.rebase(entries), Generator: model.Generator,
+		TotalSize: totalSize(entries),
+		Entries:   r.rebase(entries), Generator: model.Generator,
 	}
+}
+
+// totalSize sums Size across every file in entries. Directories contribute
+// nothing of their own — see model.Listing.TotalSize — so this is exactly
+// the bytes a visitor would download taking every file entries lists.
+func totalSize(entries []model.Entry) int64 {
+	var n int64
+	for _, e := range entries {
+		if !e.IsDir {
+			n += e.Size
+		}
+	}
+	return n
 }
 
 // newest is the most recent modification time in a listing.

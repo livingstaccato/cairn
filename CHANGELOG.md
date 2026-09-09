@@ -98,6 +98,11 @@ versions follow [SemVer](https://semver.org/) once tagged. See the
   aggregate hash. Off by default, and written only by a full build — see
   `docs/deployment.md`'s "Build provenance" for why `watch`'s incremental
   rebuilds leave an existing manifest as they found it.
+- Every listing carries `total_size`: the sum of its own files' bytes, shown
+  on the page beside the item count in both presenters and both modes.
+  Immediate children only for a directory's own listing, matching `count`'s
+  scope — `tree.json`'s is the whole subtree, since its entries are already
+  the flattened descendants, with no separate code path to keep in sync.
 
 ### Changed
 

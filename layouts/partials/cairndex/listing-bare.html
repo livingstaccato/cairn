@@ -28,7 +28,7 @@
   <header class="cairndex-head">
     {{ partial "cairndex/breadcrumb.html" . }}
     <div class="cairndex-head-sub">
-      <p class="cairndex-head-count">{{ $n := int $c.count }}{{ $n }} item{{ if ne $n 1 }}s{{ end }}</p>
+      <p class="cairndex-head-count">{{ $n := int $c.count }}{{ $n }} item{{ if ne $n 1 }}s{{ end }}, {{ partial "cairndex/size.html" $c.total_size }} total</p>
       {{ partial "cairndex/formats.html" $c }}
     </div>
   </header>

@@ -61,7 +61,14 @@ type Listing struct {
 	// so that two builds of an unchanged tree produce identical bytes.
 	Generated time.Time `json:"generated" yaml:"generated"`
 	Count     int       `json:"count"     yaml:"count"`
-	Entries   []Entry   `json:"entries"   yaml:"entries"`
+	// TotalSize is the sum of Size across Entries whose IsDir is false —
+	// immediate children only for a per-directory listing, matching Count's
+	// own scope, and every descendant for tree.json, since that Listing's
+	// own Entries already is the flattened subtree. A directory's own Size
+	// is always 0 (see Entry.Size), so it contributes nothing on its own;
+	// what its files hold is counted through its own listing instead.
+	TotalSize int64   `json:"total_size" yaml:"total_size"`
+	Entries   []Entry `json:"entries"   yaml:"entries"`
 	// Generator is always Generator. Present on every listing this package
 	// constructs, not optional: an unknown field is silently ignored by any
 	// existing consumer, and its absence is exactly what tells a foreign

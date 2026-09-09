@@ -17,6 +17,7 @@ footer.cairndex-buildinfo{margin-top:1.5rem;padding-top:.75rem;border-top:1px so
 </head>
 <body>
 <h1>Index of {{ .Listing.Path }}</h1>
+<p class="cairndex-summary">{{ .Total }} item{{ if ne .Total 1 }}s{{ end }}, {{ humanSize .Listing.TotalSize }} total</p>
 {{ with .Prose }}<div class="prose">{{ . }}</div>{{ end }}
 <table>
 <thead><tr><th>Name</th><th>Size</th><th>Modified</th><th>SHA-256</th>{{ if .ShowOwner }}<th>Owner</th><th>Group</th><th>Mode</th>{{ end }}</tr></thead>

@@ -62,7 +62,12 @@ type cairndexParam struct {
 	Formats    []string `yaml:"formats,omitempty"`
 	Generated  string   `yaml:"generated"`
 	Count      int      `yaml:"count"`
-	Recursive  bool     `yaml:"recursive,omitempty"`
+	// TotalSize is the sum of Size across the listing's own files —
+	// immediate children only, or every descendant for tree.json — see
+	// model.Listing.TotalSize. No omitempty: an empty directory's 0 is as
+	// meaningful as Count's own unconditional field.
+	TotalSize int64 `yaml:"total_size"`
+	Recursive bool  `yaml:"recursive,omitempty"`
 	// BasePath is where the indexed tree starts inside the site, so a template
 	// can build a link to the top of it. The breadcrumb's root anchor is the
 	// case: hardcoded to "/" it points above the mirror under base_path, and at
@@ -164,6 +169,7 @@ func HugoContent(p HugoPage) ([]byte, error) {
 			SourceText:         p.SourceText,
 			Generated:          l.Generated.Format(time.RFC3339),
 			Count:              l.Count,
+			TotalSize:          l.TotalSize,
 			Recursive:          p.Recursive,
 			MaxRendered:        p.MaxRendered,
 			AtRoot:             p.AtRoot,

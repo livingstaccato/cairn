@@ -56,7 +56,7 @@ func TestListingJSONShape(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	want := `{"path":"/bootstrap/linux/","generated":"2026-09-03T12:00:00Z","count":2,` +
+	want := `{"path":"/bootstrap/linux/","generated":"2026-09-03T12:00:00Z","count":2,"total_size":0,` +
 		`"entries":[` +
 		`{"name":"a","path":"","is_dir":false,"size":0,"modified":"0001-01-01T00:00:00Z","kind":"","mime":"","depth":0},` +
 		`{"name":"b","path":"","is_dir":false,"size":0,"modified":"0001-01-01T00:00:00Z","kind":"","mime":"","depth":0}` +

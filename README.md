@@ -80,6 +80,12 @@ The page is capped at 1,000 rows by default and the machine formats are not, so
 `index.html` stays a fixed size on a fifty-thousand-package pool while
 `index.json` still describes every one of them.
 
+Every listing also carries `total_size` — the bytes its own files add up to,
+shown on the page beside the item count. `tree.json`'s is the whole
+subtree's, since its entries already are the flattened descendants; a plain
+directory's is its immediate files only, the same scope `count` already
+has.
+
 The output is plain files. It works behind nginx, on Cloudflare Pages, under
 `python -m http.server`, from `file://` on a USB stick, and from an object
 storage bucket with no server in front of it at all.

@@ -42,6 +42,7 @@
     <div class="cairndex-head-sub">
       <p class="cairndex-head-count">
         {{ $n := int $c.count }}{{ $n }} item{{ if ne $n 1 }}s{{ end }}
+        <span class="sep">·</span> {{ partial "cairndex/size.html" $c.total_size }} total
         {{ with $latest }}<span class="sep">·</span> newest {{ dateFormat "2006-01-02" . }}{{ end }}
       </p>
       {{ partial "cairndex/formats.html" $c }}

@@ -36,20 +36,74 @@ const SearchPageDir = "search"
 // free: a box, a status line, and a results list, wired up by
 // SearchScriptFile. Paths are one level up (SearchPageDir), and relative,
 // so base_path or where the tree is mounted never has to reach this
-// template. html/template, not text/template — .Title is a directory path,
+// template. html/template, not text/template — .Path is a directory path,
 // and names in a mirror are attacker-influenced the same way a filename is.
+//
+// Styled inline, the same reasoning as internal/serve/errorpage.go: this
+// page ships in mode: direct with no guaranteed cairndex.css alongside it
+// (mode: hugo publishes it as a raw bundle resource too, never through
+// Hugo's own layout — see SearchPageDir's own comment), so a <link
+// rel=stylesheet> would 404 as often as not. The color tokens mirror
+// cairndex.css by value. Unlike errorpage.go, --c-signal is used here
+// exactly the way cairndex.css itself uses it (focus rings, hover) rather
+// than avoided: the "reserved for a verified checksum" carve-out in that
+// file's comment is about not sending an affirmative-green signal from a
+// rejected request, which does not apply to a working search box.
 var searchPageTemplate = template.Must(template.New("search").Parse(
 	`<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>{{ .Title }}</title></head>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="cairndex">
+<title>Search {{ .Path }}</title>
+<style>
+:root {
+  --c-ink: #16181d; --c-slate: #5b6270; --c-paper: #fbfbfa; --c-rule: #e2e2de; --c-signal: #2f7d5d;
+  --c-mono: ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Mono", Menlo, Consolas, monospace;
+  --c-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --c-ink: #e6e7e9; --c-slate: #8b93a1; --c-paper: #16181d; --c-rule: #2b2f37; --c-signal: #5fbf92; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: var(--c-paper); color: var(--c-ink); font-family: var(--c-sans); }
+main { max-width: 34rem; margin: 0 auto; padding: 2.5rem 1.5rem; }
+.back {
+  display: inline-block; margin-bottom: 1.25rem; color: var(--c-slate);
+  text-decoration: none; font-size: 0.8125rem;
+}
+.back:hover { color: var(--c-ink); text-decoration: underline; }
+.back:focus-visible { outline: 2px solid var(--c-signal); outline-offset: 2px; border-radius: 2px; }
+h1 { font-family: var(--c-mono); font-size: 1.125rem; font-weight: 600; margin: 0 0 1.25rem; }
+input[type="search"] {
+  width: 100%; font: inherit; font-family: var(--c-mono); font-size: 0.9375rem;
+  padding: 0.55rem 0.75rem; border: 1px solid var(--c-rule); border-radius: 4px;
+  background: var(--c-paper); color: var(--c-ink);
+}
+input[type="search"]:focus-visible { outline: 2px solid var(--c-signal); outline-offset: 1px; }
+[data-cairndex-search-status] { margin: 0.75rem 0 0; font-size: 0.8125rem; color: var(--c-slate); min-height: 1.2em; }
+[data-cairndex-search-results] { list-style: none; margin: 0.5rem 0 0; padding: 0; }
+[data-cairndex-search-results] li { padding: 0.65rem 0; border-bottom: 1px solid var(--c-rule); }
+[data-cairndex-search-results] li:last-child { border-bottom: none; }
+[data-cairndex-search-results] a { color: var(--c-ink); text-decoration: none; font-weight: 500; }
+[data-cairndex-search-results] a:hover { text-decoration: underline; }
+[data-cairndex-search-results] a:focus-visible { outline: 2px solid var(--c-signal); outline-offset: 2px; }
+[data-cairndex-search-results] small { color: var(--c-slate); font-size: 0.8125rem; }
+@media (prefers-reduced-motion: reduce) { * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; } }
+</style>
+</head>
 <body>
-<h1>{{ .Title }}</h1>
+<main>
+<a class="back" href="../">&larr; back to {{ .Path }}</a>
+<h1>Search {{ .Path }}</h1>
 <div data-cairndex-search="../` + SearchFile + `">
 <input type="search" placeholder="Search…" autofocus data-cairndex-search-input>
 <p data-cairndex-search-status aria-live="polite"></p>
 <ul data-cairndex-search-results></ul>
 </div>
 <script type="module" src="../` + SearchScriptFile + `"></script>
+</main>
 </body>
 </html>
 `))
@@ -116,7 +170,7 @@ func Search(l model.Listing) ([]byte, error) {
 // short of wiring up Fuse.js or similar themselves.
 func SearchPage(l model.Listing) ([]byte, error) {
 	var buf bytes.Buffer
-	if err := searchPageTemplate.Execute(&buf, struct{ Title string }{Title: "Search " + l.Path}); err != nil {
+	if err := searchPageTemplate.Execute(&buf, struct{ Path string }{Path: l.Path}); err != nil {
 		return nil, fmt.Errorf("render search page %s: %w", l.Path, err)
 	}
 	return buf.Bytes(), nil

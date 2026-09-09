@@ -160,3 +160,37 @@ func TestSearchPageEscapesTheDirectoryPath(t *testing.T) {
 		t.Errorf("directory path was not escaped:\n%s", b)
 	}
 }
+
+// The page shipped with no styling at all: default serif heading, plain
+// black-on-white, no relation to cairndex.css. Every other surface got a
+// design pass (see errorpage.go); this checks the same pass landed here,
+// the same way — an inline stylesheet built from the same tokens, not a
+// stylesheet link, since this page is published in mode: direct with no
+// guaranteed cairndex.css alongside it.
+func TestSearchPageIsStyled(t *testing.T) {
+	b, err := SearchPage(searchListing())
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(b)
+	if !strings.Contains(s, "<style>") {
+		t.Error("search page carries no stylesheet")
+	}
+	if !strings.Contains(s, "--c-ink") {
+		t.Error("search page does not use cairndex's color tokens")
+	}
+}
+
+// The box has no way back to the directory it searches otherwise: this page
+// is published one level under it (SearchPageDir), and a visitor who lands
+// here from a bookmark or a shared link has no breadcrumb, no header, nothing
+// but the box.
+func TestSearchPageLinksBackToTheListing(t *testing.T) {
+	b, err := SearchPage(searchListing())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `href="../"`) {
+		t.Errorf("search page has no link back to the listing it searches:\n%s", b)
+	}
+}

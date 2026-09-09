@@ -647,6 +647,11 @@ docker build --target server -t cairndex-server .
 docker run -d -p 8080:8080 -v /path/to/your/tree:/data cairndex-server
 ```
 
+Builds natively on amd64 or arm64 — a homelab NAS or a Raspberry Pi needs
+nothing extra, just `docker build` run on that machine. CI proves both
+architectures on real hardware (`docker-server-multiarch` in
+`.github/workflows/ci.yml`), not through QEMU emulation.
+
 The mounted volume is where `/data/cairndex.yaml` lives, alongside whatever
 `root:`/`out:` it names — `root: ./tree`, `out: ./site` is exactly what
 `cairndex init` itself writes, and needs nothing extra for this. There is no

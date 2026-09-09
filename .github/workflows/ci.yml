@@ -208,3 +208,24 @@ jobs:
       # dev environment, has no virtiofs translation layer to flake on.
       - name: Container server smoke test
         run: make docker-server-smoke
+
+  docker-server-multiarch:
+    strategy:
+      matrix:
+        # Native runners, not one amd64 runner cross-building both under QEMU
+        # emulation: GitHub's arm64 hosted runners are free on this public
+        # repo (GA since 2025-08), so the arm64 leg gets a real arm64 CPU
+        # actually compiling arm64 machine code, not an amd64 CPU emulating
+        # one instruction at a time -- faster, and it proves the image on
+        # real hardware rather than trusting QEMU's translation to be exact.
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      # Plain `docker build`, no buildx --platform: each leg builds for the
+      # one platform its own runner already is, so there is nothing to
+      # target or emulate. Proves the server target's own Dockerfile stage
+      # compiles cleanly for both architectures homelab/NAS deployments
+      # actually run; not published anywhere, so no --push, no registry.
+      - name: Build server image natively
+        run: docker build --target server .

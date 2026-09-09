@@ -20,7 +20,11 @@
 #   server  - the cairndex binary alone, running `watch --serve` against a
 #             mounted volume: an actual single-container deployment, not a
 #             demo. See docs/deployment.md's "Run as a container" section
-#             for what this is (and is not) a replacement for.
+#             for what this is (and is not) a replacement for. Builds
+#             natively for amd64 or arm64 with a plain `docker build` on a
+#             runner of that architecture -- nothing in this stage assumes
+#             amd64, and .github/workflows/ci.yml's docker-server-multiarch
+#             job proves both on real hardware, not QEMU.
 #
 # `docker build` with no --target builds runtime, since that's the one meant
 # to be run rather than just checked, and predates server as this file's
@@ -113,10 +117,25 @@ EXPOSE ${DEMO_PORT}
 CMD ["sh", "-c", "httpd -f -v -p ${DEMO_PORT} -h /srv/public"]
 
 # ---- server: cairndex itself, for a real long-lived single container -----
+# Its own toolchain stage, not FROM toolchain: the binary needs nothing
+# toolchain installs for the gate (curl, Node, golangci-lint, gosec,
+# govulncheck, Hugo) and building through it anyway means paying for all of
+# that under QEMU emulation on every non-native platform of a multi-arch
+# build (`docker buildx build --platform linux/amd64,linux/arm64`) for tools
+# this image never runs.
+FROM golang:${GO_VERSION}-bookworm AS server-toolchain
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+
 # CGO_ENABLED=0: a static binary is what lets the final image be busybox
 # rather than needing glibc. cairndex makes no outbound network calls in
 # watch/serve (no cgo resolver ever needed either), so nothing is lost.
-FROM toolchain AS server-build
+# GOARCH is not pinned here: buildx runs this stage on (or emulates) each
+# requested --platform in turn, and the go toolchain in that instance already
+# targets the architecture it is itself running on.
+FROM server-toolchain AS server-build
 RUN CGO_ENABLED=0 go build -o /out/cairndex ./cmd/cairndex
 
 FROM busybox:1.36 AS server

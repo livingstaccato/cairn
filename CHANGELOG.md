@@ -79,6 +79,10 @@ versions follow [SemVer](https://semver.org/) once tagged. See the
   by default, so a served tree keeping a real `metrics/` directory is still
   served faithfully unless an operator explicitly asks to trade those two
   names away. See `docs/deployment.md`'s "Health checks and metrics".
+- `CAIRNDEX_LOG_FORMAT` picks `pretty` or `json` in cairndex's own
+  vocabulary, the same precedence `CAIRNDEX_ENVIRONMENT` already had over
+  the telemetry library's own `PROVIDE_LOG_FORMAT` (still honoured, so
+  driving that stack directly is not cut off).
 
 ### Changed
 

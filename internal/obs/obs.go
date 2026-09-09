@@ -37,6 +37,11 @@ const (
 	// contained, so the environment is cairndex's to name.
 	envVar = "CAIRNDEX_ENVIRONMENT"
 
+	// The same reasoning as envVar above, for log format: json for a
+	// collector, pretty for a terminal, spelled in cairndex's own vocabulary
+	// rather than the backend's.
+	envLogFormatVar = "CAIRNDEX_LOG_FORMAT"
+
 	// Names the provide-telemetry library documents for itself, given here once
 	// so config() does not repeat each literal three times.
 	envServiceName      = "PROVIDE_TELEMETRY_SERVICE_NAME"
@@ -83,6 +88,9 @@ func config() (*telemetry.TelemetryConfig, error) {
 	if os.Getenv(envTelemetryVersion) == "" {
 		cfg.Version = version()
 	}
+	// CAIRNDEX_LOG_FORMAT first, the library's own variable second, the
+	// default last — the same precedence as CAIRNDEX_ENVIRONMENT above.
+	//
 	// cairndex runs at a terminal, not behind a collector. The library's
 	// "console" default (ConfigFromEnv's zero value) is a raw slog key=value
 	// line carrying logger_name, filename and lineno on every record — built
@@ -90,9 +98,12 @@ func config() (*telemetry.TelemetryConfig, error) {
 	// build`'s output. "pretty" is the library's own human-formatted,
 	// colorized renderer, and it already drops color when the writer is not
 	// a terminal, so scripted output stays plain without cairndex deciding
-	// that itself. Both env vars are the library's own, so anyone driving
-	// that stack directly with them set is not cut off.
-	if os.Getenv(envLogFormat) == "" {
+	// that itself. Both of the library's own env vars stay honoured, so
+	// anyone driving that stack directly with them set is not cut off.
+	switch {
+	case os.Getenv(envLogFormatVar) != "":
+		cfg.Logging.Format = os.Getenv(envLogFormatVar)
+	case os.Getenv(envLogFormat) == "":
 		cfg.Logging.Format = telemetry.LogFormatPretty
 	}
 	if os.Getenv(envLogIncludeCaller) == "" {

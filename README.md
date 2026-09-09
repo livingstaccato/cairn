@@ -385,6 +385,11 @@ checks and metrics".
 `production`, since Cairndex runs as a build step rather than a server. Nothing
 else reads it, and nothing about a listing changes with it.
 
+`CAIRNDEX_LOG_FORMAT` picks the log line shape: `pretty` (the default, a
+human-formatted terminal renderer, no ANSI color once the writer is not a
+terminal) or `json`, for shipping build logs into Loki, ELK, Datadog or
+similar without a regex parser in front of them.
+
 ## Documentation
 
 - [Hugo setup](docs/hugo-setup.md) — importing the module, output formats

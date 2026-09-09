@@ -154,6 +154,38 @@ func TestConfigEnvironmentPrecedence(t *testing.T) {
 	}
 }
 
+// CAIRNDEX_LOG_FORMAT is cairndex's own name for this, the same precedence
+// shape as CAIRNDEX_ENVIRONMENT above: it wins over the telemetry library's
+// own PROVIDE_LOG_FORMAT, which stays honoured so anyone driving that stack
+// directly is not cut off. An empty value is not a value: it must not beat
+// the library's, and must still fall through to cairndex's pretty default.
+func TestConfigLogFormatPrecedence(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		cairndexFmt  string
+		telemetryFmt string
+		want         string
+	}{
+		{"neither set", "", "", telemetry.LogFormatPretty},
+		{"cairndex only", "json", "", "json"},
+		{"library only", "", "json", "json"},
+		{"both set, cairndex wins", "json", "console", "json"},
+		{"cairndex empty does not win", "", "json", "json"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("CAIRNDEX_LOG_FORMAT", tc.cairndexFmt)
+			t.Setenv("PROVIDE_LOG_FORMAT", tc.telemetryFmt)
+			cfg, err := config()
+			if err != nil {
+				t.Fatalf("config: %v", err)
+			}
+			if cfg.Logging.Format != tc.want {
+				t.Errorf("Logging.Format = %q, want %q", cfg.Logging.Format, tc.want)
+			}
+		})
+	}
+}
+
 // Name and version have no cairndex-specific variable — the name is an identity
 // and the version comes from the build — but the library's own must still
 // reach the config, or setting one would silently do nothing.

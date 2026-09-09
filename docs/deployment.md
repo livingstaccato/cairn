@@ -632,3 +632,38 @@ nginx_1.24.0-1_amd64.deb: OK
 what apt or dnf published — but they still appear in their parent's listing, so
 a browser can walk into them and a machine reading `index.json` can discover
 them. `apt-get update` and a human with a URL bar work against the same mirror.
+
+## Run as a container
+
+`cairndex watch --serve` already runs the rebuild-on-change watcher and the
+HTTP server in one process, so a single container mounting one volume is a
+real, working deployment for a homelab or a small internal mirror — not a
+new mode built for this, the same command described earlier in this
+document. `docker build --target server` builds an image with nothing in it
+but the `cairndex` binary:
+
+```sh
+docker build --target server -t cairndex-server .
+docker run -d -p 8080:8080 -v /path/to/your/tree:/data cairndex-server
+```
+
+The mounted volume is where `/data/cairndex.yaml` lives, alongside whatever
+`root:`/`out:` it names — `root: ./tree`, `out: ./site` is exactly what
+`cairndex init` itself writes, and needs nothing extra for this. There is no
+Hugo in this image, only the binary, so the config must be `mode: direct`
+(the default); a `mode: hugo` config will index correctly but publish no
+browsable HTML, since nothing in this container renders Hugo templates.
+
+Read before pointing this at the internet: `internal/serve`'s own package
+comment says what this is —
+
+> It is a viewer, not a deployment. Nothing here negotiates content,
+> terminates TLS, authenticates anyone or writes to the tree.
+
+Concretely: no TLS, no gzip, no access log, no rate limiting, no IP
+allow/deny. `ci/docker-server-smoke.sh` (`make docker-server-smoke`) proves
+the container itself works — serving the mounted tree, picking up a change
+on the host without a restart, and refusing a path-traversal request — none
+of which implies it is safe to expose directly. Put a real reverse proxy
+(Caddy or nginx, both covered earlier in this document) in front for
+anything internet-facing; this is what runs behind it.

@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (C) 2026 Tim Perkins
 # SPDX-License-Identifier: MIT
 #
-# Two independent things live in this file, as separate build targets:
+# Three independent things live in this file, as separate build targets:
 #
 #   gate    - the CI gate (lint, security, Go+JS tests, the Hugo end-to-end),
 #             run in a container pinned to the exact toolchain versions
@@ -15,9 +15,17 @@
 #             "zero external runtime assets, works airgapped" claim in
 #             AGENTS.md by actually removing the network, not by grepping
 #             the output for CDN URLs.
+#             gate and runtime are CI/demo tooling, not for anyone else to
+#             run -- do not repurpose either for real use; see server below.
+#   server  - the cairndex binary alone, running `watch --serve` against a
+#             mounted volume: an actual single-container deployment, not a
+#             demo. See docs/deployment.md's "Run as a container" section
+#             for what this is (and is not) a replacement for.
 #
 # `docker build` with no --target builds runtime, since that's the one meant
-# to be run rather than just checked.
+# to be run rather than just checked, and predates server as this file's
+# default. Building the container someone would actually run always needs an
+# explicit --target server.
 
 ARG GO_VERSION=1.26
 ARG HUGO_VERSION=0.165.0
@@ -103,3 +111,24 @@ ENV DEMO_PORT=${DEMO_PORT}
 COPY --from=build /src/exampleSite/public /srv/public
 EXPOSE ${DEMO_PORT}
 CMD ["sh", "-c", "httpd -f -v -p ${DEMO_PORT} -h /srv/public"]
+
+# ---- server: cairndex itself, for a real long-lived single container -----
+# CGO_ENABLED=0: a static binary is what lets the final image be busybox
+# rather than needing glibc. cairndex makes no outbound network calls in
+# watch/serve (no cgo resolver ever needed either), so nothing is lost.
+FROM toolchain AS server-build
+RUN CGO_ENABLED=0 go build -o /out/cairndex ./cmd/cairndex
+
+FROM busybox:1.36 AS server
+COPY --from=server-build /out/cairndex /usr/local/bin/cairndex
+# --addr 0.0.0.0 is required here and is not internal/serve.DefaultAddr
+# (127.0.0.1:22476) on purpose -- that default is for local preview on the
+# machine that ran it, unreachable from outside a container's own network
+# namespace otherwise. mode: hugo will not work in this image: there is no
+# Hugo here, only the cairndex binary, so /data/cairndex.yaml must be a
+# mode: direct config -- exactly the shape `cairndex init` itself writes.
+EXPOSE 8080
+VOLUME /data
+WORKDIR /data
+ENTRYPOINT ["cairndex"]
+CMD ["watch", "--serve", "--addr", "0.0.0.0:8080"]

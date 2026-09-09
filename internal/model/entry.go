@@ -38,6 +38,14 @@ type Entry struct {
 	Weight int            `json:"weight,omitempty"  yaml:"weight,omitempty"`
 	Depth  int            `json:"depth"   yaml:"depth"` // 0 = the listed directory itself
 	Extra  map[string]any `json:"extra,omitempty"   yaml:"extra,omitempty"`
+	// Owner, Group and Mode are populated only when show_owner: true. Owner
+	// and Group fall back to the numeric uid/gid as a string when the name
+	// cannot be resolved, and are always empty on Windows, which has no
+	// uid/gid equivalent. Mode is the permission string (e.g. "-rw-r--r--"),
+	// which is cross-platform and populates on every OS show_owner covers.
+	Owner string `json:"owner,omitempty" yaml:"owner,omitempty"`
+	Group string `json:"group,omitempty" yaml:"group,omitempty"`
+	Mode  string `json:"mode,omitempty"  yaml:"mode,omitempty"`
 	// SourceName is the on-disk filename an entry was produced from, when that
 	// differs from Name — a source: pages entry emits its slug (post) as Name
 	// but a _meta.yaml keyed the way it would be for source: fs names the file

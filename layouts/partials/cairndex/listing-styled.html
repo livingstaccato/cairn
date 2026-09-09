@@ -96,6 +96,7 @@
         <a href="SHA256SUMS" title="Every digest below, in one file for sha256sum -c">SHA-256</a>
         {{- else -}}SHA-256{{- end -}}
       </span>
+      {{ if $c.show_owner }}<span class="col-owner" role="columnheader">Owner</span>{{ end }}
     </div>
 
     <div class="cairndex-rows" data-cairndex-body>
@@ -115,6 +116,7 @@
           <span class="cairndex-item-meta">{{ if .is_dir }}—{{ else }}{{ partial "cairndex/size.html" .size }}{{ end }}</span>
           <span class="cairndex-item-date">{{ dateFormat "2006-01-02" .modified }}</span>
           {{ partial "cairndex/digest.html" (.sha256 | default "") }}
+          {{ if $c.show_owner }}<span class="cairndex-item-owner" title="{{ .mode }}">{{ .owner }}:{{ .group }}</span>{{ end }}
         </a>
       </div>
       {{ end }}

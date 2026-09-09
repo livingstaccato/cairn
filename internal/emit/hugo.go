@@ -93,6 +93,10 @@ type cairndexParam struct {
 	// two that could disagree.
 	BuildInfoVersion   string `yaml:"build_info_version,omitempty"`
 	BuildInfoGenerated string `yaml:"build_info_generated,omitempty"`
+	// ShowOwner adds owner, group and permission columns. Travels as data
+	// for the same reason MaxRendered does: the directory's show_owner
+	// setting is not something either template can otherwise see.
+	ShowOwner bool `yaml:"show_owner,omitempty"`
 }
 
 // HugoPage is everything a directory's page needs to know about itself.
@@ -127,6 +131,9 @@ type HugoPage struct {
 	// what built it and when. The zero value carries nothing to the
 	// template.
 	BuildInfo BuildInfo
+	// ShowOwner is whether this directory's show_owner setting is on. See
+	// cairndexParam.ShowOwner.
+	ShowOwner bool
 }
 
 // HugoContent renders one directory as a Hugo branch-bundle _index.md.
@@ -164,6 +171,7 @@ func HugoContent(p HugoPage) ([]byte, error) {
 			PEP503:             p.PEP503,
 			BuildInfoVersion:   p.BuildInfo.Version,
 			BuildInfoGenerated: buildInfoGenerated,
+			ShowOwner:          p.ShowOwner,
 		},
 	}
 

@@ -119,6 +119,10 @@
           "type": "string",
           "enum": ["root", "project"],
           "description": "Turns the mixed-directory warning for outputs: [pep503] into a build error when the directory does not actually hold only projects or only files."
+        },
+        "show_owner": {
+          "type": "boolean",
+          "description": "Adds owner, group and permission-mode columns. Off by default: a real uid or username on a public mirror is the same class of leak this project already treats seriously for filenames."
         }
       }
     },
@@ -182,6 +186,10 @@
           "type": "string",
           "enum": ["root", "project"],
           "description": "Turns the mixed-directory warning for outputs: [pep503] into a build error when the directory does not actually hold only projects or only files."
+        },
+        "show_owner": {
+          "type": "boolean",
+          "description": "Adds owner, group and permission-mode columns. Off by default: a real uid or username on a public mirror is the same class of leak this project already treats seriously for filenames."
         }
       }
     }

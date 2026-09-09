@@ -63,15 +63,38 @@ func isFormulaTrigger(b byte) bool {
 	return false
 }
 
-// CSV renders a listing as index.csv or tree.csv.
-func CSV(l model.Listing) ([]byte, error) {
+// ownerCSVColumns is appended to CSVHeader only when showOwner is set, so a
+// directory with show_owner unset (the default, and every mirror before
+// this existed) emits byte-identical CSV to before -- appending unconditionally
+// would put three always-empty columns in front of every existing consumer,
+// not just the ones that asked for this.
+var ownerCSVColumns = []string{"owner", "group", "mode"}
+
+// CSV renders a listing as index.csv or tree.csv. showOwner mirrors the
+// directory's own show_owner setting (internal/build threads it through
+// from config.Settings) rather than being inferred from the entries: an
+// empty directory has no entry to infer it from, and the column count must
+// not depend on how many rows happen to be in it.
+func CSV(l model.Listing, showOwner bool) ([]byte, error) {
+	header := CSVHeader
+	if showOwner {
+		header = append(append([]string(nil), CSVHeader...), ownerCSVColumns...)
+	}
 	var buf bytes.Buffer
 	w := csv.NewWriter(&buf)
-	if err := w.Write(CSVHeader); err != nil {
+	if err := w.Write(header); err != nil {
 		return nil, fmt.Errorf("write csv header: %w", err)
 	}
 	for _, e := range l.Entries {
-		if err := w.Write(csvRow(e)); err != nil {
+		row := csvRow(e)
+		if showOwner {
+			// Owner/Group/Mode are derived from the filesystem's own
+			// metadata, not from a filename or file content -- the same
+			// reasoning csvRow already applies to typ and e.Kind, which
+			// skip csvSafe for the same reason.
+			row = append(row, e.Owner, e.Group, e.Mode)
+		}
+		if err := w.Write(row); err != nil {
 			return nil, fmt.Errorf("write csv row %s: %w", e.Name, err)
 		}
 	}

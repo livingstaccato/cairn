@@ -71,8 +71,8 @@ func TestProvenOursAcceptsCairndexsOwnOutput(t *testing.T) {
 	}{
 		{"index.json", mustBytes(emit.JSON(l))},
 		{"tree.json", mustBytes(emit.JSON(l))},
-		{"index.csv", mustBytes(emit.CSV(l))},
-		{"tree.csv", mustBytes(emit.CSV(l))},
+		{"index.csv", mustBytes(emit.CSV(l, false))},
+		{"tree.csv", mustBytes(emit.CSV(l, false))},
 		{emit.SearchFile, mustBytes(emit.Search(l))},
 		{"index.html", mustBytes(emit.BareHTML(emit.BarePage{Listing: l}))},
 		{emit.HugoContentFile, mustBytes(emit.HugoContent(emit.HugoPage{Listing: l, Present: "bare"}))},

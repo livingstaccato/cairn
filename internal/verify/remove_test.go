@@ -29,7 +29,7 @@ func TestRemoveOrphanedDeletesWhatWasReported(t *testing.T) {
 	f.outFile("pool/index.json", "{}")
 	// csv left outputs: a release ago. Cairndex's own bytes, because that is what
 	// makes it removable — a file merely named index.csv is kept.
-	f.outFile("pool/index.csv", string(mustBytes(emit.CSV(sampleListing()))))
+	f.outFile("pool/index.csv", string(mustBytes(emit.CSV(sampleListing(), false))))
 	f.manifest("pool/index.json")
 
 	rep := f.run()
@@ -205,7 +205,7 @@ func TestRemoveOrphanedStillRemovesCairndexsOwnStaleOutput(t *testing.T) {
 	f := mirror(t)
 	l := sampleListing()
 	f.outFile("pool/index.json", "{}")
-	f.outFile("pool/tree.csv", string(mustBytes(emit.CSV(l))))
+	f.outFile("pool/tree.csv", string(mustBytes(emit.CSV(l, false))))
 	f.outFile("pool/index.html", string(mustBytes(emit.BareHTML(emit.BarePage{Listing: l}))))
 	f.manifest("pool/index.json")
 
@@ -232,7 +232,7 @@ func TestRemoveOrphanedReportsAndFullySweepsEmptiedDirectories(t *testing.T) {
 	f := mirror(t)
 	l := sampleListing()
 	f.outFile("keep/index.json", "{}")
-	f.outFile("a/b/c/index.csv", string(mustBytes(emit.CSV(l))))
+	f.outFile("a/b/c/index.csv", string(mustBytes(emit.CSV(l, false))))
 	f.manifest("keep/index.json")
 
 	res, err := RemoveOrphaned(context.Background(), f.out, f.run())
@@ -260,7 +260,7 @@ func TestRemoveOrphanedReportsAndFullySweepsEmptiedDirectories(t *testing.T) {
 // The output root is never swept away, however empty the removals leave it.
 func TestRemoveOrphanedNeverSweepsTheOutputRoot(t *testing.T) {
 	f := mirror(t)
-	f.outFile("index.csv", string(mustBytes(emit.CSV(sampleListing()))))
+	f.outFile("index.csv", string(mustBytes(emit.CSV(sampleListing(), false))))
 	f.outFile("index.json", "{}")
 	f.manifest("index.json")
 
@@ -290,7 +290,7 @@ func TestRemoveOrphanedNeverSweepsTheOutputRoot(t *testing.T) {
 func TestRemoveOrphanedRefusesWhenAnAncestorBecameASymlink(t *testing.T) {
 	f := mirror(t)
 	l := sampleListing()
-	f.outFile("a/b/index.csv", string(mustBytes(emit.CSV(l))))
+	f.outFile("a/b/index.csv", string(mustBytes(emit.CSV(l, false))))
 	f.outFile("keep/index.json", "{}")
 	f.manifest("keep/index.json")
 
@@ -331,5 +331,5 @@ func TestRemoveOrphanedRefusesWhenAnAncestorBecameASymlink(t *testing.T) {
 // look like cairndex's own output without going through the emitter.
 func header(t *testing.T) string {
 	t.Helper()
-	return string(mustBytes(emit.CSV(sampleListing())))
+	return string(mustBytes(emit.CSV(sampleListing(), false)))
 }

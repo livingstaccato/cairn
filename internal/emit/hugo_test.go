@@ -198,6 +198,27 @@ func TestHugoContentCarriesRenderCap(t *testing.T) {
 	}
 }
 
+// show_owner is an axis independent of present:, the same reason PEP503 and
+// MaxRendered travel as frontmatter instead of being read some other way a
+// template cannot manage on its own.
+func TestHugoContentCarriesShowOwner(t *testing.T) {
+	b, err := HugoContent(HugoPage{Listing: sample(), Present: "styled", ShowOwner: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), "show_owner: true") {
+		t.Errorf("frontmatter omits show_owner:\n%s", b)
+	}
+
+	off, err := HugoContent(HugoPage{Listing: sample(), Present: "styled"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(off), "show_owner") {
+		t.Errorf("show_owner: false must not appear at all, the same omitempty MaxRendered uses:\n%s", off)
+	}
+}
+
 // The Hugo templates render the bare presenter themselves — emitHugo never calls
 // BareHTML — so the parent-row rule has to reach them as data. It could not:
 // AtRoot was a field on BarePage and nothing else, so the Go template suppressed

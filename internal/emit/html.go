@@ -83,6 +83,7 @@ type bareData struct {
 	Total     int
 	AtRoot    bool
 	BuildInfo BuildInfo
+	ShowOwner bool
 }
 
 // BarePage is one directory's bare rendering. A struct rather than four
@@ -101,6 +102,9 @@ type BarePage struct {
 	// BuildInfo is the small footer banner shown by default: when this
 	// build ran and what built it. The zero value renders nothing.
 	BuildInfo BuildInfo
+	// ShowOwner adds owner, group and permission columns. Mirrors the
+	// directory's show_owner setting.
+	ShowOwner bool
 }
 
 // BareHTML renders a listing as a self-contained, script-free autoindex page.
@@ -120,6 +124,7 @@ func BareHTML(p BarePage) ([]byte, error) {
 	data := bareData{
 		Listing: p.Listing, Prose: p.Prose, Shown: shown,
 		Total: len(p.Listing.Entries), AtRoot: p.AtRoot, BuildInfo: p.BuildInfo,
+		ShowOwner: p.ShowOwner,
 	}
 	if err := bareTmpl.Execute(&buf, data); err != nil {
 		return nil, fmt.Errorf("render bare html for %s: %w", p.Listing.Path, err)

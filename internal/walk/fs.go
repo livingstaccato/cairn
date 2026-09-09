@@ -180,6 +180,10 @@ func (sc *scanner) entry(relDir string, de os.DirEntry, depth int) (model.Entry,
 		MIME:    mimeType,
 		Depth:   depth,
 	}
+	if sc.s.ShowOwner {
+		e.Owner, e.Group = ownerOf(info)
+		e.Mode = info.Mode().String()
+	}
 	if !isDir {
 		return e, nil, true
 	}

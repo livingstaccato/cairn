@@ -129,6 +129,35 @@ func TestBareHTMLShowsTruncatedDigest(t *testing.T) {
 	}
 }
 
+// A directory that never asked for show_owner must not gain empty owner
+// columns nobody wanted, the same reasoning CSV's own equivalent test uses.
+func TestBareHTMLOmitsOwnerColumnsWhenUnset(t *testing.T) {
+	b, err := BareHTML(BarePage{Listing: sample()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), "Owner") {
+		t.Error("owner column rendered with ShowOwner unset")
+	}
+}
+
+func TestBareHTMLShowsOwnerColumnsWhenSet(t *testing.T) {
+	l := sample()
+	l.Entries[1].Owner = "alice"
+	l.Entries[1].Group = "staff"
+	l.Entries[1].Mode = "-rw-r--r--"
+	b, err := BareHTML(BarePage{Listing: l, ShowOwner: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(b)
+	for _, want := range []string{"alice", "staff", "-rw-r--r--"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("expected %q in the rendered page with ShowOwner: true", want)
+		}
+	}
+}
+
 func TestBareHTMLCapsRenderedRows(t *testing.T) {
 	var entries []model.Entry
 	for i := range 5000 {

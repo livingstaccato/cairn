@@ -224,6 +224,7 @@ func (r *runner) emitHugo(c emitCtx) error {
 		BasePath:  r.cfg.BasePath,
 		PEP503:    wantsPEP503,
 		BuildInfo: r.buildInfo(),
+		ShowOwner: c.settings.ShowOwner,
 	})
 	if err != nil {
 		return err
@@ -296,7 +297,7 @@ func (r *runner) emitJSON(c emitCtx) error {
 }
 
 func (r *runner) emitCSV(c emitCtx) error {
-	b, err := emit.CSV(c.listing)
+	b, err := emit.CSV(c.listing, c.settings.ShowOwner)
 	if err != nil {
 		return err
 	}
@@ -345,6 +346,7 @@ func (r *runner) emitHTML(c emitCtx) error {
 		// something cairndex never wrote.
 		AtRoot:    c.relDir == ".",
 		BuildInfo: r.buildInfo(),
+		ShowOwner: c.settings.ShowOwner,
 	})
 	if err != nil {
 		return err

@@ -72,6 +72,20 @@ func TestSchemaRuleRequiresAndAcceptsMatch(t *testing.T) {
 	}
 }
 
+// override and rule are two separate property lists (see TestSchemaOverrideDoesNotAcceptMatch's
+// comment on why they cannot be $ref-merged), so a new key like show_owner
+// has to be added to both by hand — this catches the one where it was
+// forgotten.
+func TestSchemaBothDefinitionsAcceptShowOwner(t *testing.T) {
+	doc := readSchema(t)
+	for _, def := range []string{"override", "rule"} {
+		props := schemaObject(t, doc, "definitions", def, "properties")
+		if _, ok := props["show_owner"]; !ok {
+			t.Errorf("definitions.%s.properties does not declare %q", def, "show_owner")
+		}
+	}
+}
+
 // rules: in the root schema has to actually use the closed rule definition
 // rather than reopening the same override-plus-match leak a different way.
 func TestSchemaRulesItemsReferenceRule(t *testing.T) {

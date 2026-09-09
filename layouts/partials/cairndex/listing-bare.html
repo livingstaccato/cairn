@@ -56,6 +56,7 @@
           <a href="SHA256SUMS" title="Every digest below, in one file for sha256sum -c">SHA-256</a>
           {{- else -}}SHA-256{{- end -}}
         </th>
+        {{ if $c.show_owner }}<th>Owner</th><th>Group</th><th>Mode</th>{{ end }}
       </tr>
     </thead>
     <tbody>
@@ -65,13 +66,14 @@
              same rule; this partial is the renderer hugo mode uses, and the
              switch reaches it as at_root because a template cannot derive it —
              under base_path the top of the tree is not "/". */ -}}
-      {{ if not $c.at_root }}<tr><td><a href="../">../</a></td><td></td><td></td><td></td></tr>{{ end }}
+      {{ if not $c.at_root }}<tr><td><a href="../">../</a></td><td></td><td></td><td></td>{{ if $c.show_owner }}<td></td><td></td><td></td>{{ end }}</tr>{{ end }}
       {{ range $shown }}
       <tr>
         <td><a href="{{ .path }}">{{ .name }}{{ if .is_dir }}/{{ end }}</a>{{ with .title }} — {{ . }}{{ end }}</td>
         <td class="size">{{ if .is_dir }}—{{ else }}{{ partial "cairndex/size.html" .size }}{{ end }}</td>
         <td class="modified">{{ dateFormat "2006-01-02" .modified }}</td>
         <td class="sum">{{ with .sha256 }}{{ substr . 0 12 }}…{{ end }}</td>
+        {{ if $c.show_owner }}<td>{{ .owner }}</td><td>{{ .group }}</td><td>{{ .mode }}</td>{{ end }}
       </tr>
       {{ end }}
     </tbody>

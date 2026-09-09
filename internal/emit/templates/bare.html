@@ -19,15 +19,16 @@ footer.cairndex-buildinfo{margin-top:1.5rem;padding-top:.75rem;border-top:1px so
 <h1>Index of {{ .Listing.Path }}</h1>
 {{ with .Prose }}<div class="prose">{{ . }}</div>{{ end }}
 <table>
-<thead><tr><th>Name</th><th>Size</th><th>Modified</th><th>SHA-256</th></tr></thead>
+<thead><tr><th>Name</th><th>Size</th><th>Modified</th><th>SHA-256</th>{{ if .ShowOwner }}<th>Owner</th><th>Group</th><th>Mode</th>{{ end }}</tr></thead>
 <tbody>
-{{ if not .AtRoot }}<tr><td><a href="../">../</a></td><td></td><td></td><td></td></tr>{{ end }}
+{{ if not .AtRoot }}<tr><td><a href="../">../</a></td><td></td><td></td><td></td>{{ if $.ShowOwner }}<td></td><td></td><td></td>{{ end }}</tr>{{ end }}
 {{ range .Shown }}
 <tr>
   <td><a href="{{ .Path }}">{{ .Name }}{{ if .IsDir }}/{{ end }}</a>{{ with .Title }} — {{ . }}{{ end }}</td>
   <td class="size">{{ if .IsDir }}-{{ else }}{{ humanSize .Size }}{{ end }}</td>
   <td>{{ .ModTime.Format "2006-01-02 15:04" }}</td>
   <td>{{ digest .SHA256 }}</td>
+  {{ if $.ShowOwner }}<td>{{ .Owner }}</td><td>{{ .Group }}</td><td>{{ .Mode }}</td>{{ end }}
 </tr>
 {{ end }}
 </tbody>

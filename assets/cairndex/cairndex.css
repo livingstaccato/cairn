@@ -354,13 +354,22 @@
 
 /* Column widths are declared once and used by both the header and the rows.
    Two sets of numbers meaning the same thing is how columns drift. */
-.cairndex { --col-icon: 1rem; --col-meta: 5.5rem; --col-date: 5.5rem; --col-sum: 8.5rem; }
+.cairndex {
+  --col-icon: 1rem; --col-meta: 5.5rem; --col-date: 5.5rem; --col-sum: 8.5rem; --col-owner: 8rem;
+}
 
 .col-icon, .cairndex-icon { flex: 0 0 var(--col-icon); }
 .col-name { flex: 1 1 auto; min-width: 0; }
 .col-meta, .cairndex-item-meta { flex: 0 0 var(--col-meta); text-align: right; }
 .col-date, .cairndex-item-date { flex: 0 0 var(--col-date); text-align: right; }
 .col-sum, .cairndex-sum { flex: 0 0 var(--col-sum); text-align: right; }
+/* owner:group in one column, the same reasoning the digest column has for
+   truncating to 12 hex characters: mode is available but not worth its own
+   column width, so it rides along as a tooltip instead. */
+.col-owner, .cairndex-item-owner {
+  flex: 0 0 var(--col-owner); text-align: right; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; font-family: var(--c-mono);
+}
 
 
 .cairndex-row { border-bottom: 1px solid var(--c-rule); }
@@ -465,6 +474,7 @@
 
 @media (max-width: 46rem) {
   .col-date, .cairndex-item-date { display: none; }
+  .col-owner, .cairndex-item-owner { display: none; }
   .cairndex--bare .modified { display: none; }
   .cairndex { --col-sum: 6rem; }
 }

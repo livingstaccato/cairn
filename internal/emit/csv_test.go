@@ -10,7 +10,7 @@ import (
 )
 
 func TestCSVHeaderAndRows(t *testing.T) {
-	b, err := CSV(sample())
+	b, err := CSV(sample(), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestCSVNeutralizesFormulaInjection(t *testing.T) {
 	l := sample()
 	l.Entries[1].Name = `=cmd|'/c calc'!A1`
 	l.Entries[1].Title = `@SUM(1+1)`
-	b, err := CSV(l)
+	b, err := CSV(l, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,10 +101,53 @@ func TestCSVSafeCatchesLeadingWhitespaceBeforeATrigger(t *testing.T) {
 	}
 }
 
+// A directory that never asked for show_owner must not gain three new
+// always-empty columns just because the feature exists -- CSV output for
+// every mirror that predates this stays byte-identical.
+func TestCSVOwnerColumnsAbsentWhenShowOwnerFalse(t *testing.T) {
+	b, err := CSV(sample(), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	recs, err := csv.NewReader(strings.NewReader(string(b))).ReadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(recs[0]) != len(CSVHeader) {
+		t.Errorf("header has %d columns, want exactly CSVHeader's %d when show_owner is false",
+			len(recs[0]), len(CSVHeader))
+	}
+}
+
+func TestCSVOwnerColumnsAppendedWhenShowOwnerTrue(t *testing.T) {
+	l := sample()
+	l.Entries[1].Owner = "alice"
+	l.Entries[1].Group = "staff"
+	l.Entries[1].Mode = "-rw-r--r--"
+	b, err := CSV(l, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	recs, err := csv.NewReader(strings.NewReader(string(b))).ReadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := append(append([]string{}, CSVHeader...), "owner", "group", "mode")
+	for i, h := range want {
+		if recs[0][i] != h {
+			t.Errorf("header[%d] = %q, want %q", i, recs[0][i], h)
+		}
+	}
+	last := len(want) - 3
+	if recs[2][last] != "alice" || recs[2][last+1] != "staff" || recs[2][last+2] != "-rw-r--r--" {
+		t.Errorf("owner row = %v, want alice/staff/-rw-r--r-- in the last three columns", recs[2])
+	}
+}
+
 func TestCSVQuotesInjectedCommas(t *testing.T) {
 	l := sample()
 	l.Entries[1].Title = `Comma, "quote" and more`
-	b, err := CSV(l)
+	b, err := CSV(l, false)
 	if err != nil {
 		t.Fatal(err)
 	}

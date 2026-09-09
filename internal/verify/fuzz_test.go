@@ -287,7 +287,7 @@ func FuzzProvenOursAcceptsItsOwnOutput(f *testing.F) {
 		jsonBody, err := emit.JSON(l)
 		check("index.json", jsonPath, jsonBody, err)
 
-		csvBody, err := emit.CSV(l)
+		csvBody, err := emit.CSV(l, false)
 		check("index.csv", csvPath, csvBody, err)
 
 		searchBody, err := emit.Search(l)

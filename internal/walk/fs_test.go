@@ -6,6 +6,7 @@ package walk
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -101,6 +102,43 @@ func TestDirExactSizeNotRounded(t *testing.T) {
 	for _, e := range got {
 		if e.Name == "bootstrap.sh" && e.Size != 512 {
 			t.Errorf("Size = %d, want exactly 512", e.Size)
+		}
+	}
+}
+
+func TestDirShowOwnerFalseLeavesOwnerFieldsEmpty(t *testing.T) {
+	root := fixture(t)
+	got, _, err := Dir(root, "bootstrap", config.Defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range got {
+		if e.Owner != "" || e.Group != "" || e.Mode != "" {
+			t.Errorf("%s: Owner=%q Group=%q Mode=%q, want all empty when show_owner is unset",
+				e.Name, e.Owner, e.Group, e.Mode)
+		}
+	}
+}
+
+func TestDirShowOwnerTruePopulatesOwnerFields(t *testing.T) {
+	root := fixture(t)
+	s := config.Defaults()
+	s.ShowOwner = true
+	got, _, err := Dir(root, "bootstrap", s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range got {
+		if e.Mode == "" {
+			t.Errorf("%s: Mode is empty with show_owner: true", e.Name)
+		}
+		// Owner/Group are asserted non-empty rather than against a specific
+		// value: resolveUser/resolveGroup fall back to the numeric id, which
+		// is itself never empty, on every platform this runs on except
+		// Windows, which has no uid/gid equivalent at all (see
+		// owner_windows.go) -- Mode alone is this test's cross-platform claim.
+		if runtime.GOOS != "windows" && (e.Owner == "" || e.Group == "") {
+			t.Errorf("%s: Owner=%q Group=%q, want both non-empty with show_owner: true", e.Name, e.Owner, e.Group)
 		}
 	}
 }

@@ -122,7 +122,7 @@ func FuzzCSVStaysParseable(f *testing.F) {
 	f.Fuzz(func(t *testing.T, name string) {
 		body, err := CSV(model.Listing{Path: "/x", Entries: []model.Entry{
 			{Name: name, Path: "/x/" + name},
-		}})
+		}}, false)
 		if err != nil {
 			return
 		}

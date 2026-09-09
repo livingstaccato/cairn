@@ -81,6 +81,11 @@ type Settings struct {
 	MaxRendered int `yaml:"max_rendered"`
 	// PEP503Level is PEP503LevelRoot, PEP503LevelProject, or "" (undeclared).
 	PEP503Level string `yaml:"pep503_level"`
+	// ShowOwner adds owner, group and permission-mode columns. Off by
+	// default: a real uid or username on a public mirror is the same class
+	// of leak this project already treats seriously for filenames, so this
+	// is opt-in the way checksum: is opt-out.
+	ShowOwner bool `yaml:"show_owner"`
 }
 
 // Defaults returns the built-in settings, used when a root config omits them.
@@ -127,6 +132,7 @@ type Override struct {
 	MaxRendered    *int    `yaml:"max_rendered"`
 	FollowSymlinks *bool   `yaml:"follow_symlinks"`
 	PEP503Level    *string `yaml:"pep503_level"`
+	ShowOwner      *bool   `yaml:"show_owner"`
 }
 
 // deref returns *p when p is set, and fallback otherwise. It exists so Apply
@@ -156,6 +162,7 @@ func (o Override) Apply(s Settings) Settings {
 	s.MaxRendered = deref(o.MaxRendered, s.MaxRendered)
 	s.FollowSymlinks = deref(o.FollowSymlinks, s.FollowSymlinks)
 	s.PEP503Level = deref(o.PEP503Level, s.PEP503Level)
+	s.ShowOwner = deref(o.ShowOwner, s.ShowOwner)
 	if o.Outputs != nil {
 		s.Outputs = append([]string(nil), *o.Outputs...)
 	}

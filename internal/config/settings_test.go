@@ -97,3 +97,20 @@ func TestDefaultsNotShared(t *testing.T) {
 		t.Error("Defaults shares its Outputs backing array between calls")
 	}
 }
+
+// Real uids and usernames on a public mirror are the same class of leak this
+// project already treats seriously for filenames, so ShowOwner must default
+// off rather than opt-out.
+func TestDefaultsShowOwnerFalse(t *testing.T) {
+	if Defaults().ShowOwner {
+		t.Error("ShowOwner must default to false")
+	}
+}
+
+func TestOverrideShowOwnerApplies(t *testing.T) {
+	base := Settings{ShowOwner: false}
+	got := Override{ShowOwner: boolp(true)}.Apply(base)
+	if !got.ShowOwner {
+		t.Error("Override.ShowOwner: true did not apply")
+	}
+}

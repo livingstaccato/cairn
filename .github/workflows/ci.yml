@@ -168,3 +168,30 @@ jobs:
       - uses: pre-commit/action@v3.0.1
         env:
           SKIP: go-lint,go-test,go-security,check-private,js-test
+
+  docker-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # The lint/security/test/example jobs above already run every one of
+      # these checks natively on this runner's own filesystem (ext4). This
+      # reruns them pinned to the exact toolchain versions this workflow
+      # installs, inside a container on overlay2 -- Docker's default storage
+      # driver, and the one real deployments run on. That difference is not
+      # academic: init.go's inode-reuse race only reproduced there, never on
+      # ext4, so this is the only job that would have caught it.
+      - name: CI gate in a container
+        run: make docker-gate
+
+  docker-airgap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # ci/example.sh already greps the output for CDN references. This
+      # builds the composed example site onto an image with no Go, Hugo or
+      # Node at all, runs it with --network none, and fetches the page and
+      # its real (fingerprinted) asset URLs from inside that container's own
+      # namespace -- proving "works airgapped" by removing the network,
+      # rather than by grepping for what should not be there.
+      - name: Airgap proof
+        run: make docker-airgap

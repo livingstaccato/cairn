@@ -42,6 +42,7 @@ type watchOpts struct {
 	settle     time.Duration
 	serve      bool
 	addr       string
+	metrics    bool
 }
 
 func newWatchCmd() *cobra.Command {
@@ -63,6 +64,9 @@ func newWatchCmd() *cobra.Command {
 			if cmd.Flags().Changed("addr") && !o.serve {
 				return fmt.Errorf("--addr names an address to serve on; pass --serve to open it")
 			}
+			if o.metrics && !o.serve {
+				return fmt.Errorf("--metrics reserves paths on the --serve server; pass --serve to open it")
+			}
 			return runWatch(ctx, o, cmd.ErrOrStderr())
 		},
 	}
@@ -72,6 +76,8 @@ func newWatchCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&o.serve, "serve", false,
 		"also serve the output over HTTP, so a rebuild is one refresh away")
 	cmd.Flags().StringVar(&o.addr, "addr", serve.DefaultAddr, "address --serve listens on")
+	cmd.Flags().BoolVar(&o.metrics, "metrics", false,
+		"reserve /healthz and /metrics ahead of the served tree, reporting this watch loop's builds")
 	return cmd
 }
 
@@ -104,12 +110,21 @@ func runWatch(ctx context.Context, o watchOpts, stderr io.Writer) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	served, err := startServer(ctx, o, outDir, cfg.IndexBasename+".html", log)
+	// A BuildStatus exists whether or not --metrics was passed; it costs
+	// nothing unused, and Diagnostics is what decides whether /healthz and
+	// /metrics are actually reserved on the server to read it from.
+	var status serve.BuildStatus
+
+	served, err := startServer(ctx, o, outDir, cfg.IndexBasename+".html", log, &status)
 	if err != nil {
 		return err
 	}
 
-	if _, err := build.RunWith(ctx, cfg, rootDir, outDir, log, build.Options{Version: version}); err != nil {
+	buildStart := time.Now()
+	result, err := build.RunWith(ctx, cfg, rootDir, outDir, log, build.Options{Version: version})
+	files, dirs := resultCounts(result)
+	status.Record(err, time.Since(buildStart), files, dirs)
+	if err != nil {
 		log.Error("the initial build failed", "err", err)
 		// Same shutdown as the watcher's own exit path: cancel to start the
 		// server's graceful drain, then wait for it, so a client mid-request
@@ -124,7 +139,10 @@ func runWatch(ctx context.Context, o watchOpts, stderr io.Writer) error {
 	w := &watch.Watcher{
 		Config: cfg, Root: rootDir, Out: outDir, Log: log, Settle: o.settle,
 		Rebuild: func(scope string) error {
-			_, err := build.RunScoped(ctx, cfg, rootDir, outDir, log, build.ScopePath(scope), version)
+			start := time.Now()
+			result, err := build.RunScoped(ctx, cfg, rootDir, outDir, log, build.ScopePath(scope), version)
+			files, dirs := resultCounts(result)
+			status.Record(err, time.Since(start), files, dirs)
 			return err
 		},
 	}
@@ -147,6 +165,18 @@ func runWatch(ctx context.Context, o watchOpts, stderr io.Writer) error {
 	return nil
 }
 
+// resultCounts reads the two fields BuildStatus.Record wants out of a
+// build.Result that may be nil: a run cancelled before its runner existed
+// has nothing to report, but the ones this file calls it from always return
+// a partial result even on failure, so a nil check here is only for that
+// unreached case, never the failure path itself.
+func resultCounts(r *build.Result) (files, dirs int) {
+	if r == nil {
+		return 0, 0
+	}
+	return r.Files, r.Dirs
+}
+
 // drainServer cancels the shared context and, if a server is running, waits
 // for its graceful shutdown to finish before returning.
 func drainServer(cancel context.CancelFunc, served <-chan error) {
@@ -164,7 +194,7 @@ func drainServer(cancel context.CancelFunc, served <-chan error) {
 // has stopped watching. The output directory is created here for the same
 // reason: the server refuses a directory that does not exist, and on a first
 // run nothing has made it yet.
-func startServer(ctx context.Context, o watchOpts, outDir, index string, log *slog.Logger) (chan error, error) {
+func startServer(ctx context.Context, o watchOpts, outDir, index string, log *slog.Logger, status *serve.BuildStatus) (chan error, error) {
 	if !o.serve {
 		return nil, nil
 	}
@@ -174,7 +204,10 @@ func startServer(ctx context.Context, o watchOpts, outDir, index string, log *sl
 		return nil, fmt.Errorf("create output directory %s: %w", outDir, err)
 	}
 
-	s := &serve.Server{Dir: outDir, Addr: o.addr, Log: log, Index: index, Ready: make(chan struct{})}
+	s := &serve.Server{
+		Dir: outDir, Addr: o.addr, Log: log, Index: index, Ready: make(chan struct{}),
+		Diagnostics: o.metrics, Health: status,
+	}
 	served := make(chan error, 1)
 	go func() { served <- s.Run(ctx) }()
 

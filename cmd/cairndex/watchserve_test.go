@@ -8,6 +8,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -119,12 +120,20 @@ func TestWatchAddrWithoutServeIsAnError(t *testing.T) {
 	}
 }
 
+// --metrics is the same mistake as --addr above: a path reserved on a server
+// that was never opened.
+func TestWatchMetricsWithoutServeIsAnError(t *testing.T) {
+	if _, err := exec(t, cmdWatch, "--metrics"); err == nil {
+		t.Fatal("--metrics without --serve must be an error")
+	}
+}
+
 func TestWatchHasServeFlags(t *testing.T) {
 	for _, c := range newRootCmd().Commands() {
 		if c.Name() != cmdWatch {
 			continue
 		}
-		for _, f := range []string{"serve", "addr"} {
+		for _, f := range []string{"serve", "addr", "metrics"} {
 			if c.Flags().Lookup(f) == nil {
 				t.Errorf("watch has no --%s flag", f)
 			}
@@ -132,6 +141,37 @@ func TestWatchHasServeFlags(t *testing.T) {
 		return
 	}
 	t.Error("root command has no watch subcommand")
+}
+
+// --serve --metrics wires this watch loop's own builds into /healthz and
+// /metrics, not a stub: a failed rebuild has to show up as failed.
+func TestWatchServeMetricsReportsTheBuildLoop(t *testing.T) {
+	configPath, _ := fixture(t)
+
+	logged := &syncBuffer{}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	o := watchOpts{configPath: configPath, settle: 10 * time.Millisecond,
+		serve: true, addr: "127.0.0.1:0", metrics: true}
+	go func() { done <- runWatch(ctx, o, logged) }()
+
+	base := waitForListener(t, logged)
+	// The served tree existing does not by itself prove BuildStatus.Record
+	// has run yet: build.RunWith returning and the caller's very next
+	// statement recording that outcome are two different points in the same
+	// goroutine, and this test's own goroutine can win that race. Polling
+	// /metrics itself, the same way getUntilOK polls the tree, is what
+	// makes the wait exact instead of racy.
+	want := "cairndex_builds_total 1"
+	body := getUntilContains(t, base+"/metrics", want)
+	if !strings.Contains(body, want) {
+		t.Errorf("/metrics never showed the initial build: %s\nlog:\n%s", body, logged.String())
+	}
+
+	cancel()
+	if err := <-done; err != nil {
+		t.Errorf("runWatch: %v, log:\n%s", err, logged.String())
+	}
 }
 
 // getUntilOK polls until the build it is waiting on has written the file, and
@@ -148,6 +188,30 @@ func getUntilOK(t *testing.T, url string) int {
 		last = resp.StatusCode
 		_ = resp.Body.Close()
 		if last == http.StatusOK {
+			return last
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	return last
+}
+
+// getUntilContains polls url until its body contains want, returning the
+// last body it read. Used where success is a matter of content rather than
+// status code, and the content depends on a build the caller cannot
+// synchronize on directly.
+func getUntilContains(t *testing.T, url, want string) string {
+	t.Helper()
+	last := ""
+	deadline := time.Now().Add(20 * time.Second)
+	for time.Now().Before(deadline) {
+		resp, err := http.Get(url) //nolint:noctx // bounded by the deadline above
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		last = string(b)
+		if strings.Contains(last, want) {
 			return last
 		}
 		time.Sleep(5 * time.Millisecond)

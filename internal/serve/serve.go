@@ -119,8 +119,22 @@ type Server struct {
 	// rather than guessing how long a bind takes.
 	Ready chan struct{}
 
+	// Diagnostics, when true, reserves /healthz and /metrics ahead of the
+	// served tree and answers them itself rather than serving whatever a
+	// project under either name would otherwise be at. Off by default: this
+	// server's contract is to serve a tree faithfully, and carving out two
+	// paths for an operator who never asked would break that silently for
+	// the one build that happens to keep a metrics/ directory at its root.
+	Diagnostics bool
+	// Health, when set, backs /healthz and the build_* series of /metrics
+	// with the state of the build loop behind this server. serve itself
+	// never builds, so without one /healthz can only report that the served
+	// directory exists, not whether it is fresh.
+	Health *BuildStatus
+
 	mu    sync.RWMutex
 	bound string
+	stats requestStats
 }
 
 // Run serves until ctx is cancelled, and returns nil when it stopped because it
@@ -211,11 +225,22 @@ func (s *Server) bind() (net.Listener, error) {
 // left alone it writes unstructured lines straight to stderr, which is the
 // diagnostic-by-print problem arriving through a side door.
 func (s *Server) server() *http.Server {
+	fh := &files{
+		log: s.Log, index: s.Index, base: resolveBase(s.Dir),
+		noFollowSymlinks: s.NoFollowSymlinks, verboseErrors: s.VerboseErrors,
+	}
+
+	var handler http.Handler = fh
+	if s.Diagnostics {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/healthz", s.handleHealthz)
+		mux.HandleFunc("/metrics", s.handleMetrics)
+		mux.Handle("/", instrument(&s.stats, fh))
+		handler = mux
+	}
+
 	return &http.Server{
-		Handler: &files{
-			log: s.Log, index: s.Index, base: resolveBase(s.Dir),
-			noFollowSymlinks: s.NoFollowSymlinks, verboseErrors: s.VerboseErrors,
-		},
+		Handler:           handler,
 		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       readTimeout,
 		IdleTimeout:       idleTimeout,

@@ -357,6 +357,13 @@ purpose: distinguishing them would tell a caller which paths exist on a
 machine they cannot see. `--verbose-errors` names the specific reason
 instead, the same one already reaching the log.
 
+`--metrics` reserves `/healthz` and `/metrics` ahead of the served tree —
+JSON liveness/readiness, and a Prometheus scrape target that also reports the
+build loop's own success and timing under `watch --serve --metrics`. Off by
+default, so a tree that happens to hold a real `metrics/` directory is still
+served faithfully unless asked otherwise. See `docs/deployment.md`'s "Health
+checks and metrics".
+
 ## Design principles
 
 - **Zero external runtime assets.** No CDN, no web fonts, no icon font. Icons

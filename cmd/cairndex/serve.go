@@ -18,7 +18,7 @@ import (
 
 func newServeCmd() *cobra.Command {
 	var configPath, addr string
-	var noFollowSymlinks, verboseErrors bool
+	var noFollowSymlinks, verboseErrors, metrics bool
 
 	cmd := &cobra.Command{
 		Use:   cmdServe,
@@ -29,7 +29,7 @@ func newServeCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt)
 			defer stop()
-			return runServe(ctx, configPath, addr, noFollowSymlinks, verboseErrors, cmd.ErrOrStderr())
+			return runServe(ctx, configPath, addr, noFollowSymlinks, verboseErrors, metrics, cmd.ErrOrStderr())
 		},
 	}
 	cmd.Flags().StringVarP(&configPath, "config", "c", DefaultConfigFile, "path to the root cairndex.yaml")
@@ -39,6 +39,8 @@ func newServeCmd() *cobra.Command {
 			"checking where it lands")
 	cmd.Flags().BoolVar(&verboseErrors, "verbose-errors", false,
 		"name the specific reason a request was refused, instead of a generic \"not found\"")
+	cmd.Flags().BoolVar(&metrics, "metrics", false,
+		"reserve /healthz and /metrics ahead of the served tree, for a probe or a Prometheus scrape")
 	return cmd
 }
 
@@ -47,7 +49,7 @@ func newServeCmd() *cobra.Command {
 // Nothing is built first. serve shows what is on disk, which is the question it
 // exists to answer — running a build here would mean a directory that looked
 // right in the browser and wrong to whatever published it.
-func runServe(ctx context.Context, configPath, addr string, noFollowSymlinks, verboseErrors bool, stderr io.Writer) error {
+func runServe(ctx context.Context, configPath, addr string, noFollowSymlinks, verboseErrors, metrics bool, stderr io.Writer) error {
 	log, shutdown, err := obs.Setup(ctx, "cairndex", stderr)
 	if err != nil {
 		return err
@@ -66,7 +68,7 @@ func runServe(ctx context.Context, configPath, addr string, noFollowSymlinks, ve
 
 	s := &serve.Server{
 		Dir: outDir, Addr: addr, Log: log, Index: cfg.IndexBasename + ".html",
-		NoFollowSymlinks: noFollowSymlinks, VerboseErrors: verboseErrors,
+		NoFollowSymlinks: noFollowSymlinks, VerboseErrors: verboseErrors, Diagnostics: metrics,
 	}
 	return s.Run(ctx)
 }

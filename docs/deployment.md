@@ -672,3 +672,43 @@ on the host without a restart, and refusing a path-traversal request — none
 of which implies it is safe to expose directly. Put a real reverse proxy
 (Caddy or nginx, both covered earlier in this document) in front for
 anything internet-facing; this is what runs behind it.
+
+### Health checks and metrics
+
+`watch --serve --metrics` reserves two extra paths on the server, ahead of
+whatever the served tree holds under those names:
+
+- `GET /healthz` — JSON, `{"status":"ok"}` once the watcher's first build
+  has succeeded, or `{"status":"degraded","reason":"..."}` (HTTP 503) if the
+  served directory has disappeared or the last build failed. Point a
+  container orchestrator's liveness/readiness probe at this.
+- `GET /metrics` — Prometheus text exposition format: `cairndex_up`,
+  request counts and durations by status class
+  (`cairndex_http_requests_total{status="2xx|3xx|4xx|5xx"}`), and, since the
+  build loop is what has this data, `cairndex_build_success`,
+  `cairndex_build_timestamp_seconds`, `cairndex_build_duration_seconds`,
+  `cairndex_build_files`, `cairndex_build_dirs`, `cairndex_builds_total` and
+  `cairndex_build_failures_total`.
+
+```sh
+docker run -d -p 8080:8080 -v /path/to/your/tree:/data cairndex-server \
+  watch --serve --addr 0.0.0.0:8080 --metrics --config /data/cairndex.yaml
+```
+
+Off by default (plain `--serve`, and the `server` image's own default
+`CMD`): a directory that happens to hold a real `metrics/` or `healthz`
+entry is served faithfully unless an operator explicitly trades those two
+names away for this. `provide-telemetry`, the OTLP client cairndex's own
+logs already go through (`internal/obs`), has no scrape endpoint of its
+own to reuse here — it is a push client, and this project confines it to
+one file on purpose (see `CLAUDE.md`'s Logging section) — so these two
+paths are cairndex's own counters, not a pass-through.
+
+A `docker-compose.yml` Prometheus scrape config for the container above:
+
+```yaml
+scrape_configs:
+  - job_name: cairndex
+    static_configs:
+      - targets: ["cairndex-server:8080"]
+```

@@ -24,11 +24,12 @@ cd "$(dirname "$0")/.."
 
 image=cairndex-server-smoke
 port=18443
+metrics_port=18444
 
 docker build --target server -t "$image" .
 
 data="$(mktemp -d)"
-trap 'docker stop "$cid" >/dev/null 2>&1 || true; rm -rf "$data"' EXIT
+trap 'docker stop "$cid" >/dev/null 2>&1 || true; docker stop "${metrics_cid:-}" >/dev/null 2>&1 || true; rm -rf "$data"' EXIT
 
 mkdir -p "$data/tree"
 cat > "$data/cairndex.yaml" <<'EOF'
@@ -115,6 +116,49 @@ fi
 if curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${port}/../../etc/passwd" | grep -qv '^4'; then
   echo "FAIL: a path-traversal request did not get a 4xx"
   fail=1
+fi
+
+# --metrics is off in the image's own default CMD (see the Dockerfile) --
+# proven above by never having asked for it -- so a second container with
+# it appended is what proves the flag actually reaches the server inside a
+# real container, not just internal/serve's own in-process tests.
+metrics_cid="$(docker run -d --rm --user "$(id -u):$(id -g)" -p "${metrics_port}:8080" -v "$data:/data" "$image" \
+  watch --serve --addr 0.0.0.0:8080 --metrics)"
+
+metrics_ready=0
+for _ in $(seq 1 40); do
+  if curl -sf "http://127.0.0.1:${metrics_port}/healthz" >/tmp/docker-server-smoke-healthz 2>/dev/null; then
+    metrics_ready=1
+    break
+  fi
+  sleep 0.25
+done
+if [ "$metrics_ready" -ne 1 ]; then
+  echo "FAIL: --metrics's server never came up"
+  docker logs "$metrics_cid" || true
+  fail=1
+else
+  if ! grep -q '"status":"ok"' /tmp/docker-server-smoke-healthz; then
+    echo "FAIL: /healthz did not report ok: $(cat /tmp/docker-server-smoke-healthz)"
+    fail=1
+  fi
+  # /healthz answering does not by itself mean the build has finished --
+  # "ok, no build has completed yet" is a valid 200 too -- so this polls
+  # rather than asking once, the same allowance the host-file-change check
+  # above makes for a result that is not instant.
+  built=0
+  for _ in $(seq 1 20); do
+    metrics_body="$(curl -sf "http://127.0.0.1:${metrics_port}/metrics" || true)"
+    if printf '%s' "$metrics_body" | grep -q 'cairndex_builds_total 1'; then
+      built=1
+      break
+    fi
+    sleep 0.25
+  done
+  if [ "$built" -ne 1 ]; then
+    echo "FAIL: /metrics never showed the container's own initial build: $metrics_body"
+    fail=1
+  fi
 fi
 
 [ "$fail" -eq 0 ] && echo "OK: the server container works"

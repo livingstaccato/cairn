@@ -72,6 +72,13 @@ versions follow [SemVer](https://semver.org/) once tagged. See the
   index.json/csv/txt already carry a listing in full; a feed's job is
   different — what changed recently — so it is capped and sorted rather
   than a fourth complete copy of the same data.
+- `cairndex serve --metrics` and `cairndex watch --serve --metrics` reserve
+  `/healthz` and `/metrics` on the server: JSON liveness/readiness, and a
+  Prometheus text-exposition scrape target covering request counts and,
+  under `watch --serve`, the build loop's own success/failure/timing. Off
+  by default, so a served tree keeping a real `metrics/` directory is still
+  served faithfully unless an operator explicitly asks to trade those two
+  names away. See `docs/deployment.md`'s "Health checks and metrics".
 
 ### Changed
 

@@ -179,7 +179,7 @@ false` turns it off.
 `provenance.json` — cairndex's version, a hash of the config, and a
 name+digest pair for every file the run wrote — for supply-chain
 verification of the tree it just built. Off by default. See
-`docs/deployment.md`'s "Build provenance".
+`docs/deployment/reference.md`'s "Build provenance".
 
 ## Where the indexes go
 
@@ -290,7 +290,7 @@ what a listing of anything looks like, and `SHA256SUMS` is coreutils format by
 design, so every publisher's is the shape Cairndex's is. Stale ones are reported and
 left alone; delete those by hand.
 
-See `docs/deployment.md`'s "Verifying a published mirror" for this run
+See `docs/deployment/operating.md`'s "Verifying a published mirror" for this run
 against a real deployed tree.
 
 It refuses outright when the manifest claims nothing. Everything generated then
@@ -308,7 +308,7 @@ depends on when the build ran or which timezone it ran in.
 `--files-from` format, so a mirror republishes the handful of listings that
 changed instead of all of them.
 
-See `docs/deployment.md`'s "Publishing only what moved" for the full
+See `docs/deployment/operating.md`'s "Publishing only what moved" for the full
 `rsync --files-from` command and what it does not cover.
 
 ## Seeing it first
@@ -327,7 +327,7 @@ mistyped `out:` or a manifest left by a different config makes it delete a lot.
 `--changed-to` still writes the file it names, so a deployment's transfer list
 can be read before anything moves.
 
-See `docs/deployment.md`'s "Seeing what a run would do first" for a longer
+See `docs/deployment/operating.md`'s "Seeing what a run would do first" for a longer
 walkthrough.
 
 ## Getting a wedged tree back
@@ -350,7 +350,7 @@ produces that already exist — it never walks the output looking for files that
 seem generated — and every claim is reported, because waiving the conflict check
 should not be something you find out about later.
 
-See `docs/deployment.md`'s "Getting a wedged tree back" for the same repair
+See `docs/deployment/operating.md`'s "Getting a wedged tree back" for the same repair
 against a live mirror.
 
 ## Reading it back
@@ -385,7 +385,7 @@ instead, the same one already reaching the log.
 JSON liveness/readiness, and a Prometheus scrape target that also reports the
 build loop's own success and timing under `watch --serve --metrics`. Off by
 default, so a tree that happens to hold a real `metrics/` directory is still
-served faithfully unless asked otherwise. See `docs/deployment.md`'s "Health
+served faithfully unless asked otherwise. See `docs/deployment/container.md`'s "Health
 checks and metrics".
 
 ## Design principles
@@ -418,7 +418,11 @@ similar without a regex parser in front of them.
 
 - [Hugo setup](docs/hugo-setup.md) — importing the module, output formats
 - [Search integration](docs/search-integration.md) — folding entries into a site's existing index, or emitting a standalone one
-- [Deployment](docs/deployment.md) — Cloudflare Pages, nginx, checksums, machine discovery
+- [Deployment](docs/deployment.md) — the two disk shapes, and a map of the rest
+- [Static hosting](docs/deployment/static-hosting.md) — nginx, caddy, Cloudflare Pages, `?format=`
+- [Running as a container](docs/deployment/container.md) — mount shapes, health checks, reverse proxy
+- [Operating a published mirror](docs/deployment/operating.md) — re-running, repair, verification, exit codes
+- [Deployment reference](docs/deployment/reference.md) — scaling, machine discovery, provenance
 
 ## License
 

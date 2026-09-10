@@ -3,7 +3,7 @@
 ' SPDX-License-Identifier: MIT
 '
 ' Rendered to ownership.svg by 'make diagrams'. GitHub does not render
-' PlantUML, so the SVG beside this file is what docs/deployment.md shows;
+' PlantUML, so the SVG beside this file is what docs/deployment/operating.md shows;
 ' regenerate it in the same commit as any edit here.
 skinparam backgroundColor #FFFFFF
 skinparam defaultFontName Helvetica

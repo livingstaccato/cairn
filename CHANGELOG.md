@@ -106,6 +106,20 @@ versions follow [SemVer](https://semver.org/) once tagged. See the
 
 ### Changed
 
+- `docs/deployment.md` is now an overview — the two disk shapes and a map —
+  with the depth split into `docs/deployment/`: `static-hosting.md`,
+  `container.md`, `operating.md` and `reference.md`. It had grown to 783 lines
+  covering everything from nginx config to provenance, which is a reference
+  nobody reads twice. The overview keeps its path, so existing links to the
+  file still resolve; links that named a section now point at the file holding
+  it.
+- `docs/deployment/container.md` gains a runbook: choosing a mount shape (the
+  container example's `root: ./tree, out: ./site` does not fit a mount pointed
+  at a directory that already holds files), what `/healthz` degraded means and
+  why it is a readiness signal rather than a liveness one, why a `docker exec
+  ... --adopt` repair leaves the endpoint degraded until the watcher itself
+  rebuilds, rolling back a build that succeeded, and a reverse proxy in front.
+
 - `cairndex build` and `cairndex check` now stop promptly when interrupted
   mid-run, instead of only surviving a Ctrl-C to keep going. A build cut
   short still saves a manifest for what it wrote.

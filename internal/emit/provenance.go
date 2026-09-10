@@ -15,8 +15,8 @@ import (
 // than one aggregate hash, so a mismatch names the exact file that
 // changed. ConfigSHA256 alone is checkable with nothing but `sha256sum
 // cairndex.yaml`; Outputs is JSON, not coreutils' sha256sum format, so
-// verifying it takes one small reshape first — see docs/deployment.md's
-// "Build provenance" for the actual recipe.
+// verifying it takes one small reshape first — see
+// docs/deployment/reference.md's "Build provenance" for the actual recipe.
 type Provenance struct {
 	CairndexVersion string           `json:"cairndex_version"`
 	ConfigSHA256    string           `json:"config_sha256,omitempty"`

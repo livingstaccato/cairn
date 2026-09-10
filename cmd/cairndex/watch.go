@@ -59,7 +59,7 @@ func newWatchCmd() *cobra.Command {
 			// records what cairndex owns is written when a build returns, and a
 			// process killed between the write and the save leaves output that
 			// nothing claims.
-			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt)
+			ctx, stop := signal.NotifyContext(cmd.Context(), stopSignals...)
 			defer stop()
 			if cmd.Flags().Changed("addr") && !o.serve {
 				return fmt.Errorf("--addr names an address to serve on; pass --serve to open it")

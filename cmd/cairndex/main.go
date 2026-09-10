@@ -12,12 +12,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// sigintExitCode is the shell's own convention (128+signal number, 128+2 for
-// SIGINT), not one invented here -- an orchestrator, a wrapper script, or a
-// person at a terminal already reads 130 as "this was interrupted," and
-// reusing that means cairndex needs no documentation of its own for the
-// distinction to be understood.
-const sigintExitCode = 130
+// interruptedExitCode is the shell's own convention (128+signal number,
+// 128+2 for SIGINT), not one invented here -- an orchestrator, a wrapper
+// script, or a person at a terminal already reads 130 as "this was
+// interrupted," and reusing that means cairndex needs no documentation of
+// its own for the distinction to be understood.
+//
+// A SIGTERM that lands mid-run reports 130 as well, rather than 143. Nothing
+// downstream of exitCode knows which signal cancelled ctx, and the split this
+// code exists to draw is interrupted-versus-broken; a script that needs to
+// know which signal it sent already knows.
+const interruptedExitCode = 130
 
 // Subcommand names, named once so the command tree and the tests that inspect
 // it cannot drift apart.
@@ -52,7 +57,7 @@ func main() {
 // just an error value.
 func exitCode(err error) int {
 	if errors.Is(err, context.Canceled) {
-		return sigintExitCode
+		return interruptedExitCode
 	}
 	return 1
 }

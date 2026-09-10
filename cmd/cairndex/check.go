@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"os"
 	"os/signal"
 
 	"github.com/spf13/cobra"
@@ -42,7 +41,7 @@ func newCheckCmd() *cobra.Command {
 			// cancelled rather than holding it for the whole run, so a
 			// check this cancellation does not stop on its own still has a
 			// second Ctrl-C left to end it.
-			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt)
+			ctx, stop := signal.NotifyContext(cmd.Context(), stopSignals...)
 			defer stop()
 			stopOnCancel(ctx, stop)
 			afterSignalRegistered()

@@ -79,7 +79,7 @@ func newBuildCmd() *cobra.Command {
 			// holding it for the rest of the run, so a build this ctx
 			// cancellation does not stop on its own still has a second
 			// Ctrl-C left to end it.
-			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt)
+			ctx, stop := signal.NotifyContext(cmd.Context(), stopSignals...)
 			defer stop()
 			stopOnCancel(ctx, stop)
 			afterSignalRegistered()

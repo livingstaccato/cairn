@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"os/signal"
 
 	"github.com/spf13/cobra"
@@ -27,7 +26,7 @@ func newServeCmd() *cobra.Command {
 			"browser without Hugo or a web server. Runs until interrupted.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt)
+			ctx, stop := signal.NotifyContext(cmd.Context(), stopSignals...)
 			defer stop()
 			return runServe(ctx, configPath, addr, noFollowSymlinks, verboseErrors, metrics, cmd.ErrOrStderr())
 		},

@@ -82,6 +82,14 @@ func TestCheckCommandSurvivesAnInterruptMidCheck(t *testing.T) {
 // nothing here is racing a scheduler.
 func survivesAnInterrupt(t *testing.T, cmd *cobra.Command) {
 	t.Helper()
+	survivesSignal(t, cmd, syscall.SIGINT)
+}
+
+// survivesSignal is survivesAnInterrupt for one specific signal, so the
+// SIGTERM cases can make the same claim without a second copy of the
+// registration handshake.
+func survivesSignal(t *testing.T, cmd *cobra.Command, sig syscall.Signal) {
+	t.Helper()
 	var stderr strings.Builder
 	cmd.SetErr(&stderr)
 
@@ -99,8 +107,8 @@ func survivesAnInterrupt(t *testing.T, cmd *cobra.Command) {
 		t.Fatal("RunE never reached its signal registration")
 	}
 
-	if err := syscall.Kill(os.Getpid(), syscall.SIGINT); err != nil {
-		t.Fatalf("raise SIGINT: %v", err)
+	if err := syscall.Kill(os.Getpid(), sig); err != nil {
+		t.Fatalf("raise %v: %v", sig, err)
 	}
 
 	select {
@@ -115,4 +123,32 @@ func survivesAnInterrupt(t *testing.T, cmd *cobra.Command) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("command never returned")
 	}
+}
+
+// TestBuildCommandSurvivesATerminationMidBuild is the SIGTERM half of the
+// same claim. SIGTERM is what `docker stop` and a Kubernetes pod shutdown
+// send, so a container running any of these commands takes SIGTERM on every
+// ordinary stop -- and a signal nothing has registered for keeps the Go
+// runtime's default action, which for SIGTERM is immediate termination.
+// Mid-build that skips everything SavePartial exists to do, exactly as an
+// unregistered SIGINT did.
+func TestBuildCommandSurvivesATerminationMidBuild(t *testing.T) {
+	configPath, _ := fixture(t)
+
+	cmd := newBuildCmd()
+	cmd.SetArgs([]string{"--config", configPath})
+	survivesSignal(t, cmd, syscall.SIGTERM)
+}
+
+// TestCheckCommandSurvivesATerminationMidCheck is runCheck's half, for the
+// same reason its SIGINT twin exists: --remove-orphaned deletes as it walks.
+func TestCheckCommandSurvivesATerminationMidCheck(t *testing.T) {
+	configPath, _ := fixture(t)
+	if err := runBuild(context.Background(), configPath, "", build.Options{}, &strings.Builder{}); err != nil {
+		t.Fatalf("could not build the fixture to check: %v", err)
+	}
+
+	cmd := newCheckCmd()
+	cmd.SetArgs([]string{"--config", configPath})
+	survivesSignal(t, cmd, syscall.SIGTERM)
 }

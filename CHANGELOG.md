@@ -65,8 +65,8 @@ versions follow [SemVer](https://semver.org/) once tagged. See the
 - A `server` Docker build target (`docker build --target server`): an
   image with nothing in it but the `cairndex` binary, running `watch
   --serve` against a mounted volume — a documented, verified
-  single-container deployment (see `docs/deployment.md`'s "Run as a
-  container"), not just an implicit possibility nobody had actually run.
+  single-container deployment (see `docs/deployment/container.md`), not
+  just an implicit possibility nobody had actually run.
 - `outputs: [atom]` writes `atom.xml` beside the normal listing: the
   directory's most recently modified entries, newest first, capped at 100.
   index.json/csv/txt already carry a listing in full; a feed's job is
@@ -78,7 +78,7 @@ versions follow [SemVer](https://semver.org/) once tagged. See the
   under `watch --serve`, the build loop's own success/failure/timing. Off
   by default, so a served tree keeping a real `metrics/` directory is still
   served faithfully unless an operator explicitly asks to trade those two
-  names away. See `docs/deployment.md`'s "Health checks and metrics".
+  names away. See `docs/deployment/container.md`'s "Health checks and metrics".
 - `CAIRNDEX_LOG_FORMAT` picks `pretty` or `json` in cairndex's own
   vocabulary, the same precedence `CAIRNDEX_ENVIRONMENT` already had over
   the telemetry library's own `PROVIDE_LOG_FORMAT` (still honoured, so
@@ -90,13 +90,13 @@ versions follow [SemVer](https://semver.org/) once tagged. See the
   when it landed, the same keypress could exit `0` (`watch`'s steady-state
   loop already treated `ctx.Done()` as a clean stop) or `1` (its own first
   build, or a plain `build`/`check`, returned the raw cancellation as an
-  error). See `docs/deployment.md`'s "Exit codes".
+  error). See `docs/deployment/operating.md`'s "Exit codes".
 - `provenance: true` writes `provenance.json` at the root of `out:` on every
   full build: cairndex's version, a SHA-256 hash of the `cairndex.yaml`
   that drove the run, and a name+digest pair for every file the run wrote,
   closer to an SLSA provenance predicate's `subject` list than to one
   aggregate hash. Off by default, and written only by a full build — see
-  `docs/deployment.md`'s "Build provenance" for why `watch`'s incremental
+  `docs/deployment/reference.md`'s "Build provenance" for why `watch`'s incremental
   rebuilds leave an existing manifest as they found it.
 - Every listing carries `total_size`: the sum of its own files' bytes, shown
   on the page beside the item count in both presenters and both modes.
@@ -117,6 +117,16 @@ versions follow [SemVer](https://semver.org/) once tagged. See the
   override it, for scripting or debugging.
 
 ### Fixed
+
+- `build`, `watch`, `check` and `serve` now claim SIGTERM's disposition
+  alongside SIGINT. Only `os.Interrupt` was registered, so SIGTERM — what
+  `docker stop`, `systemctl stop` and a Kubernetes pod shutdown all send — took
+  the Go runtime's default action and ended the process where it stood: mid
+  build, past the point `SavePartial` would have recorded what had already been
+  written, and with the container reporting exit `2`. `docker stop` on a
+  long-running `watch --serve` now logs `stopped watching` and exits `0`, which
+  is what the exit-code documentation had claimed all along. A SIGTERM that
+  interrupts a run reports `130`, the same as a Ctrl-C.
 
 - The breadcrumb partial built its trail from a manual `base_path` string
   trim; a directory this disagreed with the site's real mount rendered
